@@ -21,7 +21,7 @@ RUN_ROOT="$SCRATCH_ROOT/tfm-region-split-${SLURM_ARRAY_JOB_ID}-${SLURM_ARRAY_TAS
 SCRATCH_REPO="$RUN_ROOT/repo"
 SCRATCH_OUT="$RUN_ROOT/output"
 
-mkdir -p "$REPO/slurm" "$PERSIST" "$SCRATCH_REPO" "$SCRATCH_OUT"
+mkdir -p "$REPO/slurm" "$PERSIST" "$SCRATCH_REPO"
 cp -a "$REPO/tfmplayground" "$REPO/pyproject.toml" "$SCRATCH_REPO/"
 cp "$REPO/runs/region-split/tuning-20260812/lr-0p0001_final.pth" "$SCRATCH_REPO/source.pth"
 
