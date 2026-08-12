@@ -182,6 +182,22 @@ def run(args: argparse.Namespace) -> Path:
     rows: list[dict[str, float | int | bool]] = []
     started = time.perf_counter()
 
+    start_metrics = _evaluate(model, validation_batches, device)
+    start_row = {"step": args.start_step, "loss": float("nan"), "ordinary": False, **start_metrics}
+    start_row["stream_identification_gain"] = start_row["updated_task_id"] - start_row["prior_task_id"]
+    rows.append(start_row)
+    print(
+        " ".join(
+            [
+                f"step={args.start_step}",
+                f"updated_id={start_row['updated_task_id']:.4f}",
+                f"gain={start_row['stream_identification_gain']:.4f}",
+                f"query_acc={start_row['updated_query_accuracy']:.4f}",
+            ]
+        ),
+        flush=True,
+    )
+
     for step in range(args.start_step + 1, args.end_step + 1):
         ordinary = choose_ordinary_episode(
             step=step,
