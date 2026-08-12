@@ -123,7 +123,7 @@ class CoherentCorrectionTests(unittest.TestCase):
             train_test_split_index=8,
         ).joint_probabilities()
         outcomes = torch.arange(16)
-        bits = ((outcomes[:, None] >> torch.arange(3, -1, -1)) & 1)
+        bits = (outcomes[:, None] >> torch.arange(3, -1, -1)) & 1
         permuted_index = (bits[:, query_order] * (2 ** torch.arange(3, -1, -1))).sum(-1)
         remapped = torch.empty_like(query_permuted)
         remapped[:, outcomes] = query_permuted[:, permuted_index]

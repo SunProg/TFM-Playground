@@ -311,6 +311,54 @@ only after the Lite promotion gate passes. The older
 `evaluate_integrated_tabarena` entry point is retained solely as a custom binary
 diagnostic and its artifacts are explicitly marked non-official.
 
+### Structural-latent supervision
+
+The adapter's particles are otherwise supervised only in label space, which says
+what a particle should *predict* but never what it should *represent* — the
+collapse diagnosis in `ADAPTIVE_PARTICLE_FILTER_RESEARCH.md` §12.
+`tfmplayground.experiments.structural_latents` adds a structure-space target per
+candidate task: per-feature relevance (normalized single-split information gain),
+label noise (nearest-neighbour disagreement), boundary complexity (one minus the
+best single-threshold accuracy), class balance, and a one-hot of the generating
+SCM family. `StructuralLatentSchema` fixes the layout and always places the
+family block last.
+
+Only the family entry is exact generator truth. The rest is estimated from the
+episode's own rows and the candidate's labels, because TabICL's SCM classes
+synthesize their own feature matrix rather than accepting one, so an
+interventional relevance has no generator-side API to call.
+`generate_prior_bimodal_episodes` fills `candidate_structural_z` and
+`structural_feature_mask`; the HDF5 path cannot and leaves both `None`, and the
+loss then omits the term rather than inventing a target. Like every other
+`candidate_*` tensor these reach the loss and never a forward pass.
+
+Build the adapter with `structural_latent_dim=schema.latent_dim` to attach a
+`StructuralLatentProbe`, then set `structural_weight` on
+`TaskPosteriorTrainingConfig`. The probe sits off the prediction path, so an
+adapter carrying one is still numerically identical to vanilla. Run it in two
+stages: `structural_detach=True` first, which measures whether existing slots
+already encode structure without being able to change them, and only then
+`structural_detach=False` to shape the representation.
+
+### Gaussian slot proposal
+
+`slot_mode="gaussian"` replaces the per-particle learned query bank with a single
+query that summarizes the evidence into `(mu, log sigma)`, drawing particles as
+`mu + sigma * eps_k`. Diversity then comes from sampling rather than from the
+bank, and `particle_count` becomes a runtime knob that needs no reload.
+`log sigma` is clamped, `kl_weight` adds an optional `KL(q||N(0,I))` and defaults
+to zero on purpose — whether the sampled arm also collapses is the measurement,
+not something to suppress. Evaluation draws noise from a generator seeded by
+`slot_sample_seed`, so `predict_proba` stays reproducible and the paired
+bootstrap gate stays valid.
+
+`deterministic` remains the default and both modes share every other component,
+so the intended comparison is a 2x2 of `slot_mode` against `structural_weight` on
+identical seeds and episodes, reporting probe R², true-task identification
+against the 0.621 baseline, `effective_particle_count`, and `slot_dispersion`.
+Run at least three seeds per cell; several single-seed conclusions in the
+research log did not replicate.
+
 ## Particle-specific environment benchmark
 
 Particle claims are evaluated separately from IID TabArena. The reusable

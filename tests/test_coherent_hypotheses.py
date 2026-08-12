@@ -147,9 +147,7 @@ class CoherentHypothesisTests(unittest.TestCase):
     def test_tiny_slot_model_overfits_ambiguous_and_identified_batches(self):
         torch.manual_seed(3)
         rng = np.random.default_rng(4)
-        config = CoherentTrainingConfig(
-            device="cpu", query_count=2, batch_size=4, controlled_only=True
-        )
+        config = CoherentTrainingConfig(device="cpu", query_count=2, batch_size=4, controlled_only=True)
         batches = [
             controlled_batch(config, rng, support_sizes=(4,), evidence_counts=(evidence_count,))
             for evidence_count in (0, 4)

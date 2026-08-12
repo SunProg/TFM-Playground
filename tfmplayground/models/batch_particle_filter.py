@@ -179,9 +179,7 @@ class BatchCausalParticleFilter(nn.Module):
             transitioned = transitioned - torch.logsumexp(transitioned, dim=-1, keepdim=True)
         particle_logits, vanilla_logits, slots, residuals = self._raw_predictions(state, x, num_mem_chunks)
         particle_log_probabilities = particle_logits.log_softmax(-1)
-        particle_probability = torch.einsum(
-            "bk,brkc->brc", transitioned.exp(), particle_log_probabilities.exp()
-        )
+        particle_probability = torch.einsum("bk,brkc->brc", transitioned.exp(), particle_log_probabilities.exp())
         vanilla_probability = vanilla_logits.softmax(-1)
         gate_weights = unmasked.exp()
         entropy = -(gate_weights * unmasked.nan_to_num()).sum(-1) / math.log(max(2, gate_weights.shape[-1]))
@@ -215,9 +213,7 @@ class BatchCausalParticleFilter(nn.Module):
             residuals=residuals,
         )
 
-    def restrict_pending(
-        self, pending: PendingBatchUpdate, matched_particles: torch.Tensor
-    ) -> PendingBatchUpdate:
+    def restrict_pending(self, pending: PendingBatchUpdate, matched_particles: torch.Tensor) -> PendingBatchUpdate:
         """Apply episode matching without rerunning a transition or prediction."""
 
         weights = pending.unmasked_log_weights
@@ -231,9 +227,7 @@ class BatchCausalParticleFilter(nn.Module):
         probability = (1 - alpha[:, None, None]) * vanilla + alpha[:, None, None] * particle
         return replace(pending, transitioned_log_weights=weights, probabilities=probability)
 
-    def _capped_context(
-        self, x: torch.Tensor, y: torch.Tensor, *, temporal: bool
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def _capped_context(self, x: torch.Tensor, y: torch.Tensor, *, temporal: bool) -> tuple[torch.Tensor, torch.Tensor]:
         if x.shape[1] <= self.context_limit:
             return x, y
         if temporal:

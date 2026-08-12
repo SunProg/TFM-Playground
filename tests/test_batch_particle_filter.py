@@ -12,9 +12,7 @@ from tfmplayground.models.particle_online import BatchParticleOnlineClassifier
 
 def tiny_model(context_limit=12):
     torch.manual_seed(4)
-    backbone = NanoTabPFNModel(
-        embedding_size=8, num_attention_heads=2, mlp_hidden_size=16, num_layers=2, num_outputs=3
-    )
+    backbone = NanoTabPFNModel(embedding_size=8, num_attention_heads=2, mlp_hidden_size=16, num_layers=2, num_outputs=3)
     particle = NanoTabPFNIntegratedLatentFilter(backbone, num_hypotheses=2)
     return BatchCausalParticleFilter(particle, backbone, context_limit=context_limit)
 

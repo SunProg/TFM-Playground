@@ -56,15 +56,11 @@ class FourModeParticleFilterTests(unittest.TestCase):
             expected = FOUR_MODE_VECTORS[mode].expand(2, -1)
             torch.testing.assert_close(batch.query_y, expected)
             self.assertEqual(batch.posterior.shape, (2, 9, 4))
-            torch.testing.assert_close(
-                batch.posterior.sum(-1), torch.ones_like(batch.posterior[..., 0])
-            )
+            torch.testing.assert_close(batch.posterior.sum(-1), torch.ones_like(batch.posterior[..., 0]))
             self.assertTrue((batch.posterior[:, -1, mode] > 0.99).all())
 
     def test_label_does_not_change_own_preupdate_prediction(self):
-        batch = generate_four_mode_episodes(
-            self.config, np.random.default_rng(30), condition="noisy", batch_size=2
-        )
+        batch = generate_four_mode_episodes(self.config, np.random.default_rng(30), condition="noisy", batch_size=2)
         original = self.model(
             batch.initial_support_x,
             batch.initial_support_y,
@@ -139,9 +135,7 @@ class CompetingFeatureTests(unittest.TestCase):
             wide = self._episode(self.noise, condition=condition, num_features=3)
             self.assertEqual(wide.stream_x.shape[-1], 3)
             for name in ("initial_support_x", "stream_x", "query_x"):
-                torch.testing.assert_close(
-                    getattr(wide, name)[..., :1], getattr(single, name), rtol=0, atol=0
-                )
+                torch.testing.assert_close(getattr(wide, name)[..., :1], getattr(single, name), rtol=0, atol=0)
 
     def test_competing_mode_clamps_width_up_to_one_column_per_region(self):
         self.assertEqual(_effective_features(1, 4, "competing"), 2)
@@ -222,9 +216,7 @@ class CompetingFeatureTests(unittest.TestCase):
             changed.stream_y,
             changed.query_x,
         )
-        torch.testing.assert_close(
-            original.stream_logits[:, 3], altered.stream_logits[:, 3], rtol=0, atol=0
-        )
+        torch.testing.assert_close(original.stream_logits[:, 3], altered.stream_logits[:, 3], rtol=0, atol=0)
         self.assertFalse(torch.equal(original.log_weights[:, 4], altered.log_weights[:, 4]))
 
     def test_competing_loss_is_finite_and_trains_the_same_parameter_groups(self):
@@ -239,15 +231,8 @@ class CompetingFeatureTests(unittest.TestCase):
         loss, metrics = four_mode_loss(prediction, batch, self.competing)
         self.assertTrue(torch.isfinite(loss))
         loss.backward()
-        self.assertTrue(
-            any(parameter.grad is not None for parameter in self.model.ambiguity_gate.parameters())
-        )
-        self.assertTrue(
-            any(
-                parameter.grad is not None
-                for parameter in self.model.particle_model.decoder.parameters()
-            )
-        )
+        self.assertTrue(any(parameter.grad is not None for parameter in self.model.ambiguity_gate.parameters()))
+        self.assertTrue(any(parameter.grad is not None for parameter in self.model.particle_model.decoder.parameters()))
         self.assertTrue(np.isfinite(list(metrics.values())).all())
 
     def test_unknown_feature_mode_is_rejected(self):

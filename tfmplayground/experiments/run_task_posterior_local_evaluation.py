@@ -22,7 +22,9 @@ from tfmplayground.experiments.evaluate_task_posterior_tabarena import TABARENA_
 from tfmplayground.experiments.prior_bimodal_episodes import (
     PriorBimodalConfig,
     generate_h5_prior_bimodal_episodes,
+    generate_prior_bimodal_episodes,
 )
+from tfmplayground.experiments.structural_latents import StructuralLatentSchema, probe_r2
 from tfmplayground.experiments.task_posterior_acceptance import (
     no_harm_gate,
     paired_bootstrap_gate,
@@ -36,6 +38,7 @@ from tfmplayground.interface import init_model_from_state_dict_file
 from tfmplayground.models.task_posterior_adapter import (
     NanoTabPFNTaskPosteriorAdapter,
     load_task_posterior_checkpoint,
+    match_regimes_to_particles,
     save_task_posterior_checkpoint,
 )
 from tfmplayground.utils import get_default_device, set_randomness_seed
@@ -57,17 +60,47 @@ class LocalEvaluationConfig:
     ordinary_context_rows: int = 64
     ordinary_query_rows: int = 16
     resume: bool = False
+    # Structural-latent and slot-proposal arms.  The defaults reproduce the
+    # original experiment exactly.
+    episode_source: str = "h5"
+    initial_support_count: int = 32
+    stream_count: int = 32
+    slot_mode: str = "deterministic"
+    structural_probe: bool = False
+    structural_weight: float = 0.0
+    structural_detach: bool = False
+    kl_weight: float = 0.0
+
+    def validate(self) -> None:
+        if self.episode_source not in {"h5", "tabicl"}:
+            raise ValueError("episode_source must be 'h5' or 'tabicl'.")
+        # Both sources supply structure.  'h5' loses only the generating family,
+        # whose block is then marked unknown and dropped from the objective.
+        if self.structural_weight > 0 and not self.structural_probe:
+            raise ValueError("structural_weight is only meaningful with structural_probe enabled.")
+        if self.structural_detach and not self.structural_probe:
+            raise ValueError("structural_detach is only meaningful with structural_probe enabled.")
+        if self.structural_probe and self.structural_weight <= 0:
+            # Detaching stops the gradient at the slots, not at the probe.  With
+            # zero weight the probe is never trained at all and its R2 describes
+            # a random head, which is easy to mistake for "slots encode nothing".
+            raise ValueError("structural_probe requires structural_weight > 0; the probe needs a loss to fit.")
 
 
 def _episode_config(config: LocalEvaluationConfig) -> PriorBimodalConfig:
     return PriorBimodalConfig(
-        initial_support_count=32,
-        stream_count=32,
+        initial_support_count=config.initial_support_count,
+        stream_count=config.stream_count,
         query_count=4,
         max_features=5,
         max_pair_attempts=512,
         device=config.device,
+        compute_structural_latents=config.structural_probe,
     )
+
+
+def _schema(config: LocalEvaluationConfig) -> StructuralLatentSchema:
+    return StructuralLatentSchema(max_features=_episode_config(config).max_features)
 
 
 def _ordinary_version(batch):
@@ -77,6 +110,8 @@ def _ordinary_version(batch):
         candidate_support_y=None,
         candidate_stream_y=None,
         candidate_query_y=None,
+        candidate_structural_z=None,
+        structural_feature_mask=None,
     )
 
 
@@ -84,6 +119,8 @@ def _paired_batch(config, episode_config, rng, *, batch_size):
     last_error = None
     for _ in range(20):
         try:
+            if config.episode_source == "tabicl":
+                return generate_prior_bimodal_episodes(episode_config, rng, batch_size=batch_size)
             return generate_h5_prior_bimodal_episodes(config.prior_dump, episode_config, rng, batch_size=batch_size)
         except RuntimeError as error:
             last_error = error
@@ -122,6 +159,56 @@ def _task_identification(probabilities: torch.Tensor, candidate_y: torch.Tensor)
     return likelihood.argmax(-1)
 
 
+@torch.no_grad()
+def _particle_diagnostics(model, batch) -> tuple[torch.Tensor | None, torch.Tensor, torch.Tensor]:
+    """One canonical-order forward for collapse and structure diagnostics.
+
+    The matched probe output uses the same label-space assignment the training
+    loss uses, so the reported R2 answers "does the particle that reproduces
+    this task's labels also describe its structure", not "does some particle
+    happen to fit".  ``effective_particle_count`` sees weight collapse and
+    ``slot_dispersion`` sees representation collapse, which weights cannot.
+    """
+    context_x = torch.cat((batch.initial_support_x, batch.stream_x), dim=1)
+    context_y = torch.cat((batch.initial_support_y, batch.stream_y), dim=1).long()
+    prediction = model(context_x, context_y, batch.query_x, class_count=2)
+    matched = None
+    if prediction.structural is not None and batch.candidate_structural_z is not None:
+        assignment = match_regimes_to_particles(prediction, batch.candidate_query_y.long())
+        latent_dim = prediction.structural.shape[-1]
+        index = assignment.particle_for_regime[:, :, None].expand(-1, -1, latent_dim)
+        matched = prediction.structural.gather(1, index)
+    return matched, prediction.effective_particle_count(), prediction.slot_dispersion()
+
+
+def _probe_r2(
+    predictions: list[torch.Tensor], targets: list[torch.Tensor], schema: StructuralLatentSchema
+) -> dict[str, float | None]:
+    """In-loop telemetry only.
+
+    The authoritative measurement is
+    ``tfmplayground.experiments.structural_probe_analysis``, which fits probes of
+    several capacities to convergence against controls and an upper bound.  The
+    probe scored here shares the adapter's optimizer and step budget.
+    """
+    return probe_r2(predictions, targets, schema)
+
+
+def _parameter_groups(model) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    """Split trainable parameters into (adapter, probe).
+
+    They must be clipped separately.  Clipping one global norm over both lets
+    the probe's gradients scale the adapter's down, so a detached probe would
+    still change the adapter it is supposed to be measuring.
+    """
+    adapter, probe = [], []
+    for name, parameter in model.named_parameters():
+        if name.startswith("backbone."):
+            continue
+        (probe if name.startswith("structural_probe.") else adapter).append(parameter)
+    return adapter, probe
+
+
 def _sample_ordinary_h5(config: LocalEvaluationConfig, rng: np.random.Generator):
     examples = []
     with h5py.File(config.prior_dump, "r") as handle:
@@ -141,10 +228,20 @@ def _evaluate(model, config: LocalEvaluationConfig, seed: int) -> tuple[dict, li
     batch_size = config.batch_size
     paired_rows = []
     max_permutation_delta = 0.0
+    structural_predictions: list[torch.Tensor] = []
+    structural_targets: list[torch.Tensor] = []
+    effective_counts: list[float] = []
+    dispersions: list[float] = []
     paired_batches = (config.paired_evaluation_episodes + batch_size - 1) // batch_size
     for batch_index in range(paired_batches):
         current = min(batch_size, config.paired_evaluation_episodes - len(paired_rows))
         batch = _paired_batch(config, _episode_config(config), paired_rng, batch_size=current)
+        matched, effective, dispersion = _particle_diagnostics(model, batch)
+        if matched is not None:
+            structural_predictions.append(matched.cpu())
+            structural_targets.append(batch.candidate_structural_z.cpu())
+        effective_counts.extend(effective.cpu().tolist())
+        dispersions.extend(dispersion.cpu().tolist())
         context_x = torch.cat((batch.initial_support_x, batch.stream_x), dim=1)
         context_y = torch.cat((batch.initial_support_y, batch.stream_y), dim=1)
         adapter, vanilla, delta = _ensemble_probabilities(
@@ -227,19 +324,28 @@ def _evaluate(model, config: LocalEvaluationConfig, seed: int) -> tuple[dict, li
         "ordinary_auc_delta": float((ordinary_frame.adapter_auc - ordinary_frame.vanilla_auc).mean()),
         "no_harm_gate": no_harm_gate(ordinary_frame.adapter_auc, ordinary_frame.vanilla_auc),
         "max_context_permutation_probability_delta": max_permutation_delta,
+        "mean_effective_particle_count": float(np.mean(effective_counts)) if effective_counts else float("nan"),
+        "mean_slot_dispersion": float(np.mean(dispersions)) if dispersions else float("nan"),
+        "structural_probe": _probe_r2(structural_predictions, structural_targets, _schema(config)),
     }
     detail = paired_rows + [dict(row, kind="ordinary") for row in ordinary_rows]
     return summary, detail
 
 
 def run(config: LocalEvaluationConfig) -> Path:
+    config.validate()
     output = Path(config.output_dir)
     if output.exists() and not config.resume:
         raise FileExistsError(f"Output directory already exists: {output}")
     output.mkdir(parents=True, exist_ok=config.resume)
     if not (output / "config.json").exists():
         (output / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
-    training_config = TaskPosteriorTrainingConfig()
+    schema = _schema(config)
+    training_config = TaskPosteriorTrainingConfig(
+        structural_weight=config.structural_weight,
+        structural_family_count=schema.family_count,
+        kl_weight=config.kl_weight,
+    )
     summaries = []
     details = []
     history_path = output / "training_history.csv"
@@ -257,8 +363,18 @@ def run(config: LocalEvaluationConfig) -> Path:
             model.to(config.device).eval()
         else:
             backbone = init_model_from_state_dict_file(config.backbone_checkpoint)
-            model = NanoTabPFNTaskPosteriorAdapter(backbone, particle_count=4).to(config.device)
-            optimizer = torch.optim.AdamW(model.adapter_parameters(), lr=config.learning_rate, weight_decay=1e-2)
+            model = NanoTabPFNTaskPosteriorAdapter(
+                backbone,
+                particle_count=4,
+                slot_mode=config.slot_mode,
+                structural_latent_dim=schema.latent_dim if config.structural_probe else None,
+                structural_family_count=schema.family_count,
+                structural_detach=config.structural_detach,
+            ).to(config.device)
+            adapter_parameters, probe_parameters = _parameter_groups(model)
+            optimizer = torch.optim.AdamW(
+                adapter_parameters + probe_parameters, lr=config.learning_rate, weight_decay=1e-2
+            )
             model.train()
             rng = np.random.default_rng(seed)
             for step in range(1, config.steps + 1):
@@ -278,7 +394,9 @@ def run(config: LocalEvaluationConfig) -> Path:
                 optimizer.zero_grad(set_to_none=True)
                 objective = contrastive_episode_objective(model, batch, training_config)
                 objective.total.backward()
-                torch.nn.utils.clip_grad_norm_(list(model.adapter_parameters()), 1.0)
+                torch.nn.utils.clip_grad_norm_(adapter_parameters, 1.0)
+                if probe_parameters:
+                    torch.nn.utils.clip_grad_norm_(probe_parameters, 1.0)
                 optimizer.step()
                 history.append(
                     {
@@ -288,6 +406,8 @@ def run(config: LocalEvaluationConfig) -> Path:
                         "loss": float(objective.total.detach().cpu()),
                         "prior_mixture": float(objective.prior_only.mixture.detach().cpu()),
                         "updated_mixture": float(objective.updated.mixture.detach().cpu()),
+                        "prior_structural": float(objective.prior_only.structural.detach().cpu()),
+                        "prior_kl": float(objective.prior_only.kl.detach().cpu()),
                     }
                 )
             save_task_posterior_checkpoint(
@@ -328,6 +448,10 @@ def run(config: LocalEvaluationConfig) -> Path:
             all(row["representation_gate"]["passes"] for row in summaries) and frame.no_harm_gate.all()
         ),
         "max_context_permutation_probability_delta": float(frame.max_context_permutation_probability_delta.max()),
+        "slot_mode": config.slot_mode,
+        "mean_effective_particle_count": float(frame.mean_effective_particle_count.mean()),
+        "mean_slot_dispersion": float(frame.mean_slot_dispersion.mean()),
+        "structural_probe_by_seed": [row["structural_probe"] for row in summaries],
     }
     pd.DataFrame(details).to_csv(output / "evaluation_details.csv", index=False)
     (output / "summary.json").write_text(json.dumps(aggregate, indent=2) + "\n")
@@ -345,6 +469,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--paired-evaluation-episodes", type=int, default=256)
     parser.add_argument("--ordinary-evaluation-episodes", type=int, default=256)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--episode-source",
+        choices=("h5", "tabicl"),
+        default="h5",
+        help="HDF5 dumps carry no structure; structural supervision needs 'tabicl'.",
+    )
+    parser.add_argument("--initial-support-count", type=int, default=32)
+    parser.add_argument("--stream-count", type=int, default=32)
+    parser.add_argument("--slot-mode", choices=("deterministic", "gaussian"), default="deterministic")
+    parser.add_argument("--structural-probe", action="store_true")
+    parser.add_argument(
+        "--structural-detach",
+        action="store_true",
+        help="Stage A: measure whether existing slots encode structure without shaping them.",
+    )
+    parser.add_argument("--structural-weight", type=float, default=0.0)
+    parser.add_argument("--kl-weight", type=float, default=0.0)
     return parser
 
 
@@ -360,6 +501,14 @@ def main(argv: list[str] | None = None) -> int:
         paired_evaluation_episodes=args.paired_evaluation_episodes,
         ordinary_evaluation_episodes=args.ordinary_evaluation_episodes,
         resume=args.resume,
+        episode_source=args.episode_source,
+        initial_support_count=args.initial_support_count,
+        stream_count=args.stream_count,
+        slot_mode=args.slot_mode,
+        structural_probe=args.structural_probe,
+        structural_detach=args.structural_detach,
+        structural_weight=args.structural_weight,
+        kl_weight=args.kl_weight,
     )
     print(run(config))
     return 0

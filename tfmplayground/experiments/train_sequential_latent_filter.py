@@ -86,6 +86,13 @@ class SequentialEpisodeBatch:
     stream_disagreement: torch.Tensor | None = None
     query_disagreement: torch.Tensor | None = None
     pair_attempts: torch.Tensor | None = None
+    # Structural summaries of each candidate task, laid out by
+    # tfmplayground.experiments.structural_latents.StructuralLatentSchema.  Like
+    # every field above they are generator truth: a loss may consume them, a
+    # model's forward pass never does.  HDF5 prior dumps store no structure, so
+    # dump-backed generators leave both fields None.
+    candidate_structural_z: torch.Tensor | None = None
+    structural_feature_mask: torch.Tensor | None = None
 
 
 def validate_config(config: SequentialFilterConfig) -> None:

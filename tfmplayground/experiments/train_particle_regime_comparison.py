@@ -322,9 +322,7 @@ def evaluate_synthetic(
         rows.extend({"episode": index, "stream": name, **summary} for summary in result.summary())
     _write_rows(output / "synthetic_metrics.csv", rows)
     metrics = [
-        key
-        for key, value in rows[0].items()
-        if key not in {"episode", "stream", "method"} and isinstance(value, float)
+        key for key, value in rows[0].items() if key not in {"episode", "stream", "method"} and isinstance(value, float)
     ]
     summary = []
     for method in sorted({row["method"] for row in rows}):
@@ -519,18 +517,14 @@ def run(config: ComparisonConfig) -> list[Path]:
                 )
             paired_test = paired_bootstrap_improvement(particle_losses, baseline_losses, seed=SEEDS[0])
             particle_recovery = _finite_mean(
-                float(row["mean_switch_recovery_delay_batches"])
-                for row in arm_rows
-                if row["method"] == "particle"
+                float(row["mean_switch_recovery_delay_batches"]) for row in arm_rows if row["method"] == "particle"
             )
             sliding_recovery = _finite_mean(
                 float(row["mean_switch_recovery_delay_batches"])
                 for row in arm_rows
                 if row["method"] == "sliding_window"
             )
-            recurrence = _finite_mean(
-                float(row["recurrence_gain"]) for row in arm_rows if row["method"] == "particle"
-            )
+            recurrence = _finite_mean(float(row["recurrence_gain"]) for row in arm_rows if row["method"] == "particle")
             detailed = []
             for output in outputs:
                 if output.name != arm:
@@ -539,9 +533,7 @@ def run(config: ComparisonConfig) -> list[Path]:
                     detailed.extend(csv.DictReader(handle))
             stable_auc = {
                 method: _finite_mean(
-                    float(row["auc"])
-                    for row in detailed
-                    if row["stream"] == "stable" and row["method"] == method
+                    float(row["auc"]) for row in detailed if row["stream"] == "stable" and row["method"] == method
                 )
                 for method in ("particle", "cumulative_vanilla")
             }

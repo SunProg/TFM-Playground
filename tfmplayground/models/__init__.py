@@ -21,9 +21,11 @@ from tfmplayground.models.particle_online import (
 from tfmplayground.models.task_posterior_adapter import (
     NanoTabPFNTaskPosteriorAdapter,
     RegimeParticleAssignment,
+    StructuralLatentProbe,
     TaskPosteriorPrediction,
     match_regimes_to_particles,
     regime_posterior_supervision_loss,
+    structural_latent_loss,
 )
 
 __all__ = [
@@ -44,9 +46,11 @@ __all__ = [
     "NanoTabPFNVariationalHypothesisModel",
     "RegimeParticleAssignment",
     "PendingBatchUpdate",
+    "StructuralLatentProbe",
     "TaskPosteriorPrediction",
     "match_regimes_to_particles",
     "regime_posterior_supervision_loss",
+    "structural_latent_loss",
 ]
 from tfmplayground.models.adaptive_particle_filter import (
     AdaptiveKParticleFilter,

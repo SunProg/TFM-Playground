@@ -27,6 +27,10 @@ class TaskPosteriorTrainingConfig:
     diversity_weight: float = 0.02
     residual_weight: float = 0.01
     ordinary_posterior_weight: float = 0.02
+    # Structure-space supervision.  Zero keeps every existing run bit-identical.
+    structural_weight: float = 0.0
+    structural_family_count: int = 2
+    kl_weight: float = 0.0
     min_context_size: int = 32
     max_context_size: int = 1024
     min_features: int = 1
@@ -38,6 +42,10 @@ class TaskPosteriorTrainingConfig:
             raise ValueError("K=4 is frozen until the representation gate passes.")
         if not 0 <= self.ordinary_episode_fraction <= 1:
             raise ValueError("ordinary_episode_fraction must be in [0, 1].")
+        if self.structural_weight < 0 or self.kl_weight < 0:
+            raise ValueError("structural_weight and kl_weight must be non-negative.")
+        if self.structural_family_count < 2:
+            raise ValueError("structural_family_count must be at least two.")
         if not 2 <= self.min_context_size <= self.max_context_size <= 1024:
             raise ValueError("Context curriculum must stay between 2 and 1,024 rows.")
         if not 1 <= self.min_features <= self.max_features:
@@ -56,6 +64,22 @@ class EpisodeObjective:
 def _candidate_labels(batch, prefix: str) -> torch.Tensor | None:
     value = getattr(batch, f"candidate_{prefix}_y", None)
     return None if value is None else value.long()
+
+
+def _structural_targets(
+    model: NanoTabPFNTaskPosteriorAdapter, batch, *, candidates: torch.Tensor | None
+) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+    """Structural truth for this batch, or ``(None, None)`` when unavailable.
+
+    Ordinary episodes and dump-backed paired episodes carry no structure; the
+    loss then simply omits the term rather than inventing a target.  Structural
+    supervision also needs the candidate labels, because a particle is scored
+    against the candidate the label-space matching assigned it, so an episode
+    without candidates yields no structural target even if one was attached.
+    """
+    if model.structural_probe is None or candidates is None:
+        return None, None
+    return getattr(batch, "candidate_structural_z", None), getattr(batch, "structural_feature_mask", None)
 
 
 def contrastive_episode_objective(
@@ -91,6 +115,7 @@ def contrastive_episode_objective(
     prior_candidates = None
     if candidate_stream is not None and candidate_query is not None:
         prior_candidates = torch.cat((candidate_stream, candidate_query), dim=2)
+    structural_z, structural_mask = _structural_targets(model, batch, candidates=prior_candidates)
     prior_prediction = model(
         batch.initial_support_x,
         batch.initial_support_y.long(),
@@ -106,6 +131,11 @@ def contrastive_episode_objective(
         diversity_weight=config.diversity_weight,
         residual_weight=config.residual_weight,
         ordinary_posterior_weight=config.ordinary_posterior_weight,
+        structural_z=structural_z,
+        structural_feature_mask=structural_mask,
+        structural_family_count=config.structural_family_count,
+        structural_weight=config.structural_weight,
+        kl_weight=config.kl_weight,
     )
 
     complete_context_x = torch.cat((batch.initial_support_x, batch.stream_x), dim=1)
@@ -116,6 +146,7 @@ def contrastive_episode_objective(
         batch.query_x,
         class_count=class_count,
     )
+    updated_structural_z, updated_structural_mask = _structural_targets(model, batch, candidates=candidate_query)
     updated_loss = task_posterior_loss(
         updated_prediction,
         batch.query_y.long(),
@@ -125,6 +156,11 @@ def contrastive_episode_objective(
         diversity_weight=config.diversity_weight,
         residual_weight=config.residual_weight,
         ordinary_posterior_weight=config.ordinary_posterior_weight,
+        structural_z=updated_structural_z,
+        structural_feature_mask=updated_structural_mask,
+        structural_family_count=config.structural_family_count,
+        structural_weight=config.structural_weight,
+        kl_weight=config.kl_weight,
         assignment=prior_loss.assignment,
     )
     return EpisodeObjective(

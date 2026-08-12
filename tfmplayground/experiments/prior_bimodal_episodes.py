@@ -15,12 +15,19 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
+from tfmplayground.experiments.structural_latents import (
+    StructuralLatentSchema,
+    structural_feature_mask,
+    structural_latent_vector,
+)
 from tfmplayground.experiments.train_sequential_latent_filter import (
     SequentialEpisodeBatch,
 )
 
 
-_H5_INDEX_CACHE: dict[str, tuple[int, dict[tuple[int, int], np.ndarray], np.ndarray, np.ndarray]] = {}
+_H5_INDEX_CACHE: dict[
+    tuple[str, int, int, int], tuple[int, dict[tuple[int, int], np.ndarray], np.ndarray, np.ndarray]
+] = {}
 
 
 @dataclass(frozen=True)
@@ -36,6 +43,45 @@ class PriorBimodalConfig:
     max_pair_attempts: int = 64
     device: str = "cpu"
     prior_type: str = "mix_scm"
+    compute_structural_latents: bool = True
+
+
+_CORRUPTED_RECORD_CACHE: dict[str, frozenset[int]] = {}
+
+
+def corrupted_record_index(path: str) -> frozenset[int]:
+    """Records whose feature matrix contains non-finite cells.
+
+    Some shipped dumps contain a few such records (``300k_150x5_2.h5`` has 5 of
+    300,000, each with ~300 of 750 NaN/inf cells).  Drawing one makes the whole
+    forward/backward NaN, which gradient clipping cannot recover, so a long run
+    dies permanently and deterministically the first time the sampler hits one.
+    Every dump-backed generator must exclude these up front; the scan is done
+    once per path and cached.
+    """
+    import h5py
+
+    cached = _CORRUPTED_RECORD_CACHE.get(path)
+    if cached is not None:
+        return cached
+    corrupted: list[int] = []
+    with h5py.File(path, "r") as handle:
+        num_records = int(handle["X"].shape[0])
+        chunk = 20_000
+        for start in range(0, num_records, chunk):
+            block = handle["X"][start : start + chunk]
+            mask = ~np.isfinite(block)
+            if mask.any():
+                corrupted.extend((np.unique(np.where(mask)[0]) + start).tolist())
+    result = frozenset(corrupted)
+    if result:
+        warnings.warn(
+            f"Excluding {len(result)} record(s) with non-finite features from {path}: {sorted(result)}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    _CORRUPTED_RECORD_CACHE[path] = result
+    return result
 
 
 def _rng_state() -> tuple[object, tuple, torch.Tensor]:
@@ -124,7 +170,28 @@ def _sample_pair(prior, config: PriorBimodalConfig, rng: np.random.Generator, *,
         return None
     true_task = int(rng.integers(0, 2))
     labels = (y_a, y_b)[true_task]
-    return x_a, y_a, y_b, labels, true_task, support_disagreement, stream_disagreement, query_disagreement
+    # Only accepted pairs pay for the structural summaries.
+    structural = None
+    if config.compute_structural_latents:
+        schema = StructuralLatentSchema(max_features=config.max_features)
+        family = params_a["prior_type"]
+        structural = torch.stack(
+            (
+                structural_latent_vector(x_a, y_a, schema=schema, family=family, class_count=2),
+                structural_latent_vector(x_a, y_b, schema=schema, family=family, class_count=2),
+            )
+        )
+    return (
+        x_a,
+        y_a,
+        y_b,
+        labels,
+        true_task,
+        support_disagreement,
+        stream_disagreement,
+        query_disagreement,
+        structural,
+    )
 
 
 def generate_prior_bimodal_episodes(
@@ -177,6 +244,12 @@ def generate_prior_bimodal_episodes(
     labels = torch.stack([item[3] for item in examples]).to(device)
     support_end = config.initial_support_count
     stream_end = support_end + config.stream_count
+    structural_z = None
+    feature_mask = None
+    if config.compute_structural_latents:
+        schema = StructuralLatentSchema(max_features=config.max_features)
+        structural_z = torch.stack([item[8] for item in examples]).to(device)
+        feature_mask = structural_feature_mask(features, schema=schema).to(device).expand(batch_size, -1)
     return SequentialEpisodeBatch(
         initial_support_x=x[:, :support_end],
         initial_support_y=labels[:, :support_end].float(),
@@ -197,6 +270,8 @@ def generate_prior_bimodal_episodes(
         support_disagreement=torch.tensor([float(item[5]) for item in examples], device=device),
         stream_disagreement=torch.tensor([float(item[6]) for item in examples], device=device),
         query_disagreement=torch.tensor([float(item[7]) for item in examples], device=device),
+        candidate_structural_z=structural_z,
+        structural_feature_mask=feature_mask,
     )
 
 
@@ -213,48 +288,47 @@ def generate_h5_prior_bimodal_episodes(
     one record's X matrix and pair it with labels from another record with the
     same active feature count and evaluation position.  Candidate metadata is
     retained only for evaluation.
+
+    The dump schema stores no generating family, so the family block of
+    ``candidate_structural_z`` is left all-zero and the loss drops it; the
+    relevance, noise, complexity, and balance blocks are functions of ``(x, y)``
+    alone and are supplied normally.  Nothing is inferred and reported as truth.
     """
     import h5py
 
-    if config.initial_support_count != 32 or config.stream_count != 32 or config.query_count != 4:
-        raise ValueError("The HDF5 prior episode adapter requires a 32:32:4 layout.")
-    cached = _H5_INDEX_CACHE.get(path)
+    if config.initial_support_count < 4 or config.stream_count < 1 or config.query_count < 1:
+        raise ValueError("Episode counts must be positive and support must contain at least four rows.")
+    episode_rows = config.initial_support_count + config.stream_count + config.query_count
+    # The candidate pools are grouped by evaluation position, which depends on
+    # the layout, so the cache key must include it or a second layout in the
+    # same process would silently reuse the first one's pools.
+    cache_key = (path, config.initial_support_count, config.stream_count, config.query_count)
+    cached = _H5_INDEX_CACHE.get(cache_key)
     if cached is None:
         with h5py.File(path, "r") as handle:
-            required = {"X", "y", "num_features", "single_eval_pos"}
+            # dump_prior_to_h5 writes 'train_test_split_index'; dumps produced
+            # before that rename carry 'single_eval_pos'.  PriorDumpDataLoader
+            # already accepts both, and without the same fallback here a freshly
+            # generated dump is unreadable by the paired generator.
+            split_key = "train_test_split_index" if "train_test_split_index" in handle else "single_eval_pos"
+            required = {"X", "y", "num_features", split_key}
             missing = required.difference(handle.keys())
             if missing:
                 raise ValueError(f"Prior dump is missing required datasets: {sorted(missing)}")
             num_records = int(handle["X"].shape[0])
-            if handle["X"].shape[1] < 68:
-                raise ValueError("Prior dump must contain at least 68 rows per episode.")
+            dump_rows = int(handle["X"].shape[1])
+            if dump_rows < episode_rows:
+                raise ValueError(
+                    f"A {config.initial_support_count}:{config.stream_count}:{config.query_count} layout needs "
+                    f"{episode_rows} rows per episode but {path} stores {dump_rows}."
+                )
             feature_counts = np.asarray(handle["num_features"][...], dtype=np.int64)
-            eval_positions = np.asarray(handle["single_eval_pos"][...], dtype=np.int64)
+            eval_positions = np.asarray(handle[split_key][...], dtype=np.int64)
         groups: dict[tuple[int, int], np.ndarray] = {}
         for feature_count, eval_position in zip(feature_counts.tolist(), eval_positions.tolist()):
             if eval_position >= config.initial_support_count + config.stream_count:
                 groups.setdefault((feature_count, eval_position), [])
-        # Some shipped dumps contain a few records with non-finite features (300k_150x5_2.h5
-        # has 5 of 300000, each with ~300 of 750 NaN/inf cells). Drawing one makes the whole
-        # forward/backward NaN, which gradient clipping cannot recover, so a long run dies
-        # permanently and deterministically the first time the sampler hits one. Exclude them
-        # from the candidate pools up front; the scan is done once per path and cached.
-        with h5py.File(path, "r") as handle:
-            corrupted = []
-            chunk = 20_000
-            for start in range(0, num_records, chunk):
-                block = handle["X"][start : start + chunk]
-                mask = ~np.isfinite(block)
-                if mask.any():
-                    corrupted.extend((np.unique(np.where(mask)[0]) + start).tolist())
-        corrupted_set = set(corrupted)
-        if corrupted_set:
-            warnings.warn(
-                f"Excluding {len(corrupted_set)} record(s) with non-finite features from "
-                f"{path}: {sorted(corrupted_set)}",
-                RuntimeWarning,
-                stacklevel=2,
-            )
+        corrupted_set = corrupted_record_index(path)
         for key in list(groups):
             candidates = np.flatnonzero((feature_counts == key[0]) & (eval_positions == key[1]))
             if corrupted_set:
@@ -265,7 +339,7 @@ def generate_h5_prior_bimodal_episodes(
             groups[key] = candidates
         groups = {key: values for key, values in groups.items() if len(values) >= 2}
         cached = (num_records, groups, feature_counts, eval_positions)
-        _H5_INDEX_CACHE[path] = cached
+        _H5_INDEX_CACHE[cache_key] = cached
 
     num_records, groups, feature_counts, eval_positions = cached
     with h5py.File(path, "r") as handle:
@@ -337,6 +411,28 @@ def generate_h5_prior_bimodal_episodes(
     support_end = config.initial_support_count
     stream_end = support_end + config.stream_count
     query_x = torch.stack([x[index, item[4] : item[4] + config.query_count] for index, item in enumerate(examples)])
+    structural_z = None
+    feature_mask = None
+    if config.compute_structural_latents:
+        # The dump has lost the generating family, but every other block is a
+        # function of (x, y) only.  family=None marks the block unknown and the
+        # loss drops it; nothing is inferred and presented as generator truth.
+        schema = StructuralLatentSchema(max_features=config.max_features)
+        features = x.shape[2]
+        structural_z = torch.stack(
+            [
+                torch.stack(
+                    tuple(
+                        structural_latent_vector(
+                            x[index], candidate_labels[index, candidate], schema=schema, family=None, class_count=2
+                        )
+                        for candidate in range(2)
+                    )
+                )
+                for index in range(len(examples))
+            ]
+        ).to(device)
+        feature_mask = structural_feature_mask(features, schema=schema).to(device).expand(len(examples), -1)
     return SequentialEpisodeBatch(
         initial_support_x=x[:, :support_end],
         initial_support_y=labels[:, :support_end].float(),
@@ -362,4 +458,6 @@ def generate_h5_prior_bimodal_episodes(
         stream_disagreement=torch.tensor([item[6] for item in examples], device=device),
         query_disagreement=torch.tensor([item[7] for item in examples], device=device),
         pair_attempts=torch.tensor(attempts_by_example, device=device),
+        candidate_structural_z=structural_z,
+        structural_feature_mask=feature_mask,
     )

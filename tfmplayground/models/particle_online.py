@@ -204,9 +204,9 @@ class NanoTabPFNContextOnlineClassifier:
             support = torch.as_tensor(self.x, device=self.device)[None]
             target = torch.as_tensor(query, device=self.device)[None]
             labels = torch.as_tensor(self.y, device=self.device)[None].float()
-            logits = self.backbone(
-                (torch.cat((support, target), dim=1), labels), train_test_split_index=len(self.y)
-            )[..., :2]
+            logits = self.backbone((torch.cat((support, target), dim=1), labels), train_test_split_index=len(self.y))[
+                ..., :2
+            ]
         return logits[0].softmax(-1).cpu().numpy()
 
     def update(self, x: np.ndarray, y: np.ndarray, *, regime: int | None = None) -> None:

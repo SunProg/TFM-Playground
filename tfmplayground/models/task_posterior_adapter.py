@@ -20,6 +20,13 @@ from torch import nn
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 
+SLOT_MODES = ("deterministic", "gaussian")
+# sigmoid/exp guards.  adaptive_particle_filter.py:64 is the precedent: an
+# unguarded log on one side of a bounded quantity produced unrecoverable NaN
+# gradients that clipping could not rescue.
+SLOT_LOG_SIGMA_MIN = -6.0
+SLOT_LOG_SIGMA_MAX = 2.0
+
 
 @dataclass(frozen=True)
 class TaskPosteriorPrediction:
@@ -30,6 +37,10 @@ class TaskPosteriorPrediction:
     log_weights: torch.Tensor
     slots: torch.Tensor
     residuals: torch.Tensor
+    # Present only when the adapter carries a structural probe.  The probe is
+    # off the prediction path, so these never influence particle_logits.
+    structural: torch.Tensor | None = None
+    kl: torch.Tensor | None = None
 
     def particle_probabilities(self) -> torch.Tensor:
         return self.particle_logits.softmax(dim=-1)
@@ -60,6 +71,21 @@ class TaskPosteriorPrediction:
         top = self.log_weights.exp().topk(2, dim=-1).values
         return top[:, 0] - top[:, 1]
 
+    def effective_particle_count(self) -> torch.Tensor:
+        """Inverse participation ratio ``1 / sum(w^2)``; one means full collapse."""
+        return 1.0 / self.log_weights.exp().square().sum(dim=-1).clamp_min(1e-12)
+
+    def slot_dispersion(self) -> torch.Tensor:
+        """Mean per-dimension standard deviation across particles.
+
+        Collapse in *representation* space, which the weight-based effective
+        count cannot see: distinct weights over identical slots still report a
+        healthy effective count.
+        """
+        if self.slots.shape[1] < 2:
+            return torch.zeros_like(self.slots[:, 0, 0])
+        return self.slots.std(dim=1).mean(dim=-1)
+
 
 class _ResidualParticleDecoder(nn.Module):
     def __init__(self, embedding_size: int, class_count: int, residual_logit_bound: float | None = None):
@@ -85,6 +111,37 @@ class _ResidualParticleDecoder(nn.Module):
         return residuals
 
 
+class StructuralLatentProbe(nn.Module):
+    """Reads a structural task summary out of a particle slot.
+
+    The probe never contributes to ``particle_logits``, so an adapter carrying
+    one is still numerically identical to vanilla at initialization.  The final
+    ``family_count`` outputs are logits for a one-hot family block; every
+    earlier output is squashed into ``[0, 1]`` to match the targets produced by
+    ``tfmplayground.experiments.structural_latents``.
+    """
+
+    def __init__(self, embedding_size: int, latent_dim: int, family_count: int):
+        super().__init__()
+        if latent_dim <= family_count:
+            raise ValueError("latent_dim must exceed family_count so continuous entries remain.")
+        if family_count < 2:
+            raise ValueError("family_count must be at least two.")
+        self.latent_dim = latent_dim
+        self.family_count = family_count
+        self.norm = nn.LayerNorm(embedding_size)
+        self.output = nn.Linear(embedding_size, latent_dim)
+
+    @property
+    def continuous_dim(self) -> int:
+        return self.latent_dim - self.family_count
+
+    def forward(self, slots: torch.Tensor) -> torch.Tensor:
+        raw = self.output(self.norm(slots))
+        continuous = torch.sigmoid(raw[..., : self.continuous_dim])
+        return torch.cat((continuous, raw[..., self.continuous_dim :]), dim=-1)
+
+
 class NanoTabPFNTaskPosteriorAdapter(nn.Module):
     """Permutation-invariant task posterior whose particles correct vanilla.
 
@@ -102,6 +159,11 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         max_classes: int = 10,
         context_mode: str = "iid_set",
         residual_logit_bound: float | None = None,
+        slot_mode: str = "deterministic",
+        slot_sample_seed: int = 0,
+        structural_latent_dim: int | None = None,
+        structural_family_count: int = 2,
+        structural_detach: bool = False,
     ):
         super().__init__()
         if particle_count < 1:
@@ -114,19 +176,43 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             raise ValueError("context_mode must be 'iid_set' or 'sequential'.")
         if residual_logit_bound is not None and residual_logit_bound <= 0:
             raise ValueError("residual_logit_bound must be positive or None.")
+        if slot_mode not in SLOT_MODES:
+            raise ValueError(f"slot_mode must be one of {SLOT_MODES}.")
         self.backbone = backbone
         self.particle_count = particle_count
         self.max_classes = max_classes
         self.context_mode = context_mode
+        self.slot_mode = slot_mode
+        self.slot_sample_seed = slot_sample_seed
+        self.structural_detach = structural_detach
         embedding_size = backbone.embedding_size
-        self.slot_queries = nn.Parameter(torch.empty(particle_count, embedding_size))
+        # The deterministic arm carries one learned query per particle and gets
+        # its diversity from that bank.  The Gaussian arm carries a single query
+        # summarizing the evidence into (mu, log sigma) and gets its diversity
+        # from sampling, which also makes the particle count a runtime knob.
+        query_count = particle_count if slot_mode == "deterministic" else 1
+        self.slot_queries = nn.Parameter(torch.empty(query_count, embedding_size))
         nn.init.normal_(self.slot_queries, std=embedding_size**-0.5)
         self.evidence_attention = nn.MultiheadAttention(embedding_size, backbone.num_attention_heads, batch_first=True)
         self.slot_norm = nn.LayerNorm(embedding_size)
+        self.posterior_projection: nn.Linear | None = None
+        if slot_mode == "gaussian":
+            projection = nn.Linear(embedding_size, 2 * embedding_size)
+            # Start at sigma = 1 exactly; the mean half keeps its default init so
+            # it carries gradient from the first step.
+            with torch.no_grad():
+                projection.weight[embedding_size:].zero_()
+                projection.bias[embedding_size:].zero_()
+            self.posterior_projection = projection
         self.posterior_head = nn.Linear(embedding_size, 1)
         nn.init.zeros_(self.posterior_head.weight)
         nn.init.zeros_(self.posterior_head.bias)
         self.residual_decoder = _ResidualParticleDecoder(embedding_size, max_classes, residual_logit_bound)
+        self.structural_probe: StructuralLatentProbe | None = None
+        if structural_latent_dim is not None:
+            self.structural_probe = StructuralLatentProbe(
+                embedding_size, structural_latent_dim, structural_family_count
+            )
         self.freeze_backbone()
 
     def freeze_backbone(self) -> None:
@@ -156,24 +242,58 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         if not 2 <= class_count <= self.max_classes:
             raise ValueError(f"class_count must be between 2 and {self.max_classes}.")
 
+    def _slot_noise(self, batch: int, reference: torch.Tensor) -> torch.Tensor:
+        """Reparameterization noise, deterministic outside training.
+
+        ``TaskPosteriorClassifier`` promises reproducible ensembles for a given
+        ``random_state``, and the paired bootstrap gate is only valid if repeated
+        ``predict_proba`` calls agree.  Evaluation therefore draws from a seeded
+        generator rather than the global stream; training uses the global stream
+        so samples vary across steps while a global ``manual_seed`` still makes
+        the whole run reproducible.
+        """
+        shape = (batch, self.particle_count, self.backbone.embedding_size)
+        if self.training:
+            noise = torch.randn(shape, device=reference.device, dtype=reference.dtype)
+        else:
+            generator = torch.Generator().manual_seed(self.slot_sample_seed)
+            noise = torch.randn(shape, generator=generator).to(device=reference.device, dtype=reference.dtype)
+        return noise
+
+    def _build_slots(self, evidence: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
+        seeds = self.slot_queries[None].expand(evidence.shape[0], -1, -1)
+        attended = self.evidence_attention(seeds, evidence, evidence, need_weights=False)[0]
+        summary = self.slot_norm(seeds + attended)
+        if self.slot_mode == "deterministic":
+            return summary, None
+        assert self.posterior_projection is not None
+        mean, log_sigma = self.posterior_projection(summary).chunk(2, dim=-1)
+        log_sigma = log_sigma.clamp(SLOT_LOG_SIGMA_MIN, SLOT_LOG_SIGMA_MAX)
+        slots = mean + log_sigma.exp() * self._slot_noise(evidence.shape[0], summary)
+        kl = 0.5 * (mean.square() + (2.0 * log_sigma).exp() - 1.0 - 2.0 * log_sigma).sum(-1).squeeze(-1)
+        return slots, kl
+
     def _decode_encoded(self, encoded: torch.Tensor, context_count: int, class_count: int) -> TaskPosteriorPrediction:
         # Target-column support states contain label embeddings after repeated
         # feature/row attention, hence each evidence item depends on both x_i and y_i.
         evidence = encoded[:, :context_count, -1, :]
         query_states = encoded[:, context_count:, -1, :]
-        seeds = self.slot_queries[None].expand(encoded.shape[0], -1, -1)
-        attended = self.evidence_attention(seeds, evidence, evidence, need_weights=False)[0]
-        slots = self.slot_norm(seeds + attended)
+        slots, kl = self._build_slots(evidence)
         log_weights = F.log_softmax(self.posterior_head(slots).squeeze(-1), dim=-1)
         vanilla_logits = self.backbone.decoder(query_states)[..., :class_count]
         residuals = self.residual_decoder(query_states, slots)[..., :class_count]
         particle_logits = vanilla_logits[:, :, None, :] + residuals
+        structural = None
+        if self.structural_probe is not None:
+            structural = self.structural_probe(slots.detach() if self.structural_detach else slots)
         return TaskPosteriorPrediction(
             vanilla_logits=vanilla_logits,
             particle_logits=particle_logits,
             log_weights=log_weights,
             slots=slots,
             residuals=residuals,
+            structural=structural,
+            kl=kl,
         )
 
     def forward(
@@ -236,6 +356,8 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             log_weights=log_weights,
             slots=prediction.slots,
             residuals=prediction.residuals[:, stream_count:],
+            structural=prediction.structural,
+            kl=prediction.kl,
         )
 
 
@@ -248,6 +370,8 @@ class TaskPosteriorLoss:
     diversity: torch.Tensor
     residual: torch.Tensor
     posterior: torch.Tensor
+    structural: torch.Tensor
+    kl: torch.Tensor
     assignment: RegimeParticleAssignment | None = None
 
 
@@ -310,6 +434,65 @@ def regime_posterior_supervision_loss(
     return supervised + unmatched_weight * unmatched_mass
 
 
+def structural_latent_loss(
+    prediction: TaskPosteriorPrediction,
+    structural_z: torch.Tensor,
+    assignment: RegimeParticleAssignment,
+    *,
+    family_count: int,
+    feature_mask: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Score each matched particle's probe output against its candidate's structure.
+
+    ``structural_z`` has shape ``(batch, candidates, latent_dim)`` and follows the
+    layout of :class:`tfmplayground.experiments.structural_latents.StructuralLatentSchema`:
+    a per-feature relevance block, then scalar summaries, then a family one-hot
+    as the final ``family_count`` entries.  Candidates reach particles through
+    the same label-space assignment the specialization loss uses, so a particle
+    is never asked to describe a task it was not matched to.
+
+    ``feature_mask`` has shape ``(batch, max_features)`` and zeroes the padded
+    relevance entries of narrower tables.
+    """
+    if prediction.structural is None:
+        raise ValueError("The adapter was built without a structural probe.")
+    if structural_z.ndim != 3:
+        raise ValueError("structural_z must have shape (batch, candidates, latent_dim).")
+    batch, candidates, latent_dim = structural_z.shape
+    if latent_dim != prediction.structural.shape[-1]:
+        raise ValueError("structural_z and the probe output disagree on latent_dim.")
+    if latent_dim <= family_count:
+        raise ValueError("latent_dim must exceed family_count.")
+    mapping = assignment.particle_for_regime
+    if mapping.shape != (batch, candidates):
+        raise ValueError("The assignment must match the batch and candidate dimensions.")
+
+    continuous_dim = latent_dim - family_count
+    index = mapping[:, :, None].expand(-1, -1, latent_dim)
+    matched = prediction.structural.gather(1, index)
+    continuous_error = (matched[..., :continuous_dim] - structural_z[..., :continuous_dim]).square()
+
+    weights = torch.ones_like(continuous_error)
+    if feature_mask is not None:
+        features = feature_mask.shape[-1]
+        if feature_mask.shape != (batch, features) or features > continuous_dim:
+            raise ValueError("feature_mask must have shape (batch, max_features) within the continuous block.")
+        weights[..., :features] = feature_mask[:, None, :].to(weights.dtype)
+    continuous = (continuous_error * weights).sum() / weights.sum().clamp_min(1.0)
+
+    # An all-zero family block means the source could not recover the generating
+    # family (empirical dumps store observations only).  Zero is not a valid
+    # one-hot, so it is unambiguous: drop those rows instead of training the
+    # probe towards an arbitrary argmax of zeros.
+    family_block = structural_z[..., continuous_dim:].reshape(batch * candidates, family_count)
+    known = family_block.sum(-1) > 0
+    family = continuous.new_zeros(())
+    if bool(known.any()):
+        family_logits = matched[..., continuous_dim:].reshape(batch * candidates, family_count)
+        family = F.cross_entropy(family_logits[known], family_block[known].argmax(-1))
+    return continuous + family
+
+
 def task_posterior_loss(
     prediction: TaskPosteriorPrediction,
     target_y: torch.Tensor,
@@ -320,6 +503,11 @@ def task_posterior_loss(
     diversity_weight: float = 0.02,
     residual_weight: float = 0.01,
     ordinary_posterior_weight: float = 0.02,
+    structural_z: torch.Tensor | None = None,
+    structural_feature_mask: torch.Tensor | None = None,
+    structural_family_count: int = 2,
+    structural_weight: float = 0.0,
+    kl_weight: float = 0.0,
     assignment: RegimeParticleAssignment | None = None,
 ) -> TaskPosteriorLoss:
     """Primary mixture CE plus directly matched candidate-task supervision.
@@ -370,6 +558,22 @@ def task_posterior_loss(
         specialization = torch.stack(assigned_losses).mean()
         coherence = torch.stack(coherent_losses).mean()
 
+    # Structure-space supervision needs the same candidate-to-particle matching
+    # as the label-space terms, so it is only available on paired episodes.
+    structural = zero
+    if structural_z is not None and structural_weight != 0.0:
+        if assignment is None:
+            raise ValueError("Structural supervision requires candidate_y so particles can be matched.")
+        structural = structural_latent_loss(
+            prediction,
+            structural_z,
+            assignment,
+            family_count=structural_family_count,
+            feature_mask=structural_feature_mask,
+        )
+
+    kl = zero if prediction.kl is None else prediction.kl.mean()
+
     particle_probs = particle_log_probs.exp()
     mean_particle = particle_probs.mean(dim=2)
     mean_entropy = -(mean_particle * mean_particle.clamp_min(1e-12).log()).sum(-1)
@@ -383,8 +587,12 @@ def task_posterior_loss(
         + diversity_weight * diversity
         + residual_weight * residual
         + ordinary_posterior_weight * posterior
+        + structural_weight * structural
+        + kl_weight * kl
     )
-    return TaskPosteriorLoss(total, mixture, specialization, coherence, diversity, residual, posterior, assignment)
+    return TaskPosteriorLoss(
+        total, mixture, specialization, coherence, diversity, residual, posterior, structural, kl, assignment
+    )
 
 
 def task_posterior_checkpoint(
@@ -411,6 +619,11 @@ def task_posterior_checkpoint(
             "max_classes": model.max_classes,
             "context_mode": model.context_mode,
             "residual_logit_bound": model.residual_decoder.residual_logit_bound,
+            "slot_mode": model.slot_mode,
+            "slot_sample_seed": model.slot_sample_seed,
+            "structural_latent_dim": None if model.structural_probe is None else model.structural_probe.latent_dim,
+            "structural_family_count": 2 if model.structural_probe is None else model.structural_probe.family_count,
+            "structural_detach": model.structural_detach,
         },
         "model": model.state_dict(),
         "training_config": training_config,
@@ -444,6 +657,11 @@ def load_task_posterior_checkpoint(
         max_classes=architecture["max_classes"],
         context_mode=architecture.get("context_mode", "iid_set"),
         residual_logit_bound=architecture.get("residual_logit_bound"),
+        slot_mode=architecture.get("slot_mode", "deterministic"),
+        slot_sample_seed=architecture.get("slot_sample_seed", 0),
+        structural_latent_dim=architecture.get("structural_latent_dim"),
+        structural_family_count=architecture.get("structural_family_count", 2),
+        structural_detach=architecture.get("structural_detach", False),
     )
     model.load_state_dict(checkpoint["model"])
     return model, checkpoint

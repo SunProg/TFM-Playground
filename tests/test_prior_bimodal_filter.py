@@ -75,16 +75,12 @@ class PriorBimodalEpisodeTests(unittest.TestCase):
         self.assertEqual(float(batch.query_disagreement[0]), 1.0)
 
     def test_generator_returns_shared_features_and_valid_ambiguity_metadata(self):
-        batch = generate_prior_bimodal_episodes(
-            episode_config(), np.random.default_rng(17), batch_size=2
-        )
+        batch = generate_prior_bimodal_episodes(episode_config(), np.random.default_rng(17), batch_size=2)
         self.assertEqual(batch.initial_support_x.shape, (2, 8, 2))
         self.assertEqual(batch.stream_x.shape, (2, 8, 2))
         self.assertEqual(batch.query_x.shape, (2, 4, 2))
         self.assertEqual(batch.candidate_support_y.shape, (2, 2, 8))
-        selected_support = batch.candidate_support_y[
-            torch.arange(2), batch.candidate_task
-        ]
+        selected_support = batch.candidate_support_y[torch.arange(2), batch.candidate_task]
         self.assertTrue(torch.equal(selected_support.float(), batch.initial_support_y))
         self.assertTrue((batch.support_disagreement <= 0.20).all())
         self.assertTrue((batch.stream_disagreement >= 0.25).all())
@@ -106,9 +102,7 @@ class PriorBimodalParticleTests(unittest.TestCase):
     def setUp(self):
         torch.manual_seed(17)
         self.model = NanoTabPFNIntegratedLatentFilter(tiny_backbone(), num_hypotheses=2)
-        self.batch = generate_prior_bimodal_episodes(
-            episode_config(), np.random.default_rng(17), batch_size=2
-        )
+        self.batch = generate_prior_bimodal_episodes(episode_config(), np.random.default_rng(17), batch_size=2)
 
     def predict(self, model=None, batch=None):
         model = self.model if model is None else model
@@ -127,9 +121,7 @@ class PriorBimodalParticleTests(unittest.TestCase):
         with torch.no_grad():
             swapped.initial_latents.copy_(self.model.initial_latents.flip(0))
         permuted = self.predict(swapped)
-        torch.testing.assert_close(
-            original.joint_probabilities(), permuted.joint_probabilities(), atol=1e-6, rtol=1e-6
-        )
+        torch.testing.assert_close(original.joint_probabilities(), permuted.joint_probabilities(), atol=1e-6, rtol=1e-6)
         torch.testing.assert_close(
             original.marginal_probabilities(), permuted.marginal_probabilities(), atol=1e-6, rtol=1e-6
         )

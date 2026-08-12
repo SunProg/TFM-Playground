@@ -79,9 +79,7 @@ class IntegratedLatentFilterTests(unittest.TestCase):
 
     def test_zero_adapter_gates_reproduce_vanilla_row_embeddings_exactly(self):
         self.model.eval()
-        all_x = torch.cat(
-            (self.batch.initial_support_x, self.batch.stream_x, self.batch.query_x), dim=1
-        )
+        all_x = torch.cat((self.batch.initial_support_x, self.batch.stream_x, self.batch.query_x), dim=1)
         vanilla = self.model.backbone.encode_table(
             (all_x, self.batch.initial_support_y),
             self.batch.initial_support_x.shape[1],
@@ -130,19 +128,13 @@ class IntegratedLatentFilterTests(unittest.TestCase):
                 parameter.zero_()
         equal = self.predict()
         torch.testing.assert_close(equal.stream_logits[:, :, 0], equal.stream_logits[:, :, 1], rtol=0, atol=0)
-        torch.testing.assert_close(
-            equal.log_weights.exp(), torch.full_like(equal.log_weights, 0.5), rtol=0, atol=0
-        )
+        torch.testing.assert_close(equal.log_weights.exp(), torch.full_like(equal.log_weights, 0.5), rtol=0, atol=0)
 
     def test_weights_and_permutation_invariances(self):
         original = self.predict(self.model.eval())
         self.assertTrue(torch.isfinite(original.log_weights).all())
-        torch.testing.assert_close(
-            original.log_weights.exp().sum(-1), torch.ones_like(original.log_weights[..., 0])
-        )
-        torch.testing.assert_close(
-            original.log_weights[:, 0].exp(), torch.full((2, 2), 0.5), rtol=0, atol=0
-        )
+        torch.testing.assert_close(original.log_weights.exp().sum(-1), torch.ones_like(original.log_weights[..., 0]))
+        torch.testing.assert_close(original.log_weights[:, 0].exp(), torch.full((2, 2), 0.5), rtol=0, atol=0)
 
         order = torch.tensor([4, 1, 7, 0, 5, 2, 6, 3])
         reordered = copy.copy(self.batch)
@@ -177,15 +169,10 @@ class IntegratedLatentFilterTests(unittest.TestCase):
             loss, _ = integrated_loss(
                 model,
                 self.batch,
-                IntegratedTrainingConfig(
-                    prior_count=128, update_count=128, batch_size=2, plots=False
-                ),
+                IntegratedTrainingConfig(prior_count=128, update_count=128, batch_size=2, plots=False),
             )
             loss.backward()
-            gradients = {
-                name: parameter.grad is not None
-                for name, parameter in model.backbone.named_parameters()
-            }
+            gradients = {name: parameter.grad is not None for name, parameter in model.backbone.named_parameters()}
             if stage == "frozen":
                 self.assertFalse(any(gradients.values()))
             elif stage == "partial":
@@ -238,10 +225,7 @@ class IntegratedLatentFilterTests(unittest.TestCase):
         )
         self.assertEqual(history[-1]["step"], 2)
         self.assertFalse(
-            all(
-                torch.equal(a, b)
-                for a, b in zip(curriculum.parameters(), fresh.parameters(), strict=True)
-            )
+            all(torch.equal(a, b) for a, b in zip(curriculum.parameters(), fresh.parameters(), strict=True))
         )
 
     def test_tabarena_context_selection_and_chunked_prediction(self):
@@ -312,9 +296,7 @@ class IntegratedLatentFilterTests(unittest.TestCase):
         result = summarize(metrics)
         self.assertEqual(result["datasets_evaluated"], 2)
         self.assertAlmostEqual(result["models"]["vanilla"]["mean_roc_auc"], 0.7)
-        self.assertAlmostEqual(
-            result["models"]["controlled"]["mean_roc_auc_delta_vs_vanilla"], 0.0
-        )
+        self.assertAlmostEqual(result["models"]["controlled"]["mean_roc_auc_delta_vs_vanilla"], 0.0)
 
 
 class IntegratedLatentFilterCLITests(unittest.TestCase):
