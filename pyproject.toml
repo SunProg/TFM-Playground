@@ -36,6 +36,8 @@ dependencies = [
 [project.optional-dependencies]
 wandb = ["wandb>=0.20"]
 tensorboard = ["tensorboard>=2.19"]
+experiments = ["matplotlib>=3.9"]
+beyondarena = ["data-foundry==0.0.5"]
 [project.urls]
 Homepage = "https://github.com/automl/TFM-Playground"
 Issues = "https://github.com/automl/TFM-Playground/issues"

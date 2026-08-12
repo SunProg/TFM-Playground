@@ -67,6 +67,22 @@ class NanoTabPFNModel(nn.Module):
     def _forward(
         self, src: tuple[torch.Tensor, torch.Tensor], train_test_split_index: int, num_mem_chunks: int = 1
     ) -> torch.Tensor:
+        src = self.encode_table(src, train_test_split_index, num_mem_chunks=num_mem_chunks)
+        # selects the target embeddings (B,num_targets,1,E)
+        output = src[:, train_test_split_index:, -1, :]
+        # runs the embeddings through the decoder to get
+        # the logits of our predictions (B,num_targets,num_classes)
+        return self.decoder(output)
+
+    def encode_table(
+        self, src: tuple[torch.Tensor, torch.Tensor], train_test_split_index: int, num_mem_chunks: int = 1
+    ) -> torch.Tensor:
+        """Encode a complete support/query table without applying the output decoder.
+
+        The returned tensor has shape ``(batch, rows, features + target, embedding)``.
+        Keeping this operation separate lets research heads reuse the pretrained
+        backbone while the legacy forward path remains numerically identical.
+        """
         x_src, y_src = src
         # we expect the labels to look like (batches, num_train_datapoints, 1),
         # so we add the last dimension if it is missing
@@ -84,13 +100,12 @@ class NanoTabPFNModel(nn.Module):
         src = torch.cat([x_src, y_src], 2)
         # repeatedly applies the transformer block on (B,R,C,E)
         for block in self.transformer_blocks:
-            src = block(src, train_test_split_index=train_test_split_index)
-        # selects the target embeddings (B,num_targets,1,E)
-        output = src[:, train_test_split_index:, -1, :]
-        # runs the embeddings through the decoder to get
-        # the logits of our predictions (B,num_targets,num_classes)
-        output = self.decoder(output)
-        return output
+            src = block(
+                src,
+                train_test_split_index=train_test_split_index,
+                num_mem_chunks=num_mem_chunks,
+            )
+        return src
 
 
 class FeatureEncoder(nn.Module):
