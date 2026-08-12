@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Ambiguity By Sample Size</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Ambiguity By Sample Size" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Ambiguity By Sample Size&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;ambiguity-sample-plot&quot;&gt;
+  &lt;h2&gt;Uncertainty as labelled samples arrive&lt;/h2&gt;
+  &lt;p class=&quot;legacy-subtitle&quot;&gt;All-model comparison · vanilla, K=2/4/8/16, and exact Bayes · K=8 and K=16 use the shared JS gate (0.30)&lt;/p&gt;
+  &lt;div class=&quot;viz-controls&quot;&gt;
+    &lt;label class=&quot;form-label&quot; for=&quot;ambiguity-condition&quot;&gt;Evidence condition
+      &lt;select class=&quot;form-select&quot; id=&quot;ambiguity-condition&quot;&gt;
+        &lt;option value=&quot;all&quot;&gt;All conditions&lt;/option&gt;
+        &lt;option value=&quot;neutral&quot;&gt;Neutral&lt;/option&gt;
+        &lt;option value=&quot;consistent_0&quot;&gt;Consistent mode 0000&lt;/option&gt;
+        &lt;option value=&quot;consistent_1&quot;&gt;Consistent mode 0011&lt;/option&gt;
+        &lt;option value=&quot;consistent_2&quot;&gt;Consistent mode 1100&lt;/option&gt;
+        &lt;option value=&quot;consistent_3&quot;&gt;Consistent mode 1111&lt;/option&gt;
+        &lt;option value=&quot;contradictory&quot;&gt;Contradictory&lt;/option&gt;
+        &lt;option value=&quot;noisy&quot;&gt;Noisy mixture&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/label&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;ambiguity-legend&quot; aria-label=&quot;Series legend&quot;&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;vanilla&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch vanilla&quot;&gt;&lt;/span&gt;Vanilla + growing support&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;k2&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch k2&quot;&gt;&lt;/span&gt;Adaptive K=2&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;k4&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch k4&quot;&gt;&lt;/span&gt;Adaptive K=4&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;adaptive&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch adaptive&quot;&gt;&lt;/span&gt;Adaptive K=8&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;k16&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch k16&quot;&gt;&lt;/span&gt;Adaptive K=16&lt;/button&gt;
+    &lt;button type=&quot;button&quot; data-series=&quot;exact&quot; aria-pressed=&quot;true&quot;&gt;&lt;span class=&quot;ambiguity-swatch exact&quot;&gt;&lt;/span&gt;Exact Bayes&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;section&gt;
+    &lt;h3&gt;Predictive uncertainty&lt;/h3&gt;
+    &lt;div id=&quot;predictive-entropy-chart&quot;&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;section&gt;
+    &lt;h3&gt;Unresolved hypothesis ambiguity&lt;/h3&gt;
+    &lt;div id=&quot;mode-entropy-chart&quot;&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;div class=&quot;tooltip&quot; role=&quot;tooltip&quot; hidden&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+  #ambiguity-sample-plot { position: relative; width: 100%; color: var(--foreground); }
+  #ambiguity-sample-plot h2 { margin-bottom: 10px; }
+  #ambiguity-sample-plot .legacy-subtitle { margin: -6px 0 10px; color: var(--muted-foreground); }
+  #ambiguity-sample-plot h3 { margin: 18px 0 2px; }
+  #ambiguity-sample-plot .viz-controls { margin-bottom: 8px; }
+  #ambiguity-sample-plot .form-label { max-width: 280px; }
+  #ambiguity-sample-plot .ambiguity-facets { display: grid; gap: 18px; }
+  #ambiguity-sample-plot .ambiguity-facets.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #ambiguity-sample-plot .ambiguity-facets.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #ambiguity-sample-plot .ambiguity-facets h3 { text-align: center; margin-top: 8px; }
+  #ambiguity-sample-plot .ambiguity-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 6px 0; }
+  #ambiguity-sample-plot .ambiguity-legend button { display: inline-flex; align-items: center; gap: 7px; padding: 2px 0; border: 0; background: transparent; color: var(--foreground); font: inherit; cursor: pointer; }
+  #ambiguity-sample-plot .ambiguity-legend button[aria-pressed=&quot;false&quot;] { color: var(--muted-foreground); text-decoration: line-through; }
+  #ambiguity-sample-plot .ambiguity-swatch { width: 18px; height: 3px; display: inline-block; }
+  #ambiguity-sample-plot .ambiguity-swatch.vanilla { background: var(--viz-series-2); }
+  #ambiguity-sample-plot .ambiguity-swatch.adaptive { background: var(--viz-series-1); }
+  #ambiguity-sample-plot .ambiguity-swatch.exact { background: var(--viz-series-4); }
+  #ambiguity-sample-plot .ambiguity-swatch.k2 { background: var(--viz-series-5); }
+  #ambiguity-sample-plot .ambiguity-swatch.k4 { background: var(--viz-series-6); }
+  #ambiguity-sample-plot .ambiguity-swatch.k16 { background: var(--viz-series-3); }
+  #ambiguity-sample-plot .chart-svg { display: block; width: 100%; }
+  #ambiguity-sample-plot .chart-svg text { fill: var(--foreground); font-size: 12px; }
+  #ambiguity-sample-plot .chart-svg .tick text { fill: var(--muted-foreground); }
+  #ambiguity-sample-plot .chart-svg .domain,
+  #ambiguity-sample-plot .chart-svg .tick line,
+  #ambiguity-sample-plot .chart-frame { stroke: var(--border); }
+  #ambiguity-sample-plot .chart-grid line { stroke: var(--border); stroke-opacity: 0.55; }
+  #ambiguity-sample-plot .chart-grid .domain { display: none; }
+  #ambiguity-sample-plot .series-line { fill: none; stroke-width: 2.5; }
+  #ambiguity-sample-plot .series-point { stroke: var(--background); stroke-width: 1.5; }
+  #ambiguity-sample-plot .vanilla-series { stroke: var(--viz-series-2); }
+  #ambiguity-sample-plot .adaptive-series { stroke: var(--viz-series-1); }
+  #ambiguity-sample-plot .ambiguity-series { stroke: var(--viz-series-3); }
+  #ambiguity-sample-plot .exact-series { stroke: var(--viz-series-4); }
+  #ambiguity-sample-plot .k2-series { stroke: var(--viz-series-5); }
+  #ambiguity-sample-plot .k4-series { stroke: var(--viz-series-6); }
+  #ambiguity-sample-plot .k16-series { stroke: var(--viz-series-3); }
+  #ambiguity-sample-plot .series-point.vanilla-series,
+  #ambiguity-sample-plot .hover-marker.vanilla-series { fill: var(--viz-series-2); }
+  #ambiguity-sample-plot .series-point.adaptive-series,
+  #ambiguity-sample-plot .hover-marker.adaptive-series { fill: var(--viz-series-1); }
+  #ambiguity-sample-plot .series-point.ambiguity-series,
+  #ambiguity-sample-plot .hover-marker.ambiguity-series { fill: var(--viz-series-3); }
+  #ambiguity-sample-plot .series-point.exact-series,
+  #ambiguity-sample-plot .hover-marker.exact-series { fill: var(--viz-series-4); }
+  #ambiguity-sample-plot .series-point.k2-series,
+  #ambiguity-sample-plot .hover-marker.k2-series { fill: var(--viz-series-5); }
+  #ambiguity-sample-plot .series-point.k4-series,
+  #ambiguity-sample-plot .hover-marker.k4-series { fill: var(--viz-series-6); }
+  #ambiguity-sample-plot .series-point.k16-series,
+  #ambiguity-sample-plot .hover-marker.k16-series { fill: var(--viz-series-3); }
+  #ambiguity-sample-plot .hover-guide { stroke: var(--foreground); stroke-opacity: 0.45; pointer-events: none; }
+  #ambiguity-sample-plot .hover-marker { stroke: var(--background); stroke-width: 2; pointer-events: none; }
+  #ambiguity-sample-plot .tooltip { position: absolute; z-index: 3; pointer-events: none; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--popover); color: var(--popover-foreground); box-shadow: 0 4px 14px color-mix(in srgb, var(--foreground) 16%, transparent); }
+  @media (max-width: 420px) {
+    #ambiguity-sample-plot .ambiguity-legend { display: grid; gap: 3px; }
+  }
+  @media (max-width: 760px) {
+    #ambiguity-sample-plot .ambiguity-facets.three,
+    #ambiguity-sample-plot .ambiguity-facets.two { grid-template-columns: 1fr; }
+  }
+&lt;/style&gt;
+
+&lt;script src=&quot;https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById(&quot;ambiguity-sample-plot&quot;);
+  const milestones = [0, 1, 2, 4, 8, 16, 32, 64, 128];
+  const data = {
+    all: {vanilla:[0.48685,0.17844,0.45284,0.32662,0.20586,0.17542,0.31311,0.28591,0.24343],adaptive:[0.49108,0.39134,0.32499,0.22872,0.20019,0.19379,0.20253,0.19017,0.18942],ambiguity:[0.87487,0.63495,0.46576,0.22578,0.15348,0.13828,0.13999,0.12876,0.1277]},
+    neutral: {vanilla:[0.48419,0.48364,0.48342,0.48187,0.47906,0.47475,0.46815,0.45423,0.43473],adaptive:[0.4907,0.4907,0.4907,0.4907,0.4907,0.4907,0.4907,0.4907,0.4907],ambiguity:[0.875,0.875,0.875,0.875,0.875,0.875,0.875,0.875,0.875]},
+    consistent_0: {vanilla:[0.48848,0.12364,0.08556,0.0463,0.01947,0.00718,0.00324,0.00199,0.00158],adaptive:[0.49146,0.43609,0.38501,0.22448,0.19539,0.19488,0.19475,0.19465,0.19465],ambiguity:[0.875,0.67133,0.46782,0.07215,0.00288,0.00124,0.00064,0.0001,0]},
+    consistent_1: {vanilla:[0.50039,0.12303,0.81738,0.40227,0.08629,0.02002,0.00816,0.00417,0.00226],adaptive:[0.49247,0.43631,0.28407,0.16277,0.14562,0.14431,0.14234,0.14015,0.13918],ambiguity:[0.875,0.6714,0.37159,0.05408,0.00056,0,0,0,0]},
+    consistent_2: {vanilla:[0.47832,0.13097,0.79682,0.49474,0.16033,0.02712,0.0076,0.00284,0.00138],adaptive:[0.48999,0.31478,0.37127,0.18769,0.13996,0.13839,0.13839,0.13839,0.13839],ambiguity:[0.87412,0.52072,0.58385,0.13079,0.00395,0,0,0,0]},
+    consistent_3: {vanilla:[0.49095,0.13207,0.09688,0.0537,0.02473,0.01176,0.00549,0.00286,0.00191],adaptive:[0.49161,0.31573,0.14695,0.08154,0.07512,0.07484,0.07446,0.07386,0.07314],ambiguity:[0.875,0.52023,0.16105,0.01813,0.00291,0.00266,0.00249,0.00216,0.00153]},
+    contradictory: {vanilla:[0.4781,0.1281,0.44364,0.25042,0.0745,0.01677,0.9964,0.81943,0.53511],adaptive:[0.49049,0.37112,0.298,0.16411,0.13864,0.13769,0.21535,0.14022,0.13998],ambiguity:[0.875,0.59053,0.40109,0.07124,0.00434,0.00249,0.0564,0.00195,0.00048]},
+    noisy: {vanilla:[0.48751,0.12765,0.44619,0.55706,0.59662,0.67035,0.70275,0.71585,0.72701],adaptive:[0.49083,0.37467,0.29892,0.28975,0.21587,0.17571,0.16169,0.15321,0.14991],ambiguity:[0.875,0.59544,0.39992,0.35908,0.18473,0.08657,0.04537,0.02211,0.01689]}
+  };
+  const exact = {
+    all: {joint:[0.5,0.32675,0.1535,0.11695,0.10525,0.09628,0.15988,0.08251,0.07642],mode:[1,0.6535,0.307,0.23391,0.21049,0.19257,0.31977,0.16502,0.15283]},
+    neutral: {joint:[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],mode:[1,1,1,1,1,1,1,1,1]},
+    consistent_0: {joint:[0.5,0.2702,0.0404,0.00075,0,0,0,0,0],mode:[1,0.5404,0.08079,0.0015,0,0,0,0,0]},
+    consistent_1: {joint:[0.5,0.2702,0.0404,0.00075,0,0,0,0,0],mode:[1,0.5404,0.08079,0.0015,0,0,0,0,0]},
+    consistent_2: {joint:[0.5,0.2702,0.0404,0.00075,0,0,0,0,0],mode:[1,0.5404,0.08079,0.0015,0,0,0,0,0]},
+    consistent_3: {joint:[0.5,0.2702,0.0404,0.00075,0,0,0,0,0],mode:[1,0.5404,0.08079,0.0015,0,0,0,0,0]},
+    contradictory: {joint:[0.5,0.2702,0.0404,0.00075,0,0,0.5,0,0],mode:[1,0.5404,0.08079,0.0015,0,0,1,0,0]},
+    noisy: {joint:[0.5,0.43626,0.37251,0.31493,0.23673,0.17398,0.11919,0.07757,0.03491],mode:[1,0.87251,0.74503,0.62986,0.47345,0.34796,0.23837,0.15515,0.06982]}
+  };
+  const earlier = {
+    k2: {
+      all:{joint:[0.60322,0.64929,0.68244,0.67832,0.6725,0.67291,0.69194,0.69061,0.67314],mode:[0.37723,0.2512,0.1911,0.10321,0.06417,0.0563,0.0548,0.05472,0.05341]},
+      neutral:{joint:[0.5993,0.59938,0.59955,0.5998,0.60024,0.60051,0.60257,0.60512,0.60952],mode:[0.37305,0.37305,0.37304,0.37304,0.37303,0.37298,0.37287,0.37262,0.3716]},
+      consistent_0:{joint:[0.60545,0.79273,0.80825,0.8092,0.8092,0.8092,0.8092,0.8092,0.8092],mode:[0.38672,0.11487,0.01333,0.00014,0,0,0,0,0]},
+      consistent_1:{joint:[0.61605,0.80352,0.78491,0.8151,0.81934,0.81941,0.81941,0.81941,0.81941],mode:[0.39648,0.11556,0.20347,0.04903,0.00176,0,0,0,0]},
+      consistent_2:{joint:[0.59445,0.51799,0.76613,0.79315,0.79705,0.7972,0.7972,0.7972,0.7972],mode:[0.35547,0.33068,0.17174,0.04635,0.00564,0.00041,0,0,0]},
+      consistent_3:{joint:[0.60939,0.53014,0.43002,0.32623,0.27504,0.26886,0.26874,0.26874,0.26874],mode:[0.37891,0.35258,0.26004,0.1079,0.01163,0.00011,0,0,0]},
+      contradictory:{joint:[0.59362,0.63913,0.68503,0.67365,0.66294,0.66138,0.79533,0.78807,0.66571],mode:[0.37305,0.24606,0.16154,0.04984,0.00435,0.00005,0,0.0066,0]},
+      noisy:{joint:[0.60428,0.66214,0.70316,0.73109,0.74367,0.75383,0.75116,0.74655,0.7422],mode:[0.37695,0.2256,0.15452,0.09615,0.05281,0.02056,0.01072,0.00385,0.00227]}
+    },
+    k4: {
+      all:{joint:[0.62373,0.67166,0.71019,0.69485,0.6826,0.68222,0.70807,0.70628,0.68211],mode:[0.37723,0.2512,0.1911,0.10321,0.06417,0.0563,0.0548,0.05472,0.05341]},
+      neutral:{joint:[0.62003,0.62013,0.62037,0.62071,0.62131,0.62167,0.62448,0.62794,0.63383],mode:[0.37305,0.37305,0.37304,0.37304,0.37303,0.37298,0.37287,0.37262,0.3716]},
+      consistent_0:{joint:[0.62577,0.84894,0.85983,0.8602,0.86019,0.86019,0.86019,0.86019,0.86019],mode:[0.38672,0.11487,0.01333,0.00014,0,0,0,0,0]},
+      consistent_1:{joint:[0.63339,0.85555,0.8405,0.86406,0.86583,0.86583,0.86583,0.86583,0.86583],mode:[0.39648,0.11556,0.20347,0.04903,0.00176,0,0,0,0]},
+      consistent_2:{joint:[0.61605,0.50905,0.82746,0.85,0.85151,0.85121,0.85118,0.85118,0.85118],mode:[0.35547,0.33068,0.17174,0.04635,0.00564,0.00041,0,0,0]},
+      consistent_3:{joint:[0.63004,0.51916,0.373,0.21455,0.13165,0.12088,0.12065,0.12065,0.12065],mode:[0.37891,0.35258,0.26004,0.1079,0.01163,0.00011,0,0,0]},
+      contradictory:{joint:[0.61525,0.66236,0.71572,0.68815,0.66861,0.66582,0.84923,0.84015,0.6718],mode:[0.37305,0.24606,0.16154,0.04984,0.00435,0.00005,0,0.0066,0]},
+      noisy:{joint:[0.62561,0.68643,0.73444,0.76627,0.77911,0.78993,0.7849,0.77798,0.77128],mode:[0.37695,0.2256,0.15452,0.09615,0.05281,0.02056,0.01072,0.00385,0.00227]}
+    },
+    k16: {
+      all:{joint:[0.46573,0.40755,0.3146,0.19691,0.14584,0.12567,0.16227,0.13384,0.13221],mode:[0.83475,0.69226,0.49108,0.25268,0.16294,0.14003,0.15706,0.12515,0.1226]},
+      neutral:{joint:[0.46563,0.46563,0.46593,0.46593,0.46593,0.46593,0.46678,0.46829,0.46907],mode:[0.83487,0.83487,0.83535,0.83535,0.83535,0.83535,0.83676,0.83912,0.84025]},
+      consistent_0:{joint:[0.46596,0.50459,0.38502,0.18735,0.08518,0.04488,0.03444,0.03409,0.03409],mode:[0.83487,0.82671,0.53061,0.1415,0.00729,0.00008,0,0,0]},
+      consistent_1:{joint:[0.46594,0.50407,0.36348,0.14362,0.06814,0.0468,0.03586,0.0345,0.03449],mode:[0.83487,0.82675,0.57776,0.13902,0.00581,0.00001,0,0,0]},
+      consistent_2:{joint:[0.46544,0.29366,0.29823,0.11699,0.06256,0.04815,0.03793,0.03451,0.03415],mode:[0.83472,0.51419,0.46876,0.10829,0.00689,0.00015,0,0,0]},
+      consistent_3:{joint:[0.46564,0.29371,0.11168,0.03949,0.02429,0.02006,0.01809,0.01755,0.01721],mode:[0.83454,0.51352,0.16019,0.02359,0.00066,0.00001,0,0,0]},
+      contradictory:{joint:[0.46593,0.39264,0.28587,0.11986,0.05888,0.03924,0.35231,0.16655,0.16146],mode:[0.83454,0.66002,0.4287,0.10152,0.00502,0.00003,0.18864,0.00002,0]},
+      noisy:{joint:[0.46558,0.39855,0.29197,0.3051,0.25588,0.21462,0.19051,0.18137,0.17501],mode:[0.83487,0.66979,0.43622,0.41952,0.27954,0.14456,0.07404,0.03693,0.01793]}
+    }
+  };
+  const visibility = {vanilla: true, k2: true, k4: true, adaptive: true, k16: true, exact: true};
+  const tooltip = root.querySelector(&quot;.tooltip&quot;);
+
+  function drawChart(containerId, series, yLabel, domain) {
+    const container = document.getElementById(containerId);
+    container.replaceChildren();
+    const width = Math.max(320, container.getBoundingClientRect().width || 736);
+    const height = width &lt; 430 ? 270 : 300;
+    const margin = {top: 12, right: 22, bottom: 58, left: 68};
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    const svg = d3.select(container).append(&quot;svg&quot;)
+      .attr(&quot;class&quot;, &quot;chart-svg&quot;)
+      .attr(&quot;viewBox&quot;, `0 0 ${width} ${height}`)
+      .attr(&quot;role&quot;, &quot;img&quot;)
+      .attr(&quot;aria-label&quot;, `${yLabel} by number of arriving labelled samples`);
+    svg.append(&quot;title&quot;).text(`${yLabel} by added sample size`);
+    const g = svg.append(&quot;g&quot;).attr(&quot;transform&quot;, `translate(${margin.left},${margin.top})`);
+    const x = d3.scalePoint().domain(milestones).range([8, innerWidth - 8]);
+    const y = d3.scaleLinear().domain(domain).nice().range([innerHeight, 0]);
+    const tickValues = width &lt; 430 ? [0, 4, 32, 128] : milestones;
+    g.append(&quot;g&quot;).attr(&quot;class&quot;, &quot;chart-grid&quot;)
+      .call(d3.axisLeft(y).ticks(5).tickSize(-innerWidth).tickFormat(&quot;&quot;));
+    g.append(&quot;rect&quot;).attr(&quot;class&quot;, &quot;chart-frame&quot;).attr(&quot;data-chart-frame&quot;, &quot;&quot;)
+      .attr(&quot;width&quot;, innerWidth).attr(&quot;height&quot;, innerHeight).attr(&quot;fill&quot;, &quot;none&quot;);
+    g.append(&quot;g&quot;).attr(&quot;transform&quot;, `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x).tickValues(tickValues));
+    g.append(&quot;g&quot;).call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(&quot;.1f&quot;)));
+    g.append(&quot;text&quot;).attr(&quot;class&quot;, &quot;axis-title&quot;).attr(&quot;data-axis&quot;, &quot;x&quot;)
+      .attr(&quot;x&quot;, innerWidth / 2).attr(&quot;y&quot;, innerHeight + 46).attr(&quot;text-anchor&quot;, &quot;middle&quot;)
+      .text(&quot;Arriving labelled samples (log-spaced milestones)&quot;);
+    g.append(&quot;text&quot;).attr(&quot;class&quot;, &quot;axis-title&quot;).attr(&quot;data-axis&quot;, &quot;y&quot;)
+      .attr(&quot;transform&quot;, &quot;rotate(-90)&quot;).attr(&quot;x&quot;, -innerHeight / 2).attr(&quot;y&quot;, -50)
+      .attr(&quot;text-anchor&quot;, &quot;middle&quot;).text(yLabel);
+    const line = d3.line().x(d =&gt; x(d.x)).y(d =&gt; y(d.y));
+    series.filter(s =&gt; s.visible).forEach(s =&gt; {
+      const values = milestones.map((m, i) =&gt; ({x:m, y:s.values[i]}));
+      g.append(&quot;path&quot;).datum(values).attr(&quot;class&quot;, `series-line ${s.className}`).attr(&quot;d&quot;, line);
+      g.selectAll(`circle.${s.key}`).data(values).enter().append(&quot;circle&quot;)
+        .attr(&quot;class&quot;, `series-point ${s.className} ${s.key}`).attr(&quot;cx&quot;, d =&gt; x(d.x))
+        .attr(&quot;cy&quot;, d =&gt; y(d.y)).attr(&quot;r&quot;, 3.8);
+    });
+    const guide = g.append(&quot;line&quot;).attr(&quot;class&quot;, &quot;hover-guide&quot;).attr(&quot;y1&quot;, 0).attr(&quot;y2&quot;, innerHeight).attr(&quot;visibility&quot;, &quot;hidden&quot;);
+    const markerLayer = g.append(&quot;g&quot;);
+    g.append(&quot;rect&quot;).attr(&quot;data-chart-hit&quot;, &quot;&quot;).attr(&quot;data-chart-hover-overlay&quot;, &quot;cross-series&quot;)
+      .attr(&quot;width&quot;, innerWidth).attr(&quot;height&quot;, innerHeight).attr(&quot;fill&quot;, &quot;transparent&quot;)
+      .on(&quot;mousemove&quot;, event =&gt; {
+        const [mx] = d3.pointer(event);
+        const nearest = milestones.reduce((a,b) =&gt; Math.abs(x(a)-mx) &lt; Math.abs(x(b)-mx) ? a : b);
+        guide.attr(&quot;x1&quot;, x(nearest)).attr(&quot;x2&quot;, x(nearest)).attr(&quot;visibility&quot;, &quot;visible&quot;);
+        markerLayer.selectAll(&quot;*&quot;).remove();
+        const active = series.filter(s =&gt; s.visible);
+        active.forEach(s =&gt; {
+          const value = s.values[milestones.indexOf(nearest)];
+          markerLayer.append(&quot;circle&quot;).attr(&quot;class&quot;, `hover-marker ${s.className}`)
+            .attr(&quot;cx&quot;, x(nearest)).attr(&quot;cy&quot;, y(value)).attr(&quot;r&quot;, 5);
+        });
+        tooltip.hidden = false;
+        tooltip.innerHTML = `&lt;strong&gt;${nearest} added samples&lt;/strong&gt;&lt;br&gt;${active.map(s =&gt; `${s.label}: ${s.values[milestones.indexOf(nearest)].toFixed(3)}`).join(&quot;&lt;br&gt;&quot;)}`;
+        const bounds = root.getBoundingClientRect();
+        tooltip.style.left = `${Math.min(event.clientX - bounds.left + 12, bounds.width - 190)}px`;
+        tooltip.style.top = `${event.clientY - bounds.top + 12}px`;
+      })
+      .on(&quot;mouseleave&quot;, () =&gt; { guide.attr(&quot;visibility&quot;, &quot;hidden&quot;); markerLayer.selectAll(&quot;*&quot;).remove(); tooltip.hidden = true; });
+  }
+
+  function render() {
+    const selected = document.getElementById(&quot;ambiguity-condition&quot;).value;
+    const d = data[selected];
+    const b = exact[selected];
+    const k2 = earlier.k2[selected];
+    const k4 = earlier.k4[selected];
+    const k16 = earlier.k16[selected];
+    const entropyCeiling = Math.min(1, d3.max([...d.vanilla, ...k2.joint, ...k4.joint, ...d.adaptive, ...k16.joint, ...b.joint]) + 0.06);
+    drawChart(&quot;predictive-entropy-chart&quot;, [
+      {key:&quot;vanilla&quot;,label:&quot;Vanilla&quot;,values:d.vanilla,className:&quot;vanilla-series&quot;,visible:visibility.vanilla},
+      {key:&quot;k2&quot;,label:&quot;Adaptive K=2&quot;,values:k2.joint,className:&quot;k2-series&quot;,visible:visibility.k2},
+      {key:&quot;k4&quot;,label:&quot;Adaptive K=4&quot;,values:k4.joint,className:&quot;k4-series&quot;,visible:visibility.k4},
+      {key:&quot;adaptive&quot;,label:&quot;Adaptive K=8&quot;,values:d.adaptive,className:&quot;adaptive-series&quot;,visible:visibility.adaptive},
+      {key:&quot;k16&quot;,label:&quot;Adaptive K=16&quot;,values:k16.joint,className:&quot;k16-series&quot;,visible:visibility.k16},
+      {key:&quot;exact&quot;,label:&quot;Exact Bayes&quot;,values:b.joint,className:&quot;exact-series&quot;,visible:visibility.exact}
+    ], &quot;Normalized joint entropy&quot;, [0, entropyCeiling]);
+    drawChart(&quot;mode-entropy-chart&quot;, [
+      {key:&quot;k2&quot;,label:&quot;Adaptive K=2 mode ambiguity&quot;,values:k2.mode,className:&quot;k2-series&quot;,visible:visibility.k2},
+      {key:&quot;k4&quot;,label:&quot;Adaptive K=4 mode ambiguity&quot;,values:k4.mode,className:&quot;k4-series&quot;,visible:visibility.k4},
+      {key:&quot;ambiguity&quot;,label:&quot;Adaptive K=8 mode ambiguity&quot;,values:d.ambiguity,className:&quot;adaptive-series&quot;,visible:visibility.adaptive},
+      {key:&quot;k16&quot;,label:&quot;Adaptive K=16 mode ambiguity&quot;,values:k16.mode,className:&quot;k16-series&quot;,visible:visibility.k16},
+      {key:&quot;exact&quot;,label:&quot;Exact Bayes mode ambiguity&quot;,values:b.mode,className:&quot;exact-series&quot;,visible:visibility.exact}
+    ], &quot;Normalized mode entropy&quot;, [0, 1]);
+  }
+
+  document.getElementById(&quot;ambiguity-condition&quot;).addEventListener(&quot;change&quot;, render);
+  root.querySelectorAll(&quot;[data-series]&quot;).forEach(button =&gt; button.addEventListener(&quot;click&quot;, () =&gt; {
+    const key = button.dataset.series;
+    visibility[key] = !visibility[key];
+    button.setAttribute(&quot;aria-pressed&quot;, String(visibility[key]));
+    render();
+  }));
+  new ResizeObserver(render).observe(root);
+  render();
+})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
