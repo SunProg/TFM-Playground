@@ -7,7 +7,18 @@ from tfmplayground.models.coherent_correction import (
     NanoTabPFNCrossFitHypothesisModel,
     NanoTabPFNVariationalHypothesisModel,
 )
-from tfmplayground.models.hypothesis import HypothesisPrediction, NanoTabPFNHypothesisModel
+from tfmplayground.models.hypothesis import (
+    BayesianPrediction,
+    HypothesisPrediction,
+    MeanPreservingPrediction,
+    NanoTabPFNBayesianHypothesisModel,
+    NanoTabPFNBayesianModel,
+    NanoTabPFNHypothesisModel,
+    NanoTabPFNMeanPreservingBayesianModel,
+    NanoTabPFNStaticBayesianModel,
+    load_bayesian_checkpoint,
+    save_bayesian_checkpoint,
+)
 from tfmplayground.models.integrated_latent_filter import (
     IntegratedFilterPrediction,
     NanoTabPFNIntegratedLatentFilter,
@@ -33,10 +44,16 @@ __all__ = [
     "BatchCausalParticleFilter",
     "BatchParticleOnlineClassifier",
     "BatchParticleState",
+    "BayesianPrediction",
     "HypothesisPrediction",
+    "MeanPreservingPrediction",
     "IntegratedFilterPrediction",
     "NanoTabPFNCrossFitHypothesisModel",
+    "NanoTabPFNBayesianModel",
+    "NanoTabPFNBayesianHypothesisModel",
+    "NanoTabPFNStaticBayesianModel",
     "NanoTabPFNHypothesisModel",
+    "NanoTabPFNMeanPreservingBayesianModel",
     "NanoTabPFNIntegratedLatentFilter",
     "NanoTabPFNModel",
     "NanoTabPFNContextOnlineClassifier",
@@ -47,6 +64,8 @@ __all__ = [
     "TaskPosteriorPrediction",
     "match_regimes_to_particles",
     "regime_posterior_supervision_loss",
+    "load_bayesian_checkpoint",
+    "save_bayesian_checkpoint",
 ]
 from tfmplayground.models.adaptive_particle_filter import (
     AdaptiveKParticleFilter,

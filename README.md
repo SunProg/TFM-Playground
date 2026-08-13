@@ -261,6 +261,31 @@ checkpoint for 100 frozen plus 500 partially unfrozen steps. Use `--no-fallback-
 or `--evidence-model variational` to request the fallback directly. Each run keeps separate checkpoints and learning
 curves and writes `selection.json` with all gate failures and the selected final model.
 
+## Mean-preserving Bayesian nanoTabPFN
+
+The static Bayesian classifier freezes nanoTabPFN and learns only a latent-task
+uncertainty head. Its weighted class probabilities are centered exactly on the
+vanilla prediction, so the head cannot improve or damage the predictive mean.
+Hypothesis weights use permutation-invariant, cross-fitted support likelihoods.
+
+Training uses structured binary TabICL `mix_scm` episodes: 50% unresolved paired
+tasks, 30% identifiable tasks, and 20% structured noisy-label tasks. Independent
+random labels are excluded from the objective and retained only as an aleatoric
+diagnostic.
+
+```bash
+python -m tfmplayground.experiments.train_bayesian_nanotabpfn \
+    --output-dir runs/bayesian_nanotabpfn/mean-preserving
+```
+
+The selected checkpoint is `mean_preserving_frozen.pth`; full backbone
+fine-tuning is intentionally disabled. Predictions expose posterior entropy,
+effective hypothesis count, effective sample size, epistemic variance, and
+mutual information.
+
+The completed slot-model sweep, binary TabArena results, and negative uncertainty
+finding are recorded in [MEAN_PRESERVING_BAYESIAN_TRIAL.md](MEAN_PRESERVING_BAYESIAN_TRIAL.md).
+
 ## TabArena task-posterior adapter
 
 `NanoTabPFNTaskPosteriorAdapter` is the TabArena-facing particle model. Its four
@@ -310,6 +335,35 @@ dataset using TabArena's task-specific metrics and Elo aggregation. Add `--full`
 only after the Lite promotion gate passes. The older
 `evaluate_integrated_tabarena` entry point is retained solely as a custom binary
 diagnostic and its artifacts are explicitly marked non-official.
+
+## Real-data multimodality diagnostic
+
+`evaluate_tabarena_multimodality` treats independently trained, context-supported
+predictors as competing hypotheses. It initializes their weights from context out-of-bag
+loss, updates those weights with a labelled stream, and evaluates the mixture on the
+untouched official test partition. A context is marked ambiguous only when at least two
+hypotheses remain plausible and disagree on query predictions.
+
+Run the full binary-classification audit with:
+
+```bash
+python -m tfmplayground.experiments.evaluate_tabarena_multimodality \
+  --output-dir runs/tabarena_multimodality/full
+```
+
+The default context sweep is 32, 64, 128, and 256 rows. For a quick smoke run:
+
+```bash
+python -m tfmplayground.experiments.evaluate_tabarena_multimodality \
+  --task-ids 363629 --context-sizes 32 --episodes 1 \
+  --query-size 32 --no-include-vanilla \
+  --output-dir runs/tabarena_multimodality/smoke
+```
+
+Outputs include `task_status.csv`, `episode_metrics.csv`, `per_task_summary.csv`, and
+`overall_summary.csv`. This is a predictive ambiguity proxy, not proof of a literal
+discrete latent mode; `predictive_confirmation` requires plausible disagreement and positive
+held-out mixture gain over the context-weighted model.
 
 ## Particle-specific environment benchmark
 

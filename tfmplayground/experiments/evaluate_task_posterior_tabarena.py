@@ -18,6 +18,22 @@ TABARENA_COMMIT = "06334097d539a5d494e56576cb973d09e251dc8c"
 
 def _installed_tabarena_revision(package_file: str) -> str | None:
     """Resolve a source checkout or direct-URL wheel revision without invoking git."""
+    # A virtualenv may live inside this repository, so walking parent
+    # directories first can accidentally report the project HEAD rather than
+    # the installed TabArena wheel's commit.  Prefer authoritative package
+    # provenance whenever the package was installed from VCS.
+    try:
+        distribution = importlib.metadata.distribution("tabarena")
+        package_path = Path(package_file).resolve()
+        install_root = Path(distribution.locate_file("")).resolve()
+        if install_root == package_path or install_root in package_path.parents:
+            direct_url = distribution.read_text("direct_url.json")
+            if direct_url:
+                revision = json.loads(direct_url).get("vcs_info", {}).get("commit_id")
+                if revision:
+                    return revision
+    except importlib.metadata.PackageNotFoundError:
+        pass
     for parent in Path(package_file).resolve().parents:
         git_dir = parent / ".git"
         if not git_dir.is_dir():
@@ -36,12 +52,6 @@ def _installed_tabarena_revision(package_file: str) -> str | None:
                     revision, name = line.split(" ", maxsplit=1)
                     if name == reference:
                         return revision
-    try:
-        direct_url = importlib.metadata.distribution("tabarena").read_text("direct_url.json")
-        if direct_url:
-            return json.loads(direct_url).get("vcs_info", {}).get("commit_id")
-    except importlib.metadata.PackageNotFoundError:
-        pass
     return None
 
 

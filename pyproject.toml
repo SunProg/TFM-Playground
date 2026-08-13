@@ -38,6 +38,11 @@ wandb = ["wandb>=0.20"]
 tensorboard = ["tensorboard>=2.19"]
 experiments = ["matplotlib>=3.9"]
 beyondarena = ["data-foundry==0.0.5"]
+# Real TabPFN as an evaluated model (see evaluate_tabarena_small.py). tabpfn 2.2.1 requires
+# scikit-learn<1.7 while interpret-core requires >=1.6.0, so the feasible window is 1.6.x --
+# which is also the version the reference experimental setup used. Bound explicitly rather
+# than leaving it to be inferred from tabpfn's metadata.
+tabpfn = ["tabpfn==2.2.1", "scikit-learn>=1.6,<1.7"]
 [project.urls]
 Homepage = "https://github.com/automl/TFM-Playground"
 Issues = "https://github.com/automl/TFM-Playground/issues"

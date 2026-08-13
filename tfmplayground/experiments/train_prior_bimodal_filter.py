@@ -18,6 +18,8 @@ import torch.nn.functional as F
 
 from tfmplayground.experiments.prior_bimodal_episodes import (
     PriorBimodalConfig,
+    _rng_state,
+    _set_rng_state,
     generate_h5_prior_bimodal_episodes,
     generate_prior_bimodal_episodes,
 )
@@ -32,7 +34,13 @@ from tfmplayground.models.integrated_latent_filter import (
     load_integrated_checkpoint,
     save_integrated_checkpoint,
 )
-from tfmplayground.utils import get_default_device, set_randomness_seed
+from tfmplayground.utils import set_randomness_seed
+
+# Checkpoint-selection criteria, both "lower is better". `validation_loss` is the training
+# objective itself (what every run before this change used); `ensemble_query_nll` is a
+# task-level metric the objective does not contain, and is the default because selecting on
+# the composite loss optimises the diversity/coherence/coverage regularisers alongside fit.
+SELECTION_METRICS = ("ensemble_query_nll", "validation_loss")
 
 
 @dataclass(frozen=True)
@@ -54,6 +62,8 @@ class PriorBimodalTrainingConfig:
     partial_extra_steps: int = 100
     full_extra_steps: int = 100
     validation_interval: int = 25
+    validation_episodes: int = 64
+    selection_metric: str = "ensemble_query_nll"
     patience: int = 4
     head_learning_rate: float = 1e-4
     partial_backbone_learning_rate: float = 1e-5
@@ -236,16 +246,96 @@ def _make_batch(config: PriorBimodalTrainingConfig, seed: int) -> SequentialEpis
     return generate_prior_bimodal_episodes(episode_config, rng, batch_size=config.batch_size)
 
 
+def ensemble_query_nll(prediction, batch: SequentialEpisodeBatch) -> torch.Tensor:
+    """NLL the final ensemble posterior assigns to the true query labels, per episode."""
+    indices = _outcome_indices(batch.query_y)
+    joint = prediction.joint_probabilities()[:, -1]
+    return -joint.gather(-1, indices[:, None]).squeeze(-1).clamp_min(1e-12).log()
+
+
+def true_task_recovered(prediction, batch: SequentialEpisodeBatch) -> torch.Tensor:
+    """Whether *some* particle scores the true candidate's query labels best, per episode.
+
+    Order-invariant: candidates are ranked by likelihood, never by index.
+    """
+    slot_joint = prediction.slot_joint_log_probabilities().exp()
+    candidates = batch.candidate_query_y
+    num_candidates = candidates.shape[1]
+    candidate_nll = torch.stack(
+        [
+            -slot_joint.gather(
+                -1,
+                _outcome_indices(candidates[:, candidate])[:, None, None].expand(-1, slot_joint.shape[1], 1),
+            )
+            .squeeze(-1)
+            .clamp_min(1e-12)
+            .log()
+            for candidate in range(num_candidates)
+        ],
+        dim=-1,
+    )
+    closest = candidate_nll.argmin(-1)
+    return (closest == batch.candidate_task[:, None]).any(-1).float()
+
+
 @torch.no_grad()
-def _validation_loss(model, config: PriorBimodalTrainingConfig, seed: int) -> float:
+def _validation_metrics(model, config: PriorBimodalTrainingConfig) -> dict[str, float]:
+    """Held-out metrics on a FIXED validation set.
+
+    The seed deliberately does not depend on the training step. An earlier version used
+    `config.seed + 100_000 + step`, which redrew the episodes at every validation call, so
+    comparing `validation_loss` across steps compared different data and best-state
+    selection partly picked a lucky draw rather than a better model.
+
+    A fixed per-batch seed is necessary but not sufficient: the SCM episode path draws task
+    networks through the *global* torch/numpy RNG (`_candidate_dataset`, `prior.hp_sampling`),
+    so identical `rng` seeds still yield different episodes depending on how much training has
+    run. The global state is therefore pinned for the pass and restored afterwards, which also
+    stops validation from consuming draws that training would otherwise have made -- training
+    is now reproducible independently of `validation_interval`.
+
+    `ensemble_query_nll` and `true_task_recovered` are the two task-level metrics the final
+    evaluation reports, recorded here so that checkpoint selection can be judged against --
+    or driven by -- something the objective itself does not contain.
+    """
     model.eval()
-    values = []
-    for index in range(3):
-        batch = _make_batch(config, seed + index)
-        value, _ = bimodal_loss(model, batch, config, include_diversity=config.use_diversity)
-        values.append(float(value))
+    batches = max(1, -(-config.validation_episodes // config.batch_size))
+    losses, nlls, recoveries = [], [], []
+    outer_state = _rng_state()
+    try:
+        set_randomness_seed(config.seed + 100_000)
+        for index in range(batches):
+            batch = _make_batch(config, config.seed + 100_000 + index)
+            value, _ = bimodal_loss(model, batch, config, include_diversity=config.use_diversity)
+            losses.append(float(value))
+            prediction = model(
+                batch.initial_support_x,
+                batch.initial_support_y,
+                batch.stream_x,
+                batch.stream_y,
+                batch.query_x,
+            )
+            nlls.append(float(ensemble_query_nll(prediction, batch).mean()))
+            if batch.candidate_task is not None and batch.candidate_query_y is not None:
+                recoveries.append(float(true_task_recovered(prediction, batch).mean()))
+    finally:
+        _set_rng_state(outer_state)
     model.train()
-    return float(np.mean(values))
+    metrics = {
+        "validation_loss": float(np.mean(losses)),
+        "validation_ensemble_query_nll": float(np.mean(nlls)),
+        "validation_episodes": float(batches * config.batch_size),
+    }
+    if recoveries:
+        metrics["validation_true_task_recovered"] = float(np.mean(recoveries))
+    return metrics
+
+
+def _selection_value(metrics: dict[str, float], config: PriorBimodalTrainingConfig) -> float:
+    """Lower is better for both options."""
+    if config.selection_metric == "ensemble_query_nll":
+        return metrics["validation_ensemble_query_nll"]
+    return metrics["validation_loss"]
 
 
 def _train_stage(
@@ -287,9 +377,12 @@ def _train_stage(
         optimizer.step()
         row = {"stage": stage, "step": step, **totals}
         if step % config.validation_interval == 0 or step == end_step:
-            row["validation_loss"] = _validation_loss(model, config, config.seed + 100_000 + step)
-            if row["validation_loss"] < best_validation:
-                best_validation = row["validation_loss"]
+            validation = _validation_metrics(model, config)
+            row.update(validation)
+            selection = _selection_value(validation, config)
+            row["selection_value"] = selection
+            if selection < best_validation:
+                best_validation = selection
                 best_state = copy.deepcopy(model.state_dict())
                 stale = 0
             else:
@@ -340,23 +433,8 @@ def evaluate(
             .clamp_min(1e-12)
             .log()
         )
-        candidate_query = batch.candidate_query_y
-        candidate_indices = torch.stack(
-            [_outcome_indices(candidate_query[:, candidate]) for candidate in range(2)], dim=1
-        )
-        candidate_nll = torch.stack(
-            [
-                -slot_joint.gather(-1, candidate_indices[:, candidate, None, None].expand(-1, slot_joint.shape[1], 1))
-                .squeeze(-1)
-                .clamp_min(1e-12)
-                .log()
-                for candidate in range(2)
-            ],
-            dim=-1,
-        )
-        closest_candidate = candidate_nll.argmin(-1)
         true_task = batch.candidate_task
-        recovered = (closest_candidate == true_task[:, None]).any(-1).float()
+        recovered = true_task_recovered(prediction, batch)
         vanilla_nll = torch.full_like(slot_query_nll, float("nan"))
         controlled_nll = torch.full_like(slot_query_nll, float("nan"))
         if controlled_model is not None:
@@ -397,14 +475,7 @@ def evaluate(
                 "stream_disagreement": float(batch.stream_disagreement[0]),
                 "query_disagreement": float(batch.query_disagreement[0]),
                 "query_nll": float(slot_query_nll.mean()),
-                "ensemble_query_nll": float(
-                    -prediction.joint_probabilities()[:, -1]
-                    .gather(-1, indices[:, None])
-                    .squeeze(-1)
-                    .clamp_min(1e-12)
-                    .log()
-                    .mean()
-                ),
+                "ensemble_query_nll": float(ensemble_query_nll(prediction, batch).mean()),
                 "vanilla_query_nll": float(vanilla_nll.mean()),
                 "controlled_query_nll": float(controlled_nll.mean()),
                 "prequential_log_likelihood": float(prediction.prequential_log_likelihood.mean()),
@@ -442,6 +513,10 @@ def run(config: PriorBimodalTrainingConfig) -> Path:
         raise ValueError("Invalid feature range.")
     if config.evaluation_report_interval < 1:
         raise ValueError("evaluation_report_interval must be positive.")
+    if config.validation_episodes < 1:
+        raise ValueError("validation_episodes must be positive.")
+    if config.selection_metric not in SELECTION_METRICS:
+        raise ValueError(f"selection_metric must be one of {SELECTION_METRICS}.")
     set_randomness_seed(config.seed)
     output_dir = (
         Path(config.output_dir)
@@ -517,6 +592,7 @@ def build_parser() -> argparse.ArgumentParser:
         "partial_extra_steps",
         "full_extra_steps",
         "validation_interval",
+        "validation_episodes",
         "patience",
         "evaluation_trials",
         "max_pair_attempts",
@@ -548,6 +624,16 @@ def build_parser() -> argparse.ArgumentParser:
         parser.add_argument(
             f"--{field.replace('_', '-')}", type=float, default=getattr(PriorBimodalTrainingConfig, field)
         )
+    parser.add_argument(
+        "--selection-metric",
+        choices=SELECTION_METRICS,
+        default=PriorBimodalTrainingConfig.selection_metric,
+        help=(
+            "Which held-out metric picks the best checkpoint (lower is better). "
+            "'validation_loss' reproduces the pre-fix behaviour of selecting on the training "
+            "objective, including its diversity/coherence/coverage regularisers."
+        ),
+    )
     parser.add_argument(
         "--use-diversity",
         action=argparse.BooleanOptionalAction,

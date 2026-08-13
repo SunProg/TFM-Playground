@@ -3,14 +3,22 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import h5py
 import numpy as np
 import torch
-import h5py
 
 from tfmplayground.experiments.prior_bimodal_episodes import (
     PriorBimodalConfig,
     generate_h5_prior_bimodal_episodes,
     generate_prior_bimodal_episodes,
+)
+from tfmplayground.experiments.train_prior_bimodal_filter import (
+    SELECTION_METRICS,
+    PriorBimodalTrainingConfig,
+    _selection_value,
+    _validation_metrics,
+    ensemble_query_nll,
+    true_task_recovered,
 )
 from tfmplayground.models.integrated_latent_filter import NanoTabPFNIntegratedLatentFilter
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
@@ -154,6 +162,103 @@ class PriorBimodalParticleTests(unittest.TestCase):
         difference = (slot_joint[:, 0] - slot_joint[:, 1]).abs().sum(-1)
         self.assertEqual(difference.shape, (2,))
         self.assertTrue(torch.isfinite(difference).all())
+
+
+def training_config(**kwargs) -> PriorBimodalTrainingConfig:
+    values = dict(
+        device="cpu",
+        initial_support_count=8,
+        stream_count=8,
+        query_count=4,
+        min_features=1,
+        max_features=2,
+        batch_size=2,
+        max_pair_attempts=500,
+        validation_episodes=4,
+    )
+    values.update(kwargs)
+    return PriorBimodalTrainingConfig(**values)
+
+
+class ValidationMetricTests(unittest.TestCase):
+    """The validation set must be fixed, large enough to compare across steps, and must
+    record task-level metrics the training objective does not contain."""
+
+    def setUp(self):
+        torch.manual_seed(17)
+        self.model = NanoTabPFNIntegratedLatentFilter(tiny_backbone(), num_hypotheses=2)
+        self.config = training_config()
+        self.batch = generate_prior_bimodal_episodes(
+            episode_config(), np.random.default_rng(17), batch_size=2
+        )
+
+    def predict(self, batch=None):
+        batch = self.batch if batch is None else batch
+        return self.model(
+            batch.initial_support_x,
+            batch.initial_support_y,
+            batch.stream_x,
+            batch.stream_y,
+            batch.query_x,
+        )
+
+    def test_validation_set_is_fixed_across_calls(self):
+        """Regression guard: the seed must not depend on the training step, or successive
+        validation_loss values describe different episodes and selection picks a lucky draw."""
+        first = _validation_metrics(self.model, self.config)
+        second = _validation_metrics(self.model, self.config)
+        self.assertEqual(first["validation_loss"], second["validation_loss"])
+        self.assertEqual(
+            first["validation_ensemble_query_nll"], second["validation_ensemble_query_nll"]
+        )
+
+    def test_validation_honours_the_requested_episode_count(self):
+        metrics = _validation_metrics(self.model, training_config(validation_episodes=6))
+        self.assertEqual(metrics["validation_episodes"], 6.0)
+        # A request below one batch still runs one batch rather than zero.
+        small = _validation_metrics(self.model, training_config(validation_episodes=1))
+        self.assertEqual(small["validation_episodes"], 2.0)
+
+    def test_validation_records_task_metrics(self):
+        metrics = _validation_metrics(self.model, self.config)
+        self.assertIn("validation_ensemble_query_nll", metrics)
+        self.assertIn("validation_true_task_recovered", metrics)
+        self.assertTrue(np.isfinite(metrics["validation_ensemble_query_nll"]))
+        self.assertGreaterEqual(metrics["validation_true_task_recovered"], 0.0)
+        self.assertLessEqual(metrics["validation_true_task_recovered"], 1.0)
+
+    def test_selection_metric_switches_the_criterion(self):
+        metrics = {"validation_loss": 9.0, "validation_ensemble_query_nll": 2.0}
+        self.assertEqual(_selection_value(metrics, training_config()), 2.0)
+        self.assertEqual(
+            _selection_value(metrics, training_config(selection_metric="validation_loss")), 9.0
+        )
+        self.assertEqual(PriorBimodalTrainingConfig().selection_metric, "ensemble_query_nll")
+        self.assertIn("validation_loss", SELECTION_METRICS)
+
+    def test_ensemble_query_nll_matches_the_final_joint(self):
+        prediction = self.predict()
+        value = ensemble_query_nll(prediction, self.batch)
+        self.assertEqual(value.shape, (2,))
+        self.assertTrue((value >= 0).all())
+        powers = 2 ** torch.arange(self.batch.query_y.shape[1] - 1, -1, -1)
+        outcome = (self.batch.query_y.long() * powers).sum(-1)
+        joint = prediction.joint_probabilities()[:, -1]
+        expected = -joint.gather(-1, outcome[:, None]).squeeze(-1).clamp_min(1e-12).log()
+        torch.testing.assert_close(value, expected, rtol=0, atol=0)
+
+    def test_true_task_recovered_is_order_invariant(self):
+        """Candidates are ranked by likelihood, so swapping candidate order must not change
+        whether the true task was recovered."""
+        prediction = self.predict()
+        original = true_task_recovered(prediction, self.batch)
+        swapped = copy.copy(self.batch)
+        swapped.candidate_query_y = self.batch.candidate_query_y.flip(1)
+        swapped.candidate_task = 1 - self.batch.candidate_task
+        torch.testing.assert_close(
+            original, true_task_recovered(prediction, swapped), rtol=0, atol=0
+        )
+        self.assertTrue(((original == 0) | (original == 1)).all())
 
 
 if __name__ == "__main__":
