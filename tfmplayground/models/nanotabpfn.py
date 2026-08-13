@@ -204,6 +204,28 @@ class TransformerEncoderLayer(nn.Module):
         Returns
             (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features, embedding_size)
         """
+        src = self.feature_attention_stage(src, num_mem_chunks=num_mem_chunks)
+        src = self.adapt_after_feature_attention(src)
+        src = self.datapoint_attention_stage(
+            src, train_test_split_index=train_test_split_index, num_mem_chunks=num_mem_chunks
+        )
+        src = self.adapt_after_datapoint_attention(src)
+        src = self.mlp_stage(src, num_mem_chunks=num_mem_chunks)
+        return self.adapt_after_mlp(src)
+
+    def adapt_after_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Hook for research heads; the pretrained model applies no modification."""
+        return src
+
+    def adapt_after_datapoint_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Hook for research heads; the pretrained model applies no modification."""
+        return src
+
+    def adapt_after_mlp(self, src: torch.Tensor) -> torch.Tensor:
+        """Hook for research heads; the pretrained model applies no modification."""
+        return src
+
+    def feature_attention_stage(self, src: torch.Tensor, num_mem_chunks: int = 1) -> torch.Tensor:
         batch_size, rows_size, col_size, embedding_size = src.shape
         # attention between features
         src = src.reshape(batch_size * rows_size, col_size, embedding_size)
@@ -214,7 +236,12 @@ class TransformerEncoderLayer(nn.Module):
 
         src = feature_attention(src)
         src = src.reshape(batch_size, rows_size, col_size, embedding_size)
-        src = self.norm1(src)
+        return self.norm1(src)
+
+    def datapoint_attention_stage(
+        self, src: torch.Tensor, train_test_split_index: int, num_mem_chunks: int = 1
+    ) -> torch.Tensor:
+        batch_size, rows_size, col_size, embedding_size = src.shape
         # attention between datapoints
         src = src.transpose(1, 2)
         src = src.reshape(batch_size * col_size, rows_size, embedding_size)
@@ -238,7 +265,10 @@ class TransformerEncoderLayer(nn.Module):
         src = datapoint_attention(src)
         src = src.reshape(batch_size, col_size, rows_size, embedding_size)
         src = src.transpose(2, 1)
-        src = self.norm2(src)
+        return self.norm2(src)
+
+    def mlp_stage(self, src: torch.Tensor, num_mem_chunks: int = 1) -> torch.Tensor:
+        batch_size, rows_size, col_size, embedding_size = src.shape
         # MLP after attention
         src = src.reshape(-1, embedding_size)
 
@@ -248,8 +278,7 @@ class TransformerEncoderLayer(nn.Module):
 
         src = mlp(src)
         src = src.reshape(batch_size, rows_size, col_size, embedding_size)
-        src = self.norm3(src)
-        return src
+        return self.norm3(src)
 
 
 def memory_chunking(num_mem_chunks: int) -> callable:

@@ -78,6 +78,10 @@ Keep this implementation and its checkpoints as a negative benchmark. Do not pro
 2. An anonymous continuous function-space posterior with shared latent draws across queries.
 3. A mean-constrained Beta concentration head as a deliberately low-capacity ablation, not the primary model.
 
+That follow-up experiment is implemented and documented in
+[CONTINUOUS_BAYESIAN_UNCERTAINTY_TRIAL.md](CONTINUOUS_BAYESIAN_UNCERTAINTY_TRIAL.md). This trial and its
+checkpoints remain the documented negative benchmark for it.
+
 The continuous posterior should be judged against both the context-resampling and Beta controls. Synthetic evaluation must test exact posterior moments and uncertainty reduction with identifying evidence; TabArena evaluation must retain identical contexts and require useful error ranking or selective risk without changing the predictive mean.
 
 ## Evaluated binary tasks

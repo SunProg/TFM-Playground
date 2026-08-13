@@ -1,0 +1,5 @@
+arm,model_type,uncertainty_mode,adapter_bottleneck,latent_dim,learning_rate,seed,max_steps,best_step,validation_selection_loss,validation_energy_distance,validation_joint_query_loss,validation_mean_preservation_error,mean_backbone_unchanged
+adapter_continuous,continuous,adapters,32,32,0.0003,2402,400,300,0.06508,0.046126,2.134714,3.771856427192688e-08,True
+frozen_continuous,continuous,frozen,32,32,0.0003,2402,400,250,0.065455,0.046957,2.135642,5.21540641784668e-08,True
+beta_adapter,beta,adapters,32,32,0.0003,2402,400,250,0.070318,0.051159,2.136549,0.01676283311098814,True
+full_continuous,continuous,full,32,32,3e-05,2402,400,350,0.062941,0.044783,2.136623,4.470348358154297e-08,True
