@@ -1,0 +1,16 @@
+condition,arm,mean_mutual_information
+ambiguous,bootstrap,0.131799
+ambiguous,subsample,0.073800
+ambiguous,bayesian_bootstrap,0.168525
+ambiguous,joint_mi,0.004382
+ambiguous,self_conditioning,0.244998
+identifiable,bootstrap,0.131726
+identifiable,subsample,0.068848
+identifiable,bayesian_bootstrap,0.158771
+identifiable,joint_mi,0.002672
+identifiable,self_conditioning,0.237306
+noisy,bootstrap,0.132883
+noisy,subsample,0.075334
+noisy,bayesian_bootstrap,0.171289
+noisy,joint_mi,0.002552
+noisy,self_conditioning,0.253058

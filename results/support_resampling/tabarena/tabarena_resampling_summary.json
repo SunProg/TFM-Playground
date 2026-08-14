@@ -1,0 +1,243 @@
+{
+  "protocol": {
+    "tabarena_role": "evaluation only",
+    "context_size": 256,
+    "context_selection": "identical deterministic subset with random_state=0",
+    "test_partition": "official untouched test partition",
+    "arms": [
+      "bootstrap",
+      "subsample",
+      "joint_mi"
+    ],
+    "vanilla_checkpoint": "checkpoints/nanotabpfn.pth",
+    "expected_task_names": [
+      "Bank_Customer_Churn",
+      "blood-transfusion-service-center",
+      "churn",
+      "coil2000_insurance_policies",
+      "credit-g",
+      "diabetes",
+      "E-CommereShippingData",
+      "Fitness_Club",
+      "hazelnut-spread-contaminant-detection",
+      "heloc",
+      "in_vehicle_coupon_recommendation",
+      "Is-this-a-good-customer",
+      "Marketing_Campaign",
+      "NATICUSdroid",
+      "online_shoppers_intention",
+      "polish_companies_bankruptcy",
+      "qsar-biodeg",
+      "seismic-bumps",
+      "taiwanese_bankruptcy_prediction",
+      "jm1"
+    ]
+  },
+  "datasets": [
+    "kr-vs-kp",
+    "credit-approval",
+    "credit-g",
+    "diabetes"
+  ],
+  "summary": {
+    "task_count": 4,
+    "vanilla_predictive_entropy": {
+      "bootstrap": {
+        "error_auroc": {
+          "mean": 0.7985514635235162,
+          "lower": 0.7347883290766968,
+          "upper": 0.9057279055690072
+        },
+        "aurc": {
+          "mean": 0.08661830490787575,
+          "lower": 0.03188125131661577,
+          "upper": 0.12780043070132166
+        }
+      },
+      "macro": {
+        "error_auroc": 0.7985514635235162,
+        "aurc": 0.08661830490787575
+      }
+    },
+    "arms": {
+      "bootstrap": {
+        "predictive": {
+          "nll": 0.3562126156098683,
+          "brier": 0.11024394371038035,
+          "roc_auc": 0.8921898994512591,
+          "accuracy": 0.834945063993977,
+          "ece": 0.05118317542903536
+        },
+        "bootstrap": {
+          "raw_epistemic.error_auroc": {
+            "mean": 0.7767580719582702,
+            "lower": 0.7187760489024728,
+            "upper": 0.8846302003081664
+          },
+          "raw_epistemic.aurc": {
+            "mean": 0.08695980053145848,
+            "lower": 0.02860324180045962,
+            "upper": 0.12737673336497896
+          }
+        },
+        "max_probability_difference_to_vanilla": 1.8477439880371094e-06,
+        "matches_vanilla_probabilities_at_1e-6": false,
+        "raw_epistemic": {
+          "error_auroc": 0.7767580719582702,
+          "aurc": 0.08695980053145848
+        },
+        "mean_mutual_information": 0.05029284012320487,
+        "gate": {
+          "raw_epistemic": {
+            "error_auroc": 0.7767580719582702,
+            "aurc": 0.08695980053145848,
+            "no_material_auroc_harm": false,
+            "no_material_aurc_harm": true,
+            "improves_auroc": false,
+            "improves_aurc": false
+          },
+          "combined_risk": null,
+          "passed": false
+        }
+      },
+      "context_resampling": {
+        "predictive": {
+          "nll": 0.35621268255567795,
+          "brier": 0.11024397599910601,
+          "roc_auc": 0.8921898994512591,
+          "accuracy": 0.834945063993977,
+          "ece": 0.051183165940972344
+        },
+        "bootstrap": {
+          "raw_epistemic.error_auroc": {
+            "mean": 0.7882404010381674,
+            "lower": 0.721918380035099,
+            "upper": 0.8965030870768576
+          },
+          "raw_epistemic.aurc": {
+            "mean": 0.08783664375915538,
+            "lower": 0.027824880313677868,
+            "upper": 0.13867998335118847
+          }
+        },
+        "max_probability_difference_to_vanilla": 0.0,
+        "matches_vanilla_probabilities_at_1e-6": true,
+        "raw_epistemic": {
+          "error_auroc": 0.7882404010381674,
+          "aurc": 0.08783664375915538
+        },
+        "mean_mutual_information": 0.03382800082504335,
+        "gate": {
+          "raw_epistemic": {
+            "error_auroc": 0.7882404010381674,
+            "aurc": 0.08783664375915538,
+            "no_material_auroc_harm": false,
+            "no_material_aurc_harm": true,
+            "improves_auroc": false,
+            "improves_aurc": false
+          },
+          "combined_risk": null,
+          "passed": false
+        }
+      },
+      "joint_mi": {
+        "predictive": {
+          "nll": 0.3562126156098683,
+          "brier": 0.11024394371038035,
+          "roc_auc": 0.8921898994512591,
+          "accuracy": 0.834945063993977,
+          "ece": 0.05118317542903536
+        },
+        "bootstrap": {
+          "raw_epistemic.error_auroc": {
+            "mean": 0.6287591097119976,
+            "lower": 0.5256243053626007,
+            "upper": 0.7491704270305966
+          },
+          "raw_epistemic.aurc": {
+            "mean": 0.13814958307332445,
+            "lower": 0.05128732467679412,
+            "upper": 0.20379833237088268
+          }
+        },
+        "max_probability_difference_to_vanilla": 1.8477439880371094e-06,
+        "matches_vanilla_probabilities_at_1e-6": false,
+        "raw_epistemic": {
+          "error_auroc": 0.6287591097119976,
+          "aurc": 0.13814958307332445
+        },
+        "mean_mutual_information": 0.0002645530556998212,
+        "gate": {
+          "raw_epistemic": {
+            "error_auroc": 0.6287591097119976,
+            "aurc": 0.13814958307332445,
+            "no_material_auroc_harm": false,
+            "no_material_aurc_harm": false,
+            "improves_auroc": false,
+            "improves_aurc": false
+          },
+          "combined_risk": null,
+          "passed": false
+        }
+      },
+      "subsample": {
+        "predictive": {
+          "nll": 0.3562126156098683,
+          "brier": 0.11024394371038035,
+          "roc_auc": 0.8921898994512591,
+          "accuracy": 0.834945063993977,
+          "ece": 0.05118317542903536
+        },
+        "bootstrap": {
+          "raw_epistemic.error_auroc": {
+            "mean": 0.7462786406544447,
+            "lower": 0.6772530586953448,
+            "upper": 0.8665199985833547
+          },
+          "raw_epistemic.aurc": {
+            "mean": 0.0983109690637955,
+            "lower": 0.03310625212878493,
+            "upper": 0.14979575533636458
+          }
+        },
+        "max_probability_difference_to_vanilla": 1.8477439880371094e-06,
+        "matches_vanilla_probabilities_at_1e-6": false,
+        "raw_epistemic": {
+          "error_auroc": 0.7462786406544447,
+          "aurc": 0.0983109690637955
+        },
+        "mean_mutual_information": 0.02030382858479295,
+        "gate": {
+          "raw_epistemic": {
+            "error_auroc": 0.7462786406544447,
+            "aurc": 0.0983109690637955,
+            "no_material_auroc_harm": false,
+            "no_material_aurc_harm": false,
+            "improves_auroc": false,
+            "improves_aurc": false
+          },
+          "combined_risk": null,
+          "passed": false
+        }
+      },
+      "vanilla": {
+        "predictive": {
+          "nll": 0.35621268255567795,
+          "brier": 0.11024397599910601,
+          "roc_auc": 0.8921898994512591,
+          "accuracy": 0.834945063993977,
+          "ece": 0.051183165940972344
+        },
+        "bootstrap": {},
+        "max_probability_difference_to_vanilla": 0.0,
+        "matches_vanilla_probabilities_at_1e-6": true,
+        "raw_epistemic": null,
+        "gate": {
+          "raw_epistemic": null,
+          "combined_risk": null,
+          "passed": false
+        }
+      }
+    }
+  }
+}

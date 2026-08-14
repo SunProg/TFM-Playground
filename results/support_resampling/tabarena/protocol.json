@@ -1,0 +1,34 @@
+{
+  "tabarena_role": "evaluation only",
+  "context_size": 256,
+  "context_selection": "identical deterministic subset with random_state=0",
+  "test_partition": "official untouched test partition",
+  "arms": [
+    "bootstrap",
+    "subsample",
+    "joint_mi"
+  ],
+  "vanilla_checkpoint": "checkpoints/nanotabpfn.pth",
+  "expected_task_names": [
+    "Bank_Customer_Churn",
+    "blood-transfusion-service-center",
+    "churn",
+    "coil2000_insurance_policies",
+    "credit-g",
+    "diabetes",
+    "E-CommereShippingData",
+    "Fitness_Club",
+    "hazelnut-spread-contaminant-detection",
+    "heloc",
+    "in_vehicle_coupon_recommendation",
+    "Is-this-a-good-customer",
+    "Marketing_Campaign",
+    "NATICUSdroid",
+    "online_shoppers_intention",
+    "polish_companies_bankruptcy",
+    "qsar-biodeg",
+    "seismic-bumps",
+    "taiwanese_bankruptcy_prediction",
+    "jm1"
+  ]
+}

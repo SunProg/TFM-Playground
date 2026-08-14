@@ -1,0 +1,133 @@
+{
+  "dataset": "diabetes",
+  "report": {
+    "vanilla_predictive_entropy": {
+      "error_auroc": 0.7633196721311476,
+      "aurc": 0.0885936520392949
+    },
+    "context_indices_identical": true,
+    "query_labels_used_for_construction": false,
+    "arms": {
+      "vanilla": {
+        "predictive": {
+          "nll": 0.43736934235952807,
+          "brier": 0.14153210151749196,
+          "roc_auc": 0.8711111111111112,
+          "accuracy": 0.7922077922077922,
+          "ece": 0.04169316647888778,
+          "selective_risk_at_80_coverage": 0.16393442622950816,
+          "predictive_entropy": null,
+          "epistemic_uncertainty": null,
+          "epistemic_variance": null,
+          "uncertainty_error_auroc": null,
+          "uncertainty_aurc": null,
+          "posterior_entropy": null,
+          "effective_sample_size": null,
+          "effective_hypothesis_count": null,
+          "posterior_collapse_fraction": null
+        },
+        "max_probability_difference_to_vanilla": 0.0
+      },
+      "context_resampling": {
+        "predictive": {
+          "nll": 0.43736934235952807,
+          "brier": 0.14153210151749196,
+          "roc_auc": 0.8711111111111112,
+          "accuracy": 0.7922077922077922,
+          "ece": 0.04169316647888778,
+          "selective_risk_at_80_coverage": 0.16393442622950816,
+          "predictive_entropy": null,
+          "epistemic_uncertainty": null,
+          "epistemic_variance": null,
+          "uncertainty_error_auroc": null,
+          "uncertainty_aurc": null,
+          "posterior_entropy": null,
+          "effective_sample_size": null,
+          "effective_hypothesis_count": null,
+          "posterior_collapse_fraction": null
+        },
+        "max_probability_difference_to_vanilla": 0.0,
+        "raw_epistemic": {
+          "error_auroc": 0.7264344262295082,
+          "aurc": 0.1034695185727464
+        },
+        "mean_mutual_information": 0.04255084180599683
+      },
+      "bootstrap": {
+        "predictive": {
+          "nll": 0.43736931286086883,
+          "brier": 0.14153206458747067,
+          "roc_auc": 0.8711111111111112,
+          "accuracy": 0.7922077922077922,
+          "ece": 0.04169321834266965,
+          "selective_risk_at_80_coverage": 0.16393442622950816,
+          "predictive_entropy": null,
+          "epistemic_uncertainty": null,
+          "epistemic_variance": null,
+          "uncertainty_error_auroc": null,
+          "uncertainty_aurc": null,
+          "posterior_entropy": null,
+          "effective_sample_size": null,
+          "effective_hypothesis_count": null,
+          "posterior_collapse_fraction": null
+        },
+        "max_probability_difference_to_vanilla": 1.6987323760986328e-06,
+        "raw_epistemic": {
+          "error_auroc": 0.7172131147540983,
+          "aurc": 0.10508589246585932
+        },
+        "mean_mutual_information": 0.05803358729009504
+      },
+      "subsample": {
+        "predictive": {
+          "nll": 0.43736931286086883,
+          "brier": 0.14153206458747067,
+          "roc_auc": 0.8711111111111112,
+          "accuracy": 0.7922077922077922,
+          "ece": 0.04169321834266965,
+          "selective_risk_at_80_coverage": 0.16393442622950816,
+          "predictive_entropy": null,
+          "epistemic_uncertainty": null,
+          "epistemic_variance": null,
+          "uncertainty_error_auroc": null,
+          "uncertainty_aurc": null,
+          "posterior_entropy": null,
+          "effective_sample_size": null,
+          "effective_hypothesis_count": null,
+          "posterior_collapse_fraction": null
+        },
+        "max_probability_difference_to_vanilla": 1.6987323760986328e-06,
+        "raw_epistemic": {
+          "error_auroc": 0.6700819672131147,
+          "aurc": 0.12170247558087176
+        },
+        "mean_mutual_information": 0.02770769963790844
+      },
+      "joint_mi": {
+        "predictive": {
+          "nll": 0.43736931286086883,
+          "brier": 0.14153206458747067,
+          "roc_auc": 0.8711111111111112,
+          "accuracy": 0.7922077922077922,
+          "ece": 0.04169321834266965,
+          "selective_risk_at_80_coverage": 0.16393442622950816,
+          "predictive_entropy": null,
+          "epistemic_uncertainty": null,
+          "epistemic_variance": null,
+          "uncertainty_error_auroc": null,
+          "uncertainty_aurc": null,
+          "posterior_entropy": null,
+          "effective_sample_size": null,
+          "effective_hypothesis_count": null,
+          "posterior_collapse_fraction": null
+        },
+        "max_probability_difference_to_vanilla": 1.6987323760986328e-06,
+        "raw_epistemic": {
+          "error_auroc": 0.6075819672131147,
+          "aurc": 0.13963468565112233
+        },
+        "mean_mutual_information": 0.0003398111714756981
+      }
+    }
+  }
+}

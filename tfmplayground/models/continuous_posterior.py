@@ -792,6 +792,29 @@ class NanoTabPFNBetaConcentrationModel(_MeanPreservingUncertaintyModel):
         return BetaConcentrationPrediction(base_probabilities, sample_positive, gate, bound, concentration)
 
 
+def stratified_subset_indices(
+    support_y: torch.Tensor, fraction: float, generator: torch.Generator
+) -> torch.Tensor:
+    """Deterministic label-stratified subset of one batch item's support rows.
+
+    Draws ``round(fraction * count)`` rows per label class without replacement,
+    using ``generator`` for the permutation, and returns the sorted row indices.
+    Shared by :class:`ContextResamplingUncertainty` and any other caller that
+    needs the same stratified-subsample convention (for example a resampling
+    ensemble that wants "which rows" varied independently of "how many").
+    """
+    if not 0 < fraction < 1:
+        raise ValueError("fraction must lie strictly between zero and one.")
+    labels = support_y.detach().cpu()
+    chosen: list[torch.Tensor] = []
+    for value in torch.unique(labels):
+        positions = torch.nonzero(labels == value, as_tuple=False).squeeze(-1)
+        count = max(1, int(round(fraction * positions.numel())))
+        permutation = torch.randperm(positions.numel(), generator=generator)
+        chosen.append(positions[permutation[:count]])
+    return torch.cat(chosen).sort().values
+
+
 class ContextResamplingUncertainty:
     """Non-learned uncertainty from deterministic stratified support subsets.
 
@@ -821,14 +844,7 @@ class ContextResamplingUncertainty:
         """Deterministic label-stratified subset for one batch item."""
         fraction = self.fractions[draw % len(self.fractions)]
         generator = torch.Generator(device="cpu").manual_seed(self.seed * 100_003 + draw)
-        labels = support_y.detach().cpu()
-        chosen: list[torch.Tensor] = []
-        for value in torch.unique(labels):
-            positions = torch.nonzero(labels == value, as_tuple=False).squeeze(-1)
-            count = max(1, int(round(fraction * positions.numel())))
-            permutation = torch.randperm(positions.numel(), generator=generator)
-            chosen.append(positions[permutation[:count]])
-        return torch.cat(chosen).sort().values
+        return stratified_subset_indices(support_y, fraction, generator)
 
     @torch.no_grad()
     def __call__(

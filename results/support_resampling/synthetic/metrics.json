@@ -1,0 +1,161 @@
+{
+  "config": {
+    "seed": 2402,
+    "checkpoint": "checkpoints/nanotabpfn.pth",
+    "device": "cpu",
+    "episodes_per_condition": 20,
+    "support_size": 128,
+    "query_count": 6,
+    "members": 32,
+    "subsample_fraction": 0.8,
+    "heldout_size": 16,
+    "num_mem_chunks": 1,
+    "permutation_trials": 200
+  },
+  "conditions": {
+    "ambiguous": {
+      "per_arm_mean": {
+        "bootstrap": 0.13179913610219957,
+        "subsample": 0.07379986122250556,
+        "bayesian_bootstrap": 0.1685253880918026,
+        "joint_mi": 0.0043820413819048555,
+        "self_conditioning": 0.24499829560518266
+      },
+      "teacher_mutual_information_mean": 0.14401411842554807
+    },
+    "identifiable": {
+      "per_arm_mean": {
+        "bootstrap": 0.13172566536813973,
+        "subsample": 0.06884812153875827,
+        "bayesian_bootstrap": 0.15877149254083633,
+        "joint_mi": 0.002672053717833478,
+        "self_conditioning": 0.23730633743107318
+      },
+      "teacher_mutual_information_mean": 9.81552540906705e-05
+    },
+    "noisy": {
+      "per_arm_mean": {
+        "bootstrap": 0.13288269601762295,
+        "subsample": 0.07533439099788666,
+        "bayesian_bootstrap": 0.17128855884075164,
+        "joint_mi": 0.002551631012465805,
+        "self_conditioning": 0.2530580073595047
+      },
+      "teacher_mutual_information_mean": 0.0
+    }
+  },
+  "random_label_null": {
+    "bootstrap": 0.15905531346797944,
+    "subsample": 0.09747523814439774,
+    "bayesian_bootstrap": 0.22360290288925172,
+    "joint_mi": 0.0019501321949064732,
+    "self_conditioning": 0.23207705616950988
+  },
+  "gates": {
+    "discrimination": {
+      "bootstrap": {
+        "auc": 0.48750000000000004,
+        "clears_auc_floor": false
+      },
+      "subsample": {
+        "auc": 0.5449999999999999,
+        "clears_auc_floor": false
+      },
+      "bayesian_bootstrap": {
+        "auc": 0.5974999999999999,
+        "clears_auc_floor": false
+      },
+      "joint_mi": {
+        "auc": 0.6575,
+        "clears_auc_floor": false
+      },
+      "self_conditioning": {
+        "auc": 0.5375,
+        "clears_auc_floor": false
+      }
+    },
+    "ground_truth_fit": {
+      "bootstrap": {
+        "spearman": 0.018262219424352192,
+        "r2": -1.161135880499689,
+        "clears_r2_floor": false
+      },
+      "subsample": {
+        "spearman": -0.03341797884353107,
+        "r2": -0.08005367979056932,
+        "clears_r2_floor": false
+      },
+      "bayesian_bootstrap": {
+        "spearman": 0.1086633434132846,
+        "r2": -2.1542997347369925,
+        "clears_r2_floor": false
+      },
+      "joint_mi": {
+        "spearman": 0.2625429380129808,
+        "r2": -0.29465740426380016,
+        "clears_r2_floor": false
+      },
+      "self_conditioning": {
+        "spearman": 0.04631449462258391,
+        "r2": -6.582392242932386,
+        "clears_r2_floor": false
+      }
+    },
+    "null": {
+      "bootstrap": {
+        "mutual_information": 0.15905531346797944,
+        "clears_floor": false
+      },
+      "subsample": {
+        "mutual_information": 0.09747523814439774,
+        "clears_floor": false
+      },
+      "bayesian_bootstrap": {
+        "mutual_information": 0.22360290288925172,
+        "clears_floor": false
+      },
+      "joint_mi": {
+        "mutual_information": 0.0019501321949064732,
+        "clears_floor": true
+      },
+      "self_conditioning": {
+        "mutual_information": 0.23207705616950988,
+        "clears_floor": false
+      }
+    },
+    "performance_link": {
+      "bootstrap": {
+        "spearman": 0.14642956376771327,
+        "null_band": {
+          "mean": -0.013565434843011951,
+          "std": 0.12620972613677628
+        },
+        "clears_floor": false
+      },
+      "subsample": {
+        "spearman": 0.0414003889969436,
+        "null_band": {
+          "mean": -0.00443928869130314,
+          "std": 0.12446416440445769
+        },
+        "clears_floor": false
+      },
+      "bayesian_bootstrap": {
+        "spearman": 0.37171436510141714,
+        "null_band": {
+          "mean": -0.013861906085023624,
+          "std": 0.1374419896575368
+        },
+        "clears_floor": false
+      }
+    }
+  },
+  "clears_gates_1_2_3": {
+    "bootstrap": false,
+    "subsample": false,
+    "bayesian_bootstrap": false,
+    "joint_mi": false,
+    "self_conditioning": false
+  },
+  "any_arm_proceeds_to_stage_2": false
+}
