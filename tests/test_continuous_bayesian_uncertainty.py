@@ -27,6 +27,7 @@ from tfmplayground.experiments.continuous_episodes import (
     random_label_episode,
     sample_episode,
     sample_multiregime_episode,
+    sample_scm_multiregime_episode,
     sample_paired_episode,
 )
 from tfmplayground.experiments.continuous_sweep import (
@@ -780,6 +781,44 @@ class MultiregimeEpisodeTests(unittest.TestCase):
             np.random.default_rng(9), batch_size=1, support_size=32, query_count=6, contamination=0.0
         )
         self.assertTrue(bool((episode.query_regime_source == 0).all()))
+
+
+class ScmMultiregimeEpisodeTests(unittest.TestCase):
+    """sample_scm_multiregime_episode: two draws from the official TabICL SCM prior."""
+
+    def test_train_regime_uses_mlp_scm(self):
+        episode = sample_scm_multiregime_episode(
+            np.random.default_rng(1), regime=TRAIN_REGIME, batch_size=1, support_size=32, query_count=4
+        )
+        self.assertEqual(episode.family, "mlp_scm")
+        self.assertEqual(episode.condition, "multiregime")
+        self.assertEqual(tuple(episode.support_x.shape[:2]), (1, 32))
+        self.assertEqual(tuple(episode.query_regime_source.shape), (1, 4))
+
+    def test_heldout_regime_uses_tree_scm(self):
+        episode = sample_scm_multiregime_episode(
+            np.random.default_rng(2), regime=HELDOUT_REGIME, batch_size=1, support_size=32, query_count=4
+        )
+        self.assertEqual(episode.family, "tree_scm")
+
+    def test_posterior_is_a_valid_distribution_over_two_candidates(self):
+        episode = sample_scm_multiregime_episode(
+            np.random.default_rng(3), batch_size=2, support_size=24, query_count=4
+        )
+        self.assertEqual(episode.posterior.shape[-1], 2)
+        torch.testing.assert_close(episode.posterior.sum(dim=-1), torch.ones(2), atol=1e-5, rtol=0)
+        self.assertTrue(bool((episode.posterior >= 0).all()))
+
+    def test_contamination_zero_matches_single_regime_query_labels(self):
+        episode = sample_scm_multiregime_episode(
+            np.random.default_rng(4), batch_size=1, support_size=24, query_count=4, contamination=0.0
+        )
+        self.assertTrue(bool((episode.query_regime_source == 0).all()))
+
+    def test_no_regime_label_reaches_the_model_inputs(self):
+        episode = sample_scm_multiregime_episode(np.random.default_rng(5), batch_size=1, support_size=16, query_count=4)
+        for tensor in (episode.support_x, episode.support_y, episode.query_x):
+            self.assertNotEqual(tensor.shape, episode.query_regime_source.shape)
 
 
 class CheckpointTests(unittest.TestCase):

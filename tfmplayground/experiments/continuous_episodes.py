@@ -798,6 +798,141 @@ def sample_multiregime_episode(
     return episode.to(device)
 
 
+def _build_scm_multiregime_item(
+    regime: EpisodeRegime,
+    rng: np.random.Generator,
+    *,
+    family: str,
+    support_size: int,
+    query_count: int,
+    noise: float,
+    features: int,
+    contamination: float,
+) -> dict[str, np.ndarray]:
+    """Like ``_build_multiregime_item``, but the two regimes are two draws from
+    the official TabICL SCM prior (``_scm_candidates``) sharing one feature
+    table, rather than two hand-written analytic score functions.
+    """
+    rows = support_size + query_count + 16
+    x, labels = _scm_candidates(family, 2, rows, features, rng)
+    x = x.astype(np.float32)
+    labels_base, labels_other = labels[0], labels[1]
+
+    order = rng.permutation(rows)
+    support_indices = order[:support_size]
+    query_indices = order[support_size : support_size + query_count]
+
+    support_source = np.zeros(support_size, dtype=np.int64)
+    query_source = np.zeros(query_count, dtype=np.int64)
+    support_labels = labels_base[support_indices].copy()
+    query_labels = labels_base[query_indices].copy()
+
+    n_contam_support = int(round(support_size * contamination))
+    if n_contam_support:
+        pos = rng.choice(support_size, size=n_contam_support, replace=False)
+        support_labels[pos] = labels_other[support_indices][pos]
+        support_source[pos] = 1
+    n_contam_query = int(round(query_count * contamination))
+    if n_contam_query:
+        pos = rng.choice(query_count, size=n_contam_query, replace=False)
+        query_labels[pos] = labels_other[query_indices][pos]
+        query_source[pos] = 1
+
+    support_y = np.logical_xor(support_labels, rng.random(support_size) < noise).astype(np.float32)
+    query_y = np.logical_xor(query_labels, rng.random(query_count) < noise).astype(np.int64)
+
+    candidate_support = _candidate_probabilities(
+        np.stack([labels_base[support_indices], labels_other[support_indices]]), noise
+    )
+    candidate_query = _candidate_probabilities(
+        np.stack([labels_base[query_indices], labels_other[query_indices]]), noise
+    )
+    posterior = exact_candidate_posterior(support_y.astype(np.int64), candidate_support)
+    return {
+        "support_x": x[support_indices],
+        "support_y": support_y,
+        "query_x": x[query_indices],
+        "query_y": query_y,
+        "query_regime_source": query_source,
+        "candidate_support_positive": candidate_support.astype(np.float32),
+        "candidate_query_positive": candidate_query.astype(np.float32),
+        "posterior": posterior.astype(np.float32),
+    }
+
+
+def sample_scm_multiregime_episode(
+    rng: np.random.Generator,
+    *,
+    regime: EpisodeRegime = TRAIN_REGIME,
+    batch_size: int = 2,
+    support_size: int | None = None,
+    query_count: int | None = None,
+    noise: float | None = None,
+    contamination: float | None = None,
+    device: torch.device | str = "cpu",
+    max_support_size: int = max(SUPPORT_SIZES),
+) -> ContinuousEpisode:
+    """Multiregime episodes sourced from the official TabICL SCM prior.
+
+    Unlike ``sample_multiregime_episode`` (hand-written analytic score
+    functions), the two regimes here are two independent draws from the same
+    structured SCM family (``mlp_scm`` for ``TRAIN_REGIME``, ``tree_scm`` for
+    ``HELDOUT_REGIME``) via ``_scm_candidates`` -- the same TabICL prior
+    library ``tfmplayground/external_priors`` uses for the actual pretraining
+    dumps, not this file's bespoke families. Both draws share one sampled
+    feature table (``shared_raw_x`` inside ``_scm_candidates``), so the
+    "which regime" question is entirely about the label function, never a
+    surface cue in the features. Held out at the family level -- ``mlp_scm``
+    is training-only, ``tree_scm`` is held-out-only -- which is what
+    ``sample_multiregime_episode`` could not do since ``HELDOUT_REGIME`` has
+    only one analytic family.
+    """
+    family = "tree_scm" if regime is HELDOUT_REGIME else "mlp_scm"
+    support_size = support_size or int(rng.choice(available_support_sizes(max_support_size)))
+    query_count = query_count or int(rng.integers(4, 9))
+    noise = float(rng.choice(NOISE_LEVELS)) if noise is None else float(noise)
+    effective_noise = max(noise, MIN_EFFECTIVE_NOISE)
+    contamination = (
+        float(rng.uniform(*MULTIREGIME_CONTAMINATION_RANGE)) if contamination is None else float(contamination)
+    )
+    features = int(rng.integers(regime.min_features, regime.max_features + 1))
+
+    items = [
+        _build_scm_multiregime_item(
+            regime,
+            rng,
+            family=family,
+            support_size=support_size,
+            query_count=query_count,
+            noise=effective_noise,
+            features=features,
+            contamination=contamination,
+        )
+        for _ in range(batch_size)
+    ]
+    episode = ContinuousEpisode(
+        _stack(items, "support_x"),
+        _stack(items, "support_y"),
+        _stack(items, "query_x"),
+        _stack(items, "query_y"),
+        _stack(items, "candidate_query_positive"),
+        _stack(items, "candidate_support_positive"),
+        _stack(items, "posterior"),
+        effective_noise,
+        "multiregime",
+        family,
+        {
+            "support_size": support_size,
+            "query_count": query_count,
+            "features": features,
+            "contamination": contamination,
+            "family": family,
+        },
+        _stack(items, "query_regime_source"),
+    )
+    return episode.to(device)
+
+
 def random_label_episode(
     rng: np.random.Generator,
     *,

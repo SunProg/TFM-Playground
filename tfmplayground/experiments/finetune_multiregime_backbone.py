@@ -37,19 +37,36 @@ import torch
 import torch.nn.functional as F
 
 from tfmplayground.experiments.continuous_episodes import (
-    CONDITIONS,
     HELDOUT_REGIME,
     TRAIN_REGIME,
     sample_episode,
-    sample_multiregime_episode,
+    sample_scm_multiregime_episode,
 )
 from tfmplayground.interface import init_model_from_state_dict_file
 from tfmplayground.utils import set_randomness_seed
 
-#: Conditions drawn for the ordinary (non-multiregime) share of the curriculum.
-#: "paired" is excluded here -- it needs its own two-forward-pass loss and adds
-#: nothing to the question this script asks.
-ORDINARY_CONDITIONS = tuple(condition for condition in CONDITIONS if condition not in ("paired", "multiregime"))
+#: The non-multiregime share of the curriculum draws plain, single-truth prior
+#: episodes -- num_candidates=1, so there is no candidate to disagree with, no
+#: forced-agreement support rows, and no epistemic-ambiguity construction at
+#: all.  ("ambiguous"/"identifiable"/"noisy" are multi-candidate constructions
+#: built for the uncertainty trials, not ordinary classification tasks, and
+#: mixing them in as "normal" here would confound the multiregime effect with
+#: fine-tuning on that unrelated, unusual curriculum.) The condition string
+#: passed to sample_episode is irrelevant once num_candidates=1: every row
+#: shares the one candidate's label regardless, so any condition works.
+PRIOR_CONDITION = "identifiable"
+
+
+def _scm_family(regime) -> str:
+    """The same TRAIN/HELDOUT SCM-family split ``sample_scm_multiregime_episode`` uses.
+
+    Both curriculum shares draw from this one official-prior family
+    (``mlp_scm`` in training, ``tree_scm`` in validation) so the "prior" and
+    "multiregime" episodes differ only in whether the support/query rows are a
+    single regime or a row-level mixture of two -- not also in which
+    data-generating family they come from.
+    """
+    return "tree_scm" if regime is HELDOUT_REGIME else "mlp_scm"
 
 
 @dataclass(frozen=True)
@@ -71,29 +88,19 @@ class BackboneFinetuneConfig:
     support_size: int = 128
     query_count: int = 6
     validation_episodes: int = 16
-    #: Share of steps drawing a multiregime episode; the rest split evenly
-    #: across the ordinary conditions.
+    #: Share of steps drawing a multiregime episode; the rest draw a plain
+    #: single-truth prior episode (PRIOR_CONDITION, num_candidates=1).
     multiregime_probability: float = 0.30
     multiregime_contamination: float | None = None
 
 
-def _curriculum_weights(config: BackboneFinetuneConfig) -> dict[str, float]:
-    remaining = 1.0 - config.multiregime_probability
-    per_ordinary = remaining / len(ORDINARY_CONDITIONS)
-    weights = {condition: per_ordinary for condition in ORDINARY_CONDITIONS}
-    weights["multiregime"] = config.multiregime_probability
-    return weights
-
-
-def _draw_condition(rng: np.random.Generator, weights: dict[str, float]) -> str:
-    names = list(weights)
-    probabilities = np.asarray([weights[name] for name in names])
-    return names[int(rng.choice(len(names), p=probabilities))]
+def _draw_condition(rng: np.random.Generator, multiregime_probability: float) -> str:
+    return "multiregime" if rng.random() < multiregime_probability else "prior"
 
 
 def sample_condition_episode(rng: np.random.Generator, regime, condition: str, config: BackboneFinetuneConfig):
     if condition == "multiregime":
-        return sample_multiregime_episode(
+        return sample_scm_multiregime_episode(
             rng,
             regime=regime,
             batch_size=config.batch_size,
@@ -105,7 +112,9 @@ def sample_condition_episode(rng: np.random.Generator, regime, condition: str, c
     return sample_episode(
         rng,
         regime=regime,
-        condition=condition,
+        condition=PRIOR_CONDITION,
+        family=_scm_family(regime),
+        num_candidates=1,
         batch_size=config.batch_size,
         support_size=config.support_size,
         query_count=config.query_count,
@@ -161,7 +170,9 @@ def validate(model, config: BackboneFinetuneConfig) -> dict[str, float]:
     rng = np.random.default_rng(config.seed + 10_001)
     totals: dict[str, list[float]] = {}
     for index in range(config.validation_episodes):
-        condition = ORDINARY_CONDITIONS[index % len(ORDINARY_CONDITIONS)] if index % 3 else "multiregime"
+        # Half prior, half multiregime, regardless of the training-time
+        # probability, so the multiregime diagnostics always get enough data.
+        condition = "multiregime" if index % 2 == 0 else "prior"
         episode = sample_condition_episode(rng, HELDOUT_REGIME, condition, config)
         loss = float(query_cross_entropy(model, episode))
         totals.setdefault("cross_entropy", []).append(loss)
@@ -174,7 +185,6 @@ def validate(model, config: BackboneFinetuneConfig) -> dict[str, float]:
 def finetune(model, config: BackboneFinetuneConfig) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     rng = np.random.default_rng(config.seed + 1)
-    weights = _curriculum_weights(config)
     model.to(config.device)
     model.train()
 
@@ -189,7 +199,7 @@ def finetune(model, config: BackboneFinetuneConfig) -> tuple[Any, list[dict[str,
         optimizer.zero_grad(set_to_none=True)
         totals: dict[str, float] = {}
         for _micro in range(config.accumulate_gradients):
-            condition = _draw_condition(rng, weights)
+            condition = _draw_condition(rng, config.multiregime_probability)
             episode = sample_condition_episode(rng, TRAIN_REGIME, condition, config)
             loss = query_cross_entropy(model, episode)
             (loss / config.accumulate_gradients).backward()
@@ -222,12 +232,26 @@ def run_finetune(config: BackboneFinetuneConfig, output_dir: str) -> Path:
     if config.require_cuda and not torch.cuda.is_available():
         raise RuntimeError("--require-cuda was set but CUDA is not available.")
     set_randomness_seed(config.seed)
-    model = init_model_from_state_dict_file(str(Path(config.checkpoint).expanduser().resolve()))
-    model, history, selection = finetune(model, config)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=False)
     (output / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
+
+    # Baseline: the pretrained checkpoint, completely untouched, evaluated on
+    # the exact same held-out episode set (validate() reseeds deterministically
+    # from config.seed + 10_001) that every later validation call also uses.
+    # Written before any training step runs, so it is never confounded by
+    # anything finetune() does.
+    baseline_model = init_model_from_state_dict_file(str(Path(config.checkpoint).expanduser().resolve()))
+    baseline_model.to(config.device)
+    baseline = validate(baseline_model, config)
+    (output / "baseline.json").write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n")
+    print(f"baseline (pretrained, not fine-tuned): {json.dumps(baseline, sort_keys=True)}", flush=True)
+    del baseline_model
+
+    model = init_model_from_state_dict_file(str(Path(config.checkpoint).expanduser().resolve()))
+    model, history, selection = finetune(model, config)
     (output / "history.jsonl").write_text("\n".join(json.dumps(row, sort_keys=True) for row in history) + "\n")
+    selection["baseline"] = baseline
     (output / "selection.json").write_text(json.dumps(selection, indent=2) + "\n")
     torch.save({"model": model.state_dict(), "config": asdict(config)}, output / "backbone.pth")
     return output.resolve()

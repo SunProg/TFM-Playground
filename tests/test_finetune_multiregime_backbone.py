@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 import torch
 
-from tfmplayground.experiments.continuous_episodes import TRAIN_REGIME
+from tfmplayground.experiments.continuous_episodes import HELDOUT_REGIME, TRAIN_REGIME
 from tfmplayground.experiments.finetune_multiregime_backbone import (
-    ORDINARY_CONDITIONS,
     BackboneFinetuneConfig,
-    _curriculum_weights,
+    _draw_condition,
+    _scm_family,
     finetune,
     multiregime_diagnostics,
     query_cross_entropy,
@@ -23,26 +23,44 @@ def tiny_backbone(seed: int = 0) -> NanoTabPFNModel:
 
 
 class CurriculumTests(unittest.TestCase):
-    def test_weights_sum_to_one_and_cover_every_condition(self):
-        config = BackboneFinetuneConfig(multiregime_probability=0.3)
-        weights = _curriculum_weights(config)
-        self.assertAlmostEqual(sum(weights.values()), 1.0, places=6)
-        self.assertAlmostEqual(weights["multiregime"], 0.3)
-        self.assertEqual(set(weights) - {"multiregime"}, set(ORDINARY_CONDITIONS))
+    def test_draw_condition_respects_probability(self):
+        rng = np.random.default_rng(11)
+        drawn = {_draw_condition(rng, 0.3) for _ in range(200)}
+        self.assertEqual(drawn, {"prior", "multiregime"})
+
+    def test_draw_condition_extremes(self):
+        rng = np.random.default_rng(0)
+        self.assertTrue(all(_draw_condition(rng, 0.0) == "prior" for _ in range(20)))
+        rng = np.random.default_rng(1)
+        self.assertTrue(all(_draw_condition(rng, 1.0) == "multiregime" for _ in range(20)))
+
+    def test_scm_family_matches_train_and_heldout_split(self):
+        self.assertEqual(_scm_family(TRAIN_REGIME), "mlp_scm")
+        self.assertEqual(_scm_family(HELDOUT_REGIME), "tree_scm")
 
 
 class EpisodeSamplingTests(unittest.TestCase):
+    """Both curriculum shares come from the official TabICL SCM prior, same family."""
+
     def test_multiregime_condition_returns_regime_tagged_episode(self):
         config = BackboneFinetuneConfig(batch_size=1, support_size=32, query_count=4, device="cpu")
         episode = sample_condition_episode(np.random.default_rng(0), TRAIN_REGIME, "multiregime", config)
         self.assertEqual(episode.condition, "multiregime")
+        self.assertEqual(episode.family, "mlp_scm")
         self.assertIsNotNone(episode.query_regime_source)
 
-    def test_ordinary_condition_has_no_regime_tag(self):
+    def test_prior_condition_has_no_regime_tag_and_matching_family(self):
         config = BackboneFinetuneConfig(batch_size=1, support_size=32, query_count=4, device="cpu")
-        episode = sample_condition_episode(np.random.default_rng(0), TRAIN_REGIME, "ambiguous", config)
-        self.assertEqual(episode.condition, "ambiguous")
+        episode = sample_condition_episode(np.random.default_rng(0), TRAIN_REGIME, "prior", config)
+        self.assertEqual(episode.family, "mlp_scm")
         self.assertIsNone(episode.query_regime_source)
+
+    def test_heldout_regime_uses_tree_scm_for_both_conditions(self):
+        config = BackboneFinetuneConfig(batch_size=1, support_size=32, query_count=4, device="cpu")
+        prior_episode = sample_condition_episode(np.random.default_rng(2), HELDOUT_REGIME, "prior", config)
+        multiregime_episode = sample_condition_episode(np.random.default_rng(3), HELDOUT_REGIME, "multiregime", config)
+        self.assertEqual(prior_episode.family, "tree_scm")
+        self.assertEqual(multiregime_episode.family, "tree_scm")
 
 
 class LossAndDiagnosticsTests(unittest.TestCase):
@@ -69,7 +87,7 @@ class LossAndDiagnosticsTests(unittest.TestCase):
     def test_diagnostics_empty_for_episodes_without_regime_tag(self):
         model = tiny_backbone(4)
         config = BackboneFinetuneConfig(batch_size=1, support_size=16, query_count=4, device="cpu")
-        episode = sample_condition_episode(np.random.default_rng(6), TRAIN_REGIME, "identifiable", config)
+        episode = sample_condition_episode(np.random.default_rng(6), TRAIN_REGIME, "prior", config)
         self.assertEqual(multiregime_diagnostics(model, episode), {})
 
 
@@ -96,9 +114,8 @@ class TrainingLoopTests(unittest.TestCase):
             if not torch.equal(parameter.detach(), before[name])
         ]
         # Every parameter group should get at least one gradient step across a
-        # curriculum that touches every condition, including the decoder and
-        # feature/target encoders which only ordinary conditions exercise the
-        # same way multiregime conditions do.
+        # curriculum that touches both conditions, including the decoder and
+        # feature/target encoders which both conditions exercise the same way.
         self.assertTrue(len(changed) >= len(before) // 2)
 
     def test_validate_returns_finite_metrics(self):
