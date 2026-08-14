@@ -61,9 +61,11 @@ from tfmplayground.models.continuous_posterior import (
     AdaptedTransformerEncoderLayer,
     BottleneckAdapter,
     ContextResamplingUncertainty,
+    ContinuousPosteriorPrediction,
     NanoTabPFNBetaConcentrationModel,
     NanoTabPFNContinuousPosteriorModel,
     all_binary_outcomes,
+    centre_and_scale,
     install_adapters,
     load_continuous_checkpoint,
     project_candidate_posterior,
@@ -299,6 +301,71 @@ class ContextResamplingTests(unittest.TestCase):
         self.assertGreater(int((labels[first] == 1).sum()), 0)
 
 
+class DispersionShapeTests(unittest.TestCase):
+    """The safe bound is set by the largest sample, so shape drives dispersion."""
+
+    @staticmethod
+    def _shape_ratio(raw, deviation_clip, mu=0.5):
+        base = torch.full((1, 3), mu)
+        gate = torch.ones(1, 3)
+        samples, bound = centre_and_scale(base, raw, gate, deviation_clip=deviation_clip)
+        prediction = ContinuousPosteriorPrediction(
+            torch.stack((1.0 - base, base), dim=-1), samples, gate, bound
+        )
+        return float(prediction.deviation_shape_ratio().mean()), prediction
+
+    def _heavy_tailed(self):
+        generator = torch.Generator().manual_seed(4)
+        raw = torch.randn(1, 32, 3, generator=generator) * 0.1
+        raw[0, 0] += 3.0
+        return raw
+
+    def test_outlier_sample_throttles_the_bulk_without_the_clip(self):
+        legacy, _ = self._shape_ratio(self._heavy_tailed(), None)
+        self.assertLess(legacy, 0.30)
+
+    def test_clip_restores_the_bulk_of_the_headroom(self):
+        clipped, _ = self._shape_ratio(self._heavy_tailed(), 1.5)
+        self.assertGreater(clipped, 0.30)
+        legacy, _ = self._shape_ratio(self._heavy_tailed(), None)
+        self.assertGreater(clipped, legacy)
+
+    def test_clip_preserves_genuine_multimodality(self):
+        generator = torch.Generator().manual_seed(5)
+        bimodal = torch.cat(
+            (torch.full((1, 16, 3), -1.0), torch.full((1, 16, 3), 1.0)), dim=1
+        ) + 0.05 * torch.randn(1, 32, 3, generator=generator)
+        legacy, _ = self._shape_ratio(bimodal, None)
+        clipped, _ = self._shape_ratio(bimodal, 1.5)
+        # A well-separated bimodal shape is already flat, so the clip must
+        # leave it essentially untouched rather than compressing the modes.
+        self.assertAlmostEqual(clipped, legacy, delta=0.1)
+        self.assertGreater(clipped, 0.8)
+
+    def test_mean_preservation_holds_under_the_clip_at_extreme_means(self):
+        raw = self._heavy_tailed()
+        for mean in (0.001, 0.5, 0.999):
+            with self.subTest(mean=mean):
+                _ratio, prediction = self._shape_ratio(raw, 1.5, mu=mean)
+                self.assertLessEqual(float(prediction.mean_preservation_error().max()), 1e-6)
+                self.assertTrue((prediction.sample_positive > 0).all())
+                self.assertTrue((prediction.sample_positive < 1).all())
+
+    def test_parameterization_can_express_the_teacher_scale(self):
+        generator = torch.Generator().manual_seed(6)
+        raw = torch.randn(1, 32, 3, generator=generator)
+        _ratio, prediction = self._shape_ratio(raw, 1.5)
+        # An open gate at mu=0.5 must be able to reach the mutual information
+        # the projected teacher asks for on ambiguous episodes (about 0.18).
+        self.assertGreater(float(prediction.mutual_information().mean()), 0.1)
+
+    def test_clip_is_rejected_when_not_positive(self):
+        with self.assertRaises(ValueError):
+            centre_and_scale(torch.full((1, 2), 0.5), torch.randn(1, 4, 2), torch.ones(1, 2), deviation_clip=0.0)
+        with self.assertRaises(ValueError):
+            NanoTabPFNContinuousPosteriorModel(tiny_backbone(40), latent_dim=8, deviation_clip=-1.0)
+
+
 class MeanPreservingProjectionTests(unittest.TestCase):
     def test_projection_preserves_weights_and_mean(self):
         base = torch.tensor([[0.02, 0.5, 0.97]])
@@ -381,6 +448,44 @@ class LossTests(unittest.TestCase):
         ):
             self.assertIn(key, metrics)
             self.assertTrue(math.isfinite(metrics[key]))
+
+    def test_moment_weight_is_neutral_at_one_and_scales_the_moment_terms(self):
+        model = tiny_continuous(43)
+        rng = np.random.default_rng(2)
+        episode = sample_episode(
+            rng, condition="ambiguous", batch_size=1, num_candidates=4, support_size=16, query_count=4,
+            noise=0.05, family="linear",
+        )
+        prediction = model(episode.support_x, episode.support_y, episode.query_x)
+        baseline, metrics, _targets = continuous_losses(
+            prediction, episode, ContinuousTrainingConfig(num_samples=8, batch_size=1)
+        )
+        neutral, _metrics, _targets = continuous_losses(
+            prediction, episode, ContinuousTrainingConfig(num_samples=8, batch_size=1, moment_weight=1.0)
+        )
+        torch.testing.assert_close(neutral, baseline, atol=0, rtol=0)
+        scaled, _metrics, _targets = continuous_losses(
+            prediction, episode, ContinuousTrainingConfig(num_samples=8, batch_size=1, moment_weight=4.0)
+        )
+        expected = baseline + 3.0 * (0.5 * metrics["mutual_information_loss"] + 0.5 * metrics["variance_loss"])
+        torch.testing.assert_close(scaled, expected, atol=1e-6, rtol=1e-5)
+
+    def test_dispersion_diagnostics_are_logged(self):
+        model = tiny_continuous(44)
+        rng = np.random.default_rng(3)
+        episode = sample_episode(
+            rng, condition="ambiguous", batch_size=1, num_candidates=4, support_size=16, query_count=4,
+            noise=0.05, family="linear",
+        )
+        prediction = model(episode.support_x, episode.support_y, episode.query_x)
+        _loss, metrics, _targets = continuous_losses(
+            prediction, episode, ContinuousTrainingConfig(num_samples=8, batch_size=1)
+        )
+        for key in ("dispersion_gate", "dispersion_bound", "deviation_shape_ratio"):
+            self.assertIn(key, metrics)
+            self.assertTrue(math.isfinite(metrics[key]))
+        self.assertTrue(0.0 <= metrics["dispersion_gate"] <= 1.0)
+        self.assertTrue(0.0 <= metrics["deviation_shape_ratio"] <= 1.0)
 
     def test_configuration_validation(self):
         validate_config(ContinuousTrainingConfig())
@@ -514,6 +619,50 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(checkpoint["step"], 100)
         self.assertIn("validation_metrics", checkpoint)
         self.assertIn("random_seeds", checkpoint)
+
+    def test_checkpoint_records_the_deviation_clip(self):
+        model = NanoTabPFNContinuousPosteriorModel(
+            tiny_backbone(41), latent_dim=8, num_samples=8, deviation_clip=2.0
+        ).eval()
+        episode = tiny_episode()
+        expected = model(*episode).sample_positive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "clipped.pth"
+            save_continuous_checkpoint(
+                path,
+                model,
+                training_config={},
+                source_checkpoint_path="checkpoints/nanotabpfn.pth",
+                source_checkpoint_sha256="3" * 64,
+                stage="continuous_adapters",
+            )
+            restored, checkpoint = load_continuous_checkpoint(path)
+        self.assertEqual(checkpoint["architecture"]["deviation_clip"], 2.0)
+        torch.testing.assert_close(restored(*episode).sample_positive, expected, atol=0, rtol=0)
+
+    def test_checkpoint_without_a_clip_reloads_onto_the_legacy_path(self):
+        legacy = NanoTabPFNContinuousPosteriorModel(
+            tiny_backbone(42), latent_dim=8, num_samples=8, deviation_clip=None
+        ).eval()
+        episode = tiny_episode()
+        expected = legacy(*episode).sample_positive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.pth"
+            save_continuous_checkpoint(
+                path,
+                legacy,
+                training_config={},
+                source_checkpoint_path="checkpoints/nanotabpfn.pth",
+                source_checkpoint_sha256="4" * 64,
+                stage="continuous_adapters",
+            )
+            # Checkpoints written before the clip existed omit the key entirely.
+            checkpoint = torch.load(path, weights_only=False)
+            del checkpoint["architecture"]["deviation_clip"]
+            torch.save(checkpoint, path)
+            restored, _checkpoint = load_continuous_checkpoint(path)
+        self.assertIsNone(restored.deviation_clip)
+        torch.testing.assert_close(restored(*episode).sample_positive, expected, atol=0, rtol=0)
 
     def test_beta_round_trip(self):
         model = NanoTabPFNBetaConcentrationModel(tiny_backbone(19), num_samples=8, inference_seed=2).eval()
@@ -829,28 +978,37 @@ class TabArenaEvaluationTests(unittest.TestCase):
 class SweepTests(unittest.TestCase):
     def test_screening_grid_sizes(self):
         configurations = screening_configurations()
-        self.assertEqual(len(configurations), 34)
+        self.assertEqual(len(configurations), 68)
         counts: dict[str, int] = {}
         for configuration in configurations:
             counts[configuration["architecture"]] = counts.get(configuration["architecture"], 0) + 1
-        self.assertEqual(counts["adapter_continuous"], 18)
-        self.assertEqual(counts["frozen_continuous"], 6)
-        self.assertEqual(counts["full_continuous"], 4)
-        self.assertEqual(counts["beta_adapter"], 6)
-        self.assertEqual(len({configuration_label(item) for item in configurations}), 34)
+        self.assertEqual(counts["adapter_continuous"], 36)
+        self.assertEqual(counts["frozen_continuous"], 12)
+        self.assertEqual(counts["full_continuous"], 8)
+        self.assertEqual(counts["beta_adapter"], 12)
+        self.assertEqual(len({configuration_label(item) for item in configurations}), 68)
         self.assertTrue(all(item["num_samples"] == 32 for item in configurations))
+        # Every architecture is screened at both moment weights so that the
+        # adapter-versus-frozen and adapter-versus-Beta gates stay like for like.
+        for architecture in ("adapter_continuous", "frozen_continuous", "full_continuous", "beta_adapter"):
+            weights = {
+                item["moment_weight"] for item in configurations if item["architecture"] == architecture
+            }
+            self.assertEqual(weights, {1.0, 4.0})
 
     def test_flags_encode_the_screening_and_final_budgets(self):
         screening = configuration_flags(0)
         self.assertIn("--max-steps 1500", screening)
         self.assertIn("--patience 8", screening)
         self.assertIn("--validation-interval 100", screening)
+        self.assertIn("--moment-weight 1", screening)
         final = configuration_flags(0, final=True, seed=2403)
         self.assertIn("--max-steps 5000", final)
         self.assertIn("--patience 10", final)
         self.assertIn("--seed 2403", final)
+        self.assertIn("--moment-weight 4", configuration_flags(1))
         with self.assertRaises(IndexError):
-            configuration_flags(34)
+            configuration_flags(68)
 
     def test_summarize_selects_two_configurations_per_architecture(self):
         with tempfile.TemporaryDirectory() as directory:

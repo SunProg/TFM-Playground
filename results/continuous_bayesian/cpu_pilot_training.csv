@@ -1,5 +1,6 @@
-arm,model_type,uncertainty_mode,adapter_bottleneck,latent_dim,learning_rate,seed,max_steps,best_step,validation_selection_loss,validation_energy_distance,validation_joint_query_loss,validation_mean_preservation_error,mean_backbone_unchanged
-adapter_continuous,continuous,adapters,32,32,0.0003,2402,400,300,0.06508,0.046126,2.134714,3.771856427192688e-08,True
-frozen_continuous,continuous,frozen,32,32,0.0003,2402,400,250,0.065455,0.046957,2.135642,5.21540641784668e-08,True
-beta_adapter,beta,adapters,32,32,0.0003,2402,400,250,0.070318,0.051159,2.136549,0.01676283311098814,True
-full_continuous,continuous,full,32,32,3e-05,2402,400,350,0.062941,0.044783,2.136623,4.470348358154297e-08,True
+arm,model_type,uncertainty_mode,adapter_bottleneck,latent_dim,learning_rate,moment_weight,max_support_size,seed,max_steps,best_step,validation_selection_loss,validation_predicted_mutual_information,validation_teacher_mutual_information,validation_deviation_shape_ratio,validation_dispersion_gate,validation_mean_preservation_error,mean_backbone_unchanged
+adapter_continuous,continuous,adapters,32,32,0.0003,1.0,128,2402,400,400,0.066287,0.00149,0.029714,0.618887,0.176128,4.237517714500427e-08,True
+adapter_moment4,continuous,adapters,32,32,0.0003,4.0,128,2402,400,100,0.069293,0.004291,0.029714,0.625066,0.298616,4.470348358154297e-08,True
+frozen_continuous,continuous,frozen,32,32,0.0003,1.0,128,2402,400,300,0.066671,0.001884,0.029714,0.682853,0.161268,4.284083843231201e-08,True
+beta_adapter,beta,adapters,32,32,0.0003,1.0,128,2402,400,250,0.070318,0.011893,0.029714,0.379097,0.0,0.01676283311098814,True
+full_continuous,continuous,full,32,32,3e-05,1.0,128,2402,400,300,0.064756,0.003799,0.029714,0.601308,0.32012,5.3085386753082275e-08,True

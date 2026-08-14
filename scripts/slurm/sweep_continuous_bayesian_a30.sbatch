@@ -7,15 +7,16 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=08:00:00
-#SBATCH --array=0-33%8
+#SBATCH --array=0-67%8
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
 # Screening sweep for slot-free continuous Bayesian uncertainty.
 #
-# 34 configurations: 18 adapter-continuous, 6 frozen-continuous, 4 fully
-# trainable uncertainty copies, and 6 Beta-adapter ablations.  The array runs
-# eight tasks concurrently; do not lower that limit.
+# 68 configurations: an architecture grid of 18 adapter-continuous, 6
+# frozen-continuous, 4 fully trainable uncertainty copies, and 6 Beta-adapter
+# ablations, each run at both moment-loss weights.  The array runs eight tasks
+# concurrently; do not lower that limit.
 
 set -euo pipefail
 

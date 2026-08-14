@@ -90,6 +90,10 @@ class ContinuousTrainingConfig:
     covariance_weight: float = 0.25
     joint_weight: float = 1.0
     monotonicity_weight: float = 0.25
+    #: Multiplies the mutual-information and variance weights only.  The moment
+    #: terms are numerically much smaller than the joint query loss, so this is
+    #: swept rather than asserted; 1.0 reproduces the declared weights exactly.
+    moment_weight: float = 1.0
     # Validation
     validation_episodes: int = 12
     validation_support_size: int = 128
@@ -217,10 +221,12 @@ def continuous_losses(
     teacher_entropy = -(targets.joint * targets.joint.clamp_min(1e-12).log()).sum(dim=-1).mean()
     joint_kl = (joint_loss - teacher_entropy).clamp_min(0.0)
 
+    mutual_information_weight = config.moment_weight * config.mutual_information_weight
+    variance_weight = config.moment_weight * config.variance_weight
     total = (
         config.energy_weight * energy
-        + config.mutual_information_weight * mi_loss
-        + config.variance_weight * variance_loss
+        + mutual_information_weight * mi_loss
+        + variance_weight * variance_loss
         + config.covariance_weight * covariance_loss
         + config.joint_weight * joint_loss
     )
@@ -236,6 +242,11 @@ def continuous_losses(
         "expected_conditional_entropy": float(prediction.expected_conditional_entropy().mean().detach()),
         "teacher_safe_scale": float(targets.safe_scale.mean().detach()),
         "mean_preservation_error": float(prediction.mean_preservation_error().max().detach()),
+        # Dispersion diagnostics: a healthy gate with a low shape ratio means
+        # the samples are spiky and the safe bound is throttling the bulk.
+        "dispersion_gate": float(prediction.dispersion_gate.mean().detach()),
+        "dispersion_bound": float(prediction.dispersion_bound.mean().detach()),
+        "deviation_shape_ratio": float(prediction.deviation_shape_ratio().mean().detach()),
         # The selection loss excludes the teacher's own joint entropy, which
         # depends on the episode's candidate count rather than on model quality.
         "selection_loss": float(
@@ -582,6 +593,7 @@ def build_parser() -> argparse.ArgumentParser:
         "covariance_weight",
         "joint_weight",
         "monotonicity_weight",
+        "moment_weight",
     )
     for name in float_fields:
         parser.add_argument(f"--{name.replace('_', '-')}", type=float, default=getattr(defaults, name))

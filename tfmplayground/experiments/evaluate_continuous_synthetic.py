@@ -160,6 +160,12 @@ def episode_metrics(model, episode: ContinuousEpisode, config: SyntheticEvaluati
         "expected_conditional_entropy": float(prediction.expected_conditional_entropy().mean()),
         "teacher_mutual_information": float(targets.mutual_information.mean()),
         "teacher_safe_scale": float(targets.safe_scale.mean()),
+        # Dispersion diagnostics, reported per condition so that a healthy gate
+        # with a throttled shape is distinguishable from a collapsed gate.
+        "dispersion_gate": float(prediction.dispersion_gate.mean()),
+        "dispersion_bound": float(prediction.dispersion_bound.mean()),
+        "deviation_shape_ratio": float(prediction.deviation_shape_ratio().mean()),
+        "max_deviation": float((prediction.sample_positive - base_positive[:, None, :]).abs().amax()),
     }
 
 

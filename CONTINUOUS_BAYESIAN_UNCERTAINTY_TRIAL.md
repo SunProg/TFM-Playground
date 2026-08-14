@@ -12,11 +12,15 @@ documented negative benchmark. That trial's slot model, checkpoints, and checkpo
 - Training data: synthetic structured episodes only
 - TabArena: evaluation only; no TabArena labels or tasks are used for training or for selecting `lambda`
 - Implemented and verified: model, episode generator, objective, sweep grid, synthetic evaluation, TabArena
-  evaluation harness, CPU pilot training of all four learned arms (400 steps each) and a held-out-family
-  synthetic evaluation of all five arms
+  evaluation harness, two rounds of CPU pilot training and held-out-family synthetic evaluation
+- Fixed after the first pilot: a dispersion-throttling defect in the safe-scale computation (see
+  "Dispersion throttling" below). The first pilot's near-zero mutual information was misattributed to
+  under-training in the first version of this report.
 - **Not yet run: the CREATE Slurm screening sweep, the three-seed final training, and the TabArena
-  evaluation.** Those sections below state the exact submission commands and are explicitly marked as
-  pending rather than filled with numbers.
+  evaluation.** The sweep is deliberately *not* submitted: the second pilot shows the learned dispersion
+  gate is near-constant across conditions at three very different capacity budgets, which the sweep's
+  bottleneck / latent-dimension / learning-rate axes cannot address. Those sections state the exact
+  submission commands and are marked pending rather than filled with numbers.
 
 ## Architecture
 
@@ -69,11 +73,23 @@ count only. Effective sample size is deliberately **not** reported for equal-wei
 ### Exact mean preservation
 
 ```text
-d_qs      = r_qs - average_over_samples(r_qs)
+c_qs      = r_qs - average_over_samples(r_qs)
+u_qs      = c_qs / median_over_samples(|c_qs|)
+v_qs      = deviation_clip * tanh(u_qs / deviation_clip)
+d_qs      = v_qs - average_over_samples(v_qs)
 b_q       = largest scale with mu_q + b_q * d_qs inside (0, 1) for every s
 a_q       = g_q * b_q
 p_qs      = mu_q + a_q * d_qs
 ```
+
+The standardize-and-soft-clip step exists because `b_q` is set by the *largest* deviation: without it a
+single outlier sample consumes the whole probability headroom and throttles the other samples. See
+"Dispersion throttling" below. The scale is the median absolute deviation rather than the RMS on purpose,
+since an outlier inflates the RMS and would leave the bulk in the linear part of `tanh`. `tanh` is
+monotone, so the ordering — and therefore the direction and relative structure of the disagreement — is
+preserved, and re-centring afterwards keeps the sample mean exactly zero. `deviation_clip = None` selects
+the original un-clipped behaviour and is retained so that checkpoints written before the fix reload
+exactly.
 
 Because `d_qs` sums to zero over samples and `a_q` does not depend on `s`,
 `average_over_samples(p_qs) = mu_q` up to floating point. Observed maximum error in every test and pilot
@@ -220,12 +236,20 @@ Partition `biomed_a30_gpu`, one A30 per task, `--array=0-33%8` (eight concurrent
 below eight). The trainer asserts `torch.cuda.is_available()` under `--require-cuda` and logs GPU name,
 CUDA version, hostname, Slurm job id, and array index to `environment.json`.
 
-| Architecture | Grid | Configurations |
-|---|---|---:|
-| adapter continuous | bottleneck {16, 32, 64} x latent {16, 32, 64} x lr {1e-4, 3e-4} | 18 |
-| frozen continuous | latent {16, 32, 64} x lr {1e-4, 3e-4} | 6 |
-| full uncertainty copy | latent {32, 64} x lr {1e-5, 3e-5} | 4 |
-| Beta adapter | bottleneck {16, 32, 64} x lr {1e-4, 3e-4} | 6 |
+| Architecture | Grid | Base | With moment weight |
+|---|---|---:|---:|
+| adapter continuous | bottleneck {16, 32, 64} x latent {16, 32, 64} x lr {1e-4, 3e-4} | 18 | 36 |
+| frozen continuous | latent {16, 32, 64} x lr {1e-4, 3e-4} | 6 | 12 |
+| full uncertainty copy | latent {32, 64} x lr {1e-5, 3e-5} | 4 | 8 |
+| Beta adapter | bottleneck {16, 32, 64} x lr {1e-4, 3e-4} | 6 | 12 |
+| **Total** | | **34** | **68** |
+
+Every base configuration is screened at moment weight 1 and 4. The moment weight multiplies the
+mutual-information and variance loss weights only; weight 1 reproduces the declared weights exactly. It is
+swept rather than asserted because those terms are numerically swamped by the joint query loss (~2.1
+against ~0.03 and ~0.005 at the declared weights), and it is applied to all four architectures so that the
+adapter-versus-frozen and adapter-versus-Beta gates stay like for like. At roughly 1.5 h per screening run
+with eight concurrent tasks, the grid is about 13 h of wall clock.
 
 Training posterior samples are 32 everywhere. Screening runs at most 1,500 steps with validation every 100
 steps, patience 8, `min_delta = 1e-4`. The two best configurations per architecture, ranked by held-out-
@@ -250,6 +274,10 @@ It is **not** the CREATE sweep: one configuration per architecture, 400 steps, b
 gradient accumulation micro-steps, validation every 50 steps on 8 held-out-family episodes. Treat it as a
 smoke-scale signal about plumbing and gross behaviour, not as evidence about final model quality.
 
+The numbers below are from the **second** pilot, run after the dispersion-throttling fix described in the
+next section. A `moment_weight = 4` variant of the adapter arm is included because the moment terms are
+numerically swamped by the joint query loss.
+
 Configuration for all arms: adapter bottleneck 32, latent dimension 32, `S = 32`, `max_support_size = 128`
 (a compute cap; the CREATE sweep uses the full 32–512 range), seed 2402. Learning rate 3e-4 for the head
 and adapter arms and 3e-5 for the fully trainable copy. Artifacts:
@@ -258,60 +286,80 @@ and adapter arms and 3e-5 for the fully trainable copy. Artifacts:
 
 ### Training
 
-| Arm | Best step | Validation selection loss (lower) | Validation energy distance (lower) | Mean-preservation error |
-|---|---:|---:|---:|---:|
-| adapter continuous | 300 | 0.065080 | 0.046126 | 3.8e-08 |
-| frozen continuous | 250 | 0.065455 | 0.046957 | 5.2e-08 |
-| full copy continuous | 350 | 0.062941 | 0.044783 | 4.5e-08 |
-| Beta adapter | 250 | 0.070318 | 0.051159 | 1.7e-02 (Monte-Carlo; see the Beta note) |
+| Arm | Best step | Validation selection loss (lower) | Predicted MI | Teacher MI | Shape ratio | Gate | Mean-preservation error |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| adapter continuous | 400 | 0.066290 | 0.0015 | 0.0297 | 0.619 | 0.176 | 4.2e-08 |
+| adapter continuous, moment weight 4 | 100 | 0.069290 | 0.0043 | 0.0297 | 0.625 | 0.299 | 4.5e-08 |
+| frozen continuous | 300 | 0.066670 | 0.0019 | 0.0297 | 0.683 | 0.161 | 4.3e-08 |
+| full copy continuous | 300 | 0.064760 | 0.0038 | 0.0297 | 0.601 | 0.320 | 5.3e-08 |
+| Beta adapter | 250 | 0.070320 | 0.0119 | 0.0297 | 0.379 | n/a | 1.7e-02 (Monte-Carlo) |
 
-The frozen mean backbone was bit-identical before and after training in every run.
+The frozen mean backbone was bit-identical before and after training in every run. The Beta arm has no
+dispersion gate, so its gate column is not applicable.
 
 ### Held-out-family synthetic metrics
 
 Averaged over the ambiguous, identifiable, and noisy conditions on held-out families and held-out parameter
 ranges, 6 episodes per condition, support 128, `M = 6`.
 
-| Metric | Direction | Context resampling | Beta | Frozen continuous | Adapter continuous | Full copy |
-|---|:---:|---:|---:|---:|---:|---:|
-| Energy distance | lower | 0.086013 | 0.065454 | 0.062642 | **0.060794** | 0.062409 |
-| Mutual-information MAE (projected) | lower | 0.088549 | 0.058270 | 0.057820 | **0.057735** | 0.059085 |
-| Mutual-information MAE (exact) | lower | 0.154162 | 0.123258 | 0.122808 | **0.122723** | 0.124073 |
-| Epistemic-variance MAE (projected) | lower | 0.031030 | 0.019529 | 0.019035 | **0.018964** | 0.019601 |
-| Covariance error | lower | 0.013256 | **0.007913** | 0.009080 | 0.008860 | 0.009830 |
-| Joint query-vector NLL | lower | 6.331922 | **5.988700** | 6.075784 | 6.070929 | 6.061705 |
-| Posterior sample coverage | higher | **0.694444** | 0.666667 | 0.666667 | 0.666667 | 0.666667 |
-| Candidate-mass total variation | lower | 0.336806 | **0.307292** | 0.409722 | 0.409722 | 0.407986 |
-| Deployed probability difference | lower | **0.000000** | **0.000000** | **0.000000** | **0.000000** | **0.000000** |
-| Sample mean-preservation error | lower | 4.3e-08 | 1.9e-02 | 4.5e-08 | 4.7e-08 | 4.2e-08 |
+| Metric | Direction | Context resampling | Beta | Frozen | Adapter | Adapter, moment 4 | Full copy |
+|---|:---:|---:|---:|---:|---:|---:|---:|
+| Energy distance | lower | 0.086013 | 0.065454 | **0.063045** | 0.063213 | 0.068440 | 0.064186 |
+| Mutual-information MAE (projected) | lower | 0.088549 | 0.058270 | **0.055566** | 0.055732 | 0.058132 | 0.057025 |
+| Mutual-information MAE (exact) | lower | 0.154162 | 0.123258 | **0.120554** | 0.120719 | 0.123120 | 0.122012 |
+| Epistemic-variance MAE (projected) | lower | 0.031030 | 0.019529 | **0.018048** | 0.018114 | 0.019140 | 0.018709 |
+| Covariance error | lower | 0.013256 | 0.007913 | **0.007771** | 0.007847 | 0.009179 | 0.008643 |
+| Joint query-vector NLL | lower | 6.331922 | **5.988700** | 6.075528 | 6.074077 | 6.071064 | 6.068452 |
+| Posterior sample coverage | higher | **0.694444** | 0.666667 | 0.666667 | 0.666667 | 0.666667 | 0.666667 |
+| Candidate-mass total variation | lower | 0.336806 | **0.307292** | 0.402778 | 0.406250 | 0.411458 | 0.401042 |
+| Deviation shape ratio | higher | 0.448050 | 0.419023 | **0.682041** | 0.619329 | 0.624695 | 0.597662 |
+| Dispersion gate | n/a | 1.000000 | n/a | 0.166178 | 0.183961 | 0.319035 | 0.295989 |
+| Deployed probability difference | lower | **0.000000** | **0.000000** | **0.000000** | **0.000000** | **0.000000** | **0.000000** |
+| Sample mean-preservation error | lower | 0.000000 | 0.018942 | 0.000000 | 0.000000 | 0.000000 | 0.000000 |
 
 Teacher mutual information on the same episodes is 0.054703 and the teacher safe scale is 0.778606.
 
+### The gate does not vary with the condition
+
+This is the central result of the pilot. Per condition, for each learned arm:
+
+| Arm | Gate: ambiguous / identifiable / noisy | MI: ambiguous / identifiable / noisy | Teacher MI: ambiguous / identifiable / noisy |
+|---|---|---|---|
+| adapter continuous | 0.186 / 0.188 / 0.179 | 0.0024 / 0.0034 / 0.0021 | 0.1641 / 0.0000 / 0.0000 |
+| frozen continuous | 0.174 / 0.157 / 0.168 | 0.0024 / 0.0027 / 0.0023 | 0.1641 / 0.0000 / 0.0000 |
+| full copy | 0.309 / 0.288 / 0.291 | 0.0050 / 0.0067 / 0.0052 | 0.1641 / 0.0000 / 0.0000 |
+| adapter, moment 4 | 0.304 / 0.333 / 0.321 | 0.0061 / 0.0092 / 0.0072 | 0.1641 / 0.0000 / 0.0000 |
+| context resampling | 1.000 (fixed) | 0.0730 / 0.0873 / 0.0785 | 0.1641 / 0.0000 / 0.0000 |
+
+The gate is flat to within a few percent across conditions whose true epistemic content differs by 0.164
+nats, and predicted MI is consistently *higher* on identifiable episodes (target 0) than on ambiguous ones
+(target 0.164). Every arm is inverted, including the non-learned baseline.
+
 ### Uncertainty as support evidence increases (mean MI, ambiguous episodes, `eta = 0.05`)
 
-| Support size | Context resampling | Beta | Frozen | Adapter | Full copy |
-|---:|---:|---:|---:|---:|---:|
-| 32 | 0.0509 | 0.0123 | 0.0257 | 0.0114 | 0.0188 |
-| 64 | 0.0508 | 0.0103 | 0.0188 | 0.0062 | 0.0153 |
-| 128 | 0.0701 | 0.0175 | 0.0042 | 0.0034 | 0.0073 |
-| 256 | 0.0502 | 0.0114 | 0.0055 | 0.0044 | 0.0088 |
-| 512 | 0.0236 | 0.0088 | 0.0031 | 0.0027 | 0.0065 |
+| Support size | Context resampling | Beta | Frozen | Adapter | Adapter, moment 4 | Full copy |
+|---:|---:|---:|---:|---:|---:|---:|
+| 32 | 0.0509 | 0.0123 | 0.0089 | 0.0035 | 0.0086 | 0.0063 |
+| 64 | 0.0508 | 0.0103 | 0.0121 | 0.0044 | 0.0091 | 0.0068 |
+| 128 | 0.0701 | 0.0175 | 0.0010 | 0.0015 | 0.0047 | 0.0040 |
+| 256 | 0.0502 | 0.0114 | 0.0017 | 0.0020 | 0.0064 | 0.0049 |
+| 512 | 0.0236 | 0.0088 | 0.0009 | 0.0014 | 0.0040 | 0.0039 |
 
-Every learned arm reduces mutual information as support evidence grows. The non-learned context-resampling
-baseline does not.
+Every learned arm still reduces mutual information as support evidence grows; the non-learned baseline does
+not. With MI at this magnitude, though, the trend is close to the noise floor.
 
 ### Label noise (candidates agree; all epistemic uncertainty should be zero)
 
-| `eta` | Adapter: expected conditional entropy | Adapter: MI | Beta: entropy | Beta: MI | Full copy: entropy | Full copy: MI |
+| `eta` | Adapter: conditional entropy | Adapter: MI | Full copy: entropy | Full copy: MI | Beta: entropy | Beta: MI |
 |---:|---:|---:|---:|---:|---:|---:|
-| 0.00 | 0.3549 | 0.0049 | 0.3465 | 0.0137 | 0.3536 | 0.0062 |
-| 0.05 | 0.3784 | 0.0052 | 0.3729 | 0.0123 | 0.3768 | 0.0068 |
-| 0.10 | 0.4543 | 0.0045 | 0.4459 | 0.0150 | 0.4518 | 0.0070 |
-| 0.20 | 0.5902 | 0.0081 | 0.5852 | 0.0137 | 0.5861 | 0.0122 |
-| 0.35 | 0.5687 | 0.0076 | 0.5636 | 0.0139 | 0.5650 | 0.0113 |
+| 0.00 | 0.3576 | 0.0022 | 0.3559 | 0.0039 | 0.3465 | 0.0137 |
+| 0.05 | 0.3815 | 0.0022 | 0.3790 | 0.0046 | 0.3729 | 0.0123 |
+| 0.10 | 0.4572 | 0.0016 | 0.4542 | 0.0047 | 0.4459 | 0.0150 |
+| 0.20 | 0.5955 | 0.0027 | 0.5914 | 0.0068 | 0.5852 | 0.0137 |
+| 0.35 | 0.5737 | 0.0026 | 0.5696 | 0.0067 | 0.5636 | 0.0139 |
 
-Expected conditional entropy rises with structured noise while epistemic mutual information stays flat, for
-every learned arm.
+Expected conditional entropy rises by about 0.24 nats from `eta = 0` to `eta = 0.20` while epistemic mutual
+information stays flat, for every learned arm.
 
 ### Random-label diagnostic (never a training batch)
 
@@ -319,9 +367,10 @@ every learned arm.
 |---|---:|---:|
 | Context resampling | 0.4878 | 0.1274 |
 | Beta | 0.6041 | 0.0112 |
-| Frozen continuous | 0.6081 | 0.0071 |
-| Adapter continuous | 0.6062 | 0.0090 |
-| Full copy | 0.6001 | 0.0151 |
+| Frozen continuous | 0.6129 | 0.0023 |
+| Adapter continuous | 0.6120 | 0.0033 |
+| Adapter, moment 4 | 0.6052 | 0.0101 |
+| Full copy | 0.6084 | 0.0068 |
 
 The learned arms separate aleatoric from epistemic uncertainty here; context resampling does not, because
 subsampling a pure-noise context changes the prediction and that variation is scored as disagreement.
@@ -330,13 +379,59 @@ subsampling a pure-noise context changes the prediction and that variation is sc
 
 | Gate | Value | Pilot verdict |
 |---|---|---|
-| 2 representation benefit | MI gain 0.15%, variance gain 0.37%, joint NLL change +0.08% | **Fail** (needs `>= 10%`) |
-| 3 continuous-posterior benefit over Beta | improves energy distance (+7.1%), MI error (+0.9%), variance error (+2.9%); worse covariance (-12.0%) and joint NLL (-1.4%) | **Pass** (3 of 5) |
-| 4 evidence behaviour | paired MI drop: frozen +0.0045, adapter -0.0016, full -0.0041, Beta -0.0026 | **Fail** for the adapter arm on paired episodes, though MI does fall monotonically with support size |
+| 2 representation benefit | adapter versus frozen: MI -0.30%, variance -0.37%, joint NLL +0.02% | **Fail** (needs `>= 10%`) |
+| 3 continuous-posterior benefit over Beta | improves energy distance (+3.4%), MI error (+4.4%), variance error (+7.2%), covariance (+0.8%); worse joint NLL (-1.4%) | **Pass** (4 of 5) |
+| 4 evidence behaviour | paired MI drop: frozen +0.0024, adapter +0.0002, full -0.0026, moment 4 -0.0026 | **Inconclusive**: at the noise floor because MI itself is ~0.003 |
 | 5 aleatoric/epistemic separation | see the label-noise table | **Pass** |
 
-`select_risk_lambda` chose `lambda = 0` for the adapter arm, 0.5 for frozen, and 4 for Beta and the full
-copy at this scale, which is itself a sign that the pilot MI signal is too weak to be worth much weight.
+The go/no-go declared before this pilot was that the sweep should be submitted only if ambiguous-episode MI
+reached ~0.05 *and* exceeded MI on identifiable and noisy episodes. **Neither condition holds**, so the
+CREATE sweep has not been submitted.
+
+## Dispersion throttling: a construction defect found after the first pilot
+
+The first pilot (400 steps, committed in `d0b1f88`) reported mutual information near zero for every learned
+arm, and the first version of this report attributed that to under-training. **That reading was wrong.** A
+per-condition diagnostic over the pilot checkpoints showed:
+
+| Arm | Condition | Gate `g_q` | Max deviation | MI | Teacher MI |
+|---|---|---:|---:|---:|---:|
+| adapter | ambiguous | 0.438 | 0.209 | 0.0049 | 0.1775 |
+| adapter | identifiable | 0.454 | 0.206 | 0.0062 | 0.0000 |
+| adapter | noisy | 0.488 | 0.187 | 0.0060 | 0.0000 |
+| frozen | ambiguous | 0.379 | 0.173 | 0.0063 | 0.1775 |
+| full copy | ambiguous | 0.544 | 0.229 | 0.0091 | 0.1775 |
+
+The gate was healthy (~0.44, near its 0.5 initialization) and the maximum deviation was large (~0.21), yet
+MI of 0.005 implies a *typical* deviation of only ~0.05. The cause was `safe_dispersion_bound`: it derives
+`b_q` from the maximum extent across samples, so one outlier sample consumed the whole headroom and
+throttled the other 31. Dispersion was structurally under-delivered no matter how well the gate trained.
+
+This mattered beyond the pilot. Gates 2 and 4 were untestable, because every arm carried the same throttle:
+the sweep would have spent GPU time comparing hobbled models, and a null result would have been
+uninterpretable.
+
+The fix is the standardize-and-soft-clip step documented above. Measured on synthetic deviation shapes at
+`mu = 0.5` with an open gate:
+
+| Deviation shape | RMS/max, legacy | RMS/max, clipped | MI, legacy | MI, clipped |
+|---|---:|---:|---:|---:|
+| Heavy-tailed (one outlier) | 0.183 | 0.357 | 0.0228 | 0.0730 |
+| Gaussian | 0.404 | 0.629 | 0.0929 | 0.2337 |
+| Well-separated bimodal | 0.914 | 0.935 | 0.5197 | 0.5539 |
+
+The clip roughly doubles the usable headroom for spiky shapes and leaves genuine multimodality essentially
+untouched, which is the intended behaviour: only outliers are compressed. Mean preservation stays exact in
+every case.
+
+`deviation_shape_ratio` (deviation RMS divided by its maximum) is now reported per condition by both the
+trainer and the synthetic evaluation, so a throttled shape is distinguishable from a collapsed gate without
+writing an ad-hoc diagnostic again.
+
+The second observation from the same diagnostic is *not* fixed by this change and remains the open
+question: MI was higher on identifiable and noisy episodes (target 0) than on ambiguous ones (target
+0.178), which is the slot trial's failure signature. That is a condition-discrimination problem, and it is
+what the sweep exists to answer.
 
 ## TabArena evaluation (pending)
 
@@ -369,10 +464,10 @@ Results: **pending — the TabArena evaluation has not been run.**
 | # | Gate | Status |
 |---:|---|---|
 | 1 | Exact mean preservation, max difference `<= 1e-6` | **Pass** — deployed difference is exactly `0.0`; sample-mean error `<= 6e-8` for the continuous arms |
-| 2 | Adapters beat the frozen encoder by `>= 10%` relative on MI or variance error, joint NLL not worse by more than 2% | **Fail in the CPU pilot** (0.15% / 0.37%); decide from the CREATE sweep |
-| 3 | Adapter continuous improves at least two of five metrics over the Beta ablation | **Pass in the CPU pilot** (3 of 5); confirm on the CREATE sweep |
-| 4 | Mutual information decreases as identifying support evidence is added | **Partial**: monotone in support size for every learned arm; the paired-prefix test is at the noise floor |
-| 5 | Structured label noise raises expected conditional entropy without materially raising epistemic MI | **Pass in the CPU pilot** for every learned arm |
+| 2 | Adapters beat the frozen encoder by `>= 10%` relative on MI or variance error, joint NLL not worse by more than 2% | **Fail in the CPU pilot** (-0.30% / -0.37%), and the fully trainable copy behaves the same, so this is not a capacity limit |
+| 3 | Adapter continuous improves at least two of five metrics over the Beta ablation | **Pass in the CPU pilot** (4 of 5) |
+| 4 | Mutual information decreases as identifying support evidence is added | **Inconclusive**: monotone in support size for every learned arm, but the paired-prefix test is at the noise floor while MI is ~0.003 |
+| 5 | Structured label noise raises expected conditional entropy without materially raising epistemic MI | **Pass in the CPU pilot** for every learned arm, but trivially so while the epistemic output is near-constant |
 | 6 | TabArena usefulness: no AUROC drop `> 0.01`, no AURC rise `> 0.005`, and at least one improvement at those margins | Pending — the evaluation has not been run |
 | 7 | Reliability: support permutation invariance, query permutation equivariance, finite gradients, deterministic checkpoint reload, CPU smoke tests, CUDA training test, no query-label leakage | **Pass on CPU**; the CUDA training test is present and skips without a GPU |
 
@@ -401,43 +496,63 @@ What the pilot already settles:
   the prediction, so this trial cannot repeat the slot trial's ambiguity about whether uncertainty helped
   or hurt accuracy: predictive metrics are identical to vanilla by construction.
 - **Aleatoric and epistemic uncertainty separate correctly.** Structured label noise raises expected
-  conditional entropy by roughly 0.22 nats from `eta = 0` to `eta = 0.20` while leaving mutual information
-  flat, and random labels give high conditional entropy with near-zero mutual information.
+  conditional entropy by roughly 0.24 nats from `eta = 0` to `eta = 0.20` while leaving mutual information
+  flat, and random labels give high conditional entropy with near-zero mutual information. This gate is
+  passed for a weak reason, though: a model whose epistemic output is near-constant passes it trivially.
 - **The non-learned baseline is a genuinely different failure mode.** Context resampling produces the
   largest mutual information of any arm, but it is not epistemic: it is highest on pure-noise labels
   (0.1274) and it does not decrease as support evidence grows. Subsampling variance is being read as
   hypothesis disagreement. This is a useful control precisely because it fails in a legible way.
 
-What the pilot does not settle, and why:
+What the second pilot newly settles, and what it rules out:
 
-- **Gate 2 fails at pilot scale, but the pilot cannot distinguish "adapters do not help" from "adapters
-  have not moved yet".** Adapters are zero-initialized, so the adapter arm *starts* exactly equal to the
-  frozen arm; 400 steps at 3e-4 with a capped support range moves them by a fraction of a percent on every
-  metric. The full trainable copy is likewise within a percent of frozen. The screening sweep (up to 1,500
-  steps) and the three-seed final training (up to 5,000 steps) exist to answer this question, and gate 2
-  should be read only from those runs.
-- **All learned arms currently *under*-predict epistemic uncertainty.** Mean predicted MI is 0.006–0.012
-  against a projected-teacher value of 0.055, and the ambiguous-episode MI never clears the 0.01 threshold
-  in `qualitative_gates`. The direction of this failure — MI collapsing toward zero — is the same direction
-  the slot trial failed in, and it is the single most important thing to watch in the full sweep. If MI
-  stays collapsed at 5,000 steps across bottlenecks, latent dimensions, and learning rates, the limitation
-  is the objective or the training distribution, not the encoder capacity.
-- **Gate 4 is ambiguous at pilot scale.** Mutual information falls monotonically with support size for
-  every learned arm, which is the behaviour the gate is meant to capture, but the paired support-prefix
-  test — the sharper version, holding queries and candidates fixed — is at the noise floor
-  (|drop| <= 0.005) for three of four arms. With MI itself around 0.006, a drop cannot be resolved. This
-  gate becomes meaningful only once the arms predict non-trivial MI.
+- **The dispersion parameterization is no longer the limitation.** The shape ratio went from ~0.18 to
+  0.60–0.68, so the typical posterior sample now gets most of the available probability headroom rather
+  than being throttled by one outlier. This removes what was previously a confound on every other
+  conclusion.
+- **With the throttle removed, training drove the gate down instead.** The gate fell from ~0.44 in the
+  first pilot to 0.16–0.32, and mean predicted MI is 0.002–0.007 against a projected-teacher value of
+  0.055. Fixing the parameterization did not raise MI; it relocated the collapse from the sample shape to
+  the learned gate.
+- **The gate is essentially constant across conditions.** This is the diagnostic that matters. For the
+  adapter arm the gate is 0.186 / 0.188 / 0.179 on ambiguous / identifiable / noisy episodes, whose true
+  epistemic content is 0.164 / 0.000 / 0.000 nats. The model is not modulating dispersion by ambiguity at
+  all; it emits one near-constant spread everywhere and picks a small value.
+- **A near-constant small gate is the loss-minimizing response to not being able to discriminate.** With
+  45% of training episodes (25% identifiable plus 20% noisy) having a teacher MI of exactly zero, and the
+  remainder having modest projected targets, a model that cannot tell the conditions apart minimizes both
+  the moment MSEs and the energy distance by predicting close to the average target, which is near zero.
+  Emitting spread in the *wrong* direction is scored worse than emitting none.
+- **Capacity is not the binding constraint.** The fully trainable uncertainty copy behaves like the frozen
+  encoder (gate 0.309 / 0.288 / 0.291, equally flat), and adapters versus frozen is now a -0.30% difference
+  on MI error. Three very different capacity budgets produce the same flat, condition-independent gate.
+- **Loss weighting is not the binding constraint either, though it is not neutral.** `moment_weight = 4`
+  raises the gate (0.30 versus 0.19) and MI (0.006 versus 0.002), which is the predicted direction, but the
+  gate stays just as flat across conditions (0.304 / 0.333 / 0.321). More weight scales the constant; it
+  does not make it responsive.
+- **Every arm, including the non-learned baseline, is inverted.** Predicted MI is consistently *higher* on
+  identifiable episodes (target 0) than on ambiguous ones (target 0.164). This is the slot trial's failure
+  signature reproduced in a slot-free model, which is evidence that the failure was never about slots.
+
+Reading of "freezing versus posterior capacity versus data": the evidence now points away from both
+freezing and posterior capacity, and at the **uncertainty signal available to the encoder**. The pathway
+from support to dispersion is a DeepSets summary `c_D` of the support target embeddings plus a per-query
+embedding; nothing in it explicitly measures *how much plausible functions consistent with this support
+disagree on this query*. An ambiguous and an identifiable episode drawn from the same family differ in
+exactly that quantity and can look very similar under a permutation-invariant mean/variance pooling of
+support embeddings. That is the hypothesis the next iteration should attack, and it is a different one
+from the hypothesis the sweep was designed to test.
+
+What is still open:
+
+- **The sweep has not been submitted**, per the pre-declared go/no-go. Running 68 GPU configurations to
+  vary bottleneck, latent dimension, and learning rate would not address a failure that is invariant to
+  capacity across three very different budgets.
+- **Gate 4 remains inconclusive.** MI falls with support size for every learned arm, but the sharper
+  paired-prefix test is at the noise floor while MI itself is ~0.003.
 - **TabArena is entirely open.** No TabArena number in this report exists yet, and gate 6 is the gate the
-  previous trial failed. The harness, the identical-context protocol, the seed repetition, and the
-  bootstrap intervals are implemented and unit-tested, but nothing should be concluded about transfer
-  until the evaluation is actually run against trained checkpoints.
-
-Provisional reading of "freezing versus posterior capacity versus data": at pilot scale, capacity is
-clearly *not* the binding constraint — frozen, adapter, and fully trainable arms are within a percent of
-each other while all three sit far below the teacher's mutual information. That pattern points at the
-training distribution or the uncertainty objective rather than at frozen pretrained representations. It is
-stated here as a hypothesis to test with the full sweep, not as a conclusion: 400 CPU steps is too little
-evidence to rule out that adapters simply had not yet departed from their zero initialization.
+  previous trial failed. The harness is implemented and unit-tested, but nothing should be concluded about
+  transfer until it is run against checkpoints that predict non-trivial MI — which none of these do.
 
 ## Reproduction
 

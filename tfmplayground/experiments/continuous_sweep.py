@@ -3,8 +3,11 @@
 The grid is defined here rather than in the Slurm script so that the array
 index to configuration mapping is testable and reproducible.
 
-Screening totals: 18 adapter-continuous, 6 frozen-continuous, 4 full-copy
-continuous, and 6 Beta-adapter configurations.
+Base totals: 18 adapter-continuous, 6 frozen-continuous, 4 full-copy
+continuous, and 6 Beta-adapter configurations.  Every base configuration is
+run at both moment weights, giving 68 screening tasks.  The moment weight is
+applied to all four architectures rather than only the primary one so that the
+adapter-versus-Beta and adapter-versus-frozen comparisons stay like for like.
 """
 
 from __future__ import annotations
@@ -20,6 +23,8 @@ HEAD_LEARNING_RATES = (1e-4, 3e-4)
 FULL_LATENT_DIMENSIONS = (32, 64)
 FULL_LEARNING_RATES = (1e-5, 3e-5)
 TRAINING_SAMPLES = 32
+#: Multiplier on the mutual-information and variance loss weights.
+MOMENT_WEIGHTS = (1.0, 4.0)
 
 SCREENING_STEPS = 1500
 SCREENING_VALIDATION_INTERVAL = 100
@@ -34,6 +39,15 @@ FINAL_SEEDS = (2402, 2403, 2404)
 
 def screening_configurations() -> list[dict[str, Any]]:
     """Every screened configuration in a fixed, documented order."""
+    return [
+        {**configuration, "moment_weight": moment_weight}
+        for configuration in _base_configurations()
+        for moment_weight in MOMENT_WEIGHTS
+    ]
+
+
+def _base_configurations() -> list[dict[str, Any]]:
+    """The architecture grid before the moment-weight axis is applied."""
     configurations: list[dict[str, Any]] = []
     for bottleneck in ADAPTER_BOTTLENECKS:
         for latent in LATENT_DIMENSIONS:
@@ -97,6 +111,7 @@ def configuration_label(configuration: dict[str, Any]) -> str:
         f"-b{configuration['adapter_bottleneck']}"
         f"-z{configuration['latent_dim']}"
         f"-lr{configuration['learning_rate']:g}"
+        f"-m{configuration['moment_weight']:g}"
     )
 
 
@@ -115,6 +130,7 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
         f"--latent-dim {configuration['latent_dim']}",
         f"--num-samples {configuration['num_samples']}",
         f"--learning-rate {configuration['learning_rate']:g}",
+        f"--moment-weight {configuration['moment_weight']:g}",
         f"--max-steps {steps}",
         f"--validation-interval {FINAL_VALIDATION_INTERVAL if final else SCREENING_VALIDATION_INTERVAL}",
         f"--patience {patience}",
@@ -144,6 +160,7 @@ def _read_run(directory: Path) -> dict[str, Any] | None:
         "adapter_bottleneck": configuration["adapter_bottleneck"],
         "latent_dim": configuration["latent_dim"],
         "learning_rate": configuration["learning_rate"],
+        "moment_weight": configuration.get("moment_weight", 1.0),
         "seed": configuration["seed"],
         "best_step": selection.get("best_step"),
         "validation_selection_loss": selection.get("best_validation_selection_loss"),
@@ -180,6 +197,7 @@ def sweep_csv(summary: dict[str, Any]) -> str:
         "adapter_bottleneck",
         "latent_dim",
         "learning_rate",
+        "moment_weight",
         "seed",
         "best_step",
         "validation_selection_loss",

@@ -32,6 +32,8 @@ CHECKPOINT_FORMAT_VERSION = 1
 UNCERTAINTY_MODES = ("frozen", "adapters", "full")
 #: Probability margin kept away from zero and one so that entropies stay finite.
 PROBABILITY_MARGIN = 1e-6
+#: Default soft-clip applied to standardized deviations, in RMS units.
+DEFAULT_DEVIATION_CLIP = 1.5
 
 
 # --------------------------------------------------------------------------- #
@@ -219,6 +221,18 @@ class ContinuousPosteriorPrediction:
         """``(batch,)`` maximum ``|average_s p_qs - mu_q|`` over queries."""
         return (self.sample_positive.mean(dim=1) - self.base_positive).abs().amax(dim=-1)
 
+    def deviation_shape_ratio(self) -> torch.Tensor:
+        """``(batch, query)`` ratio of the deviation RMS to its maximum.
+
+        The safe scale is set by the largest deviation, so this ratio is how
+        much of the available probability headroom the *typical* sample gets.
+        A spiky shape drives it toward zero and throttles dispersion no matter
+        how large the learned gate is; a flat shape approaches one.
+        """
+        deviation = self.sample_positive - self.base_positive[:, None, :]
+        rms = deviation.square().mean(dim=1).sqrt()
+        return rms / deviation.abs().amax(dim=1).clamp_min(PROBABILITY_MARGIN)
+
     def joint_log_probabilities(self, outcomes: torch.Tensor | None = None) -> torch.Tensor:
         """Coherent joint probability of complete binary query vectors."""
         num_samples, query_count = self.sample_positive.shape[1], self.sample_positive.shape[2]
@@ -389,14 +403,36 @@ def centre_and_scale(
     gate: torch.Tensor,
     *,
     max_scale: float | None = None,
+    deviation_clip: float | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Centre raw deviations across samples and rescale them safely.
 
     Returns the sample probabilities ``p_qs`` and the bound ``b_q``.  The
     sample average of ``p_qs`` equals ``mu_q`` by construction because the
-    centred deviations sum to zero and the scale does not depend on ``s``.
+    deviations sum to zero over samples and the scale does not depend on ``s``.
+
+    ``b_q`` is set by the *largest* deviation, so a single outlier sample would
+    otherwise consume the whole probability headroom and throttle the other
+    samples.  ``deviation_clip`` standardizes the deviations by their median
+    absolute value and soft-clips them with ``tanh`` first, which compresses
+    outliers while leaving the ordering -- and therefore the direction and
+    relative structure of the disagreement -- untouched.  The scale is the
+    median rather than the RMS on purpose: an outlier inflates the RMS, which
+    would put the bulk of the samples in the linear part of ``tanh`` and leave
+    the throttle in place.  Deviations comparable to the median, which is what
+    genuine multimodal disagreement looks like, pass through essentially
+    unchanged; only samples far beyond it saturate.  Re-centring after the clip
+    keeps the sample mean exactly zero.  Passing ``None`` selects the original
+    un-clipped behaviour and is retained so that checkpoints written before the
+    clip reload exactly.
     """
     centred = raw - raw.mean(dim=1, keepdim=True)
+    if deviation_clip is not None:
+        if deviation_clip <= 0:
+            raise ValueError("deviation_clip must be positive.")
+        scale_unit = centred.abs().median(dim=1, keepdim=True).values.clamp_min(PROBABILITY_MARGIN)
+        clipped = deviation_clip * torch.tanh(centred / (scale_unit * deviation_clip))
+        centred = clipped - clipped.mean(dim=1, keepdim=True)
     bound = safe_dispersion_bound(base_positive, centred, sample_dim=1)
     if max_scale is not None:
         bound = bound.clamp(max=max_scale)
@@ -559,6 +595,7 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
         hidden_size: int | None = None,
         context_size: int | None = None,
         uncertainty_backbone: NanoTabPFNModel | None = None,
+        deviation_clip: float | None = DEFAULT_DEVIATION_CLIP,
     ):
         super().__init__(
             backbone,
@@ -572,9 +609,12 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
             raise ValueError("latent_dim must be positive.")
         if num_samples < 2 or num_samples % 2 != 0:
             raise ValueError("num_samples must be an even number of at least two (antithetic pairs).")
+        if deviation_clip is not None and deviation_clip <= 0:
+            raise ValueError("deviation_clip must be positive or None.")
         self.latent_dim = latent_dim
         self.num_samples = num_samples
         self.inference_seed = inference_seed
+        self.deviation_clip = deviation_clip
         self.latent_generator = LatentGenerator(self.context_size, latent_dim, self.hidden_size)
         self.query_decoder = QueryDeviationDecoder(
             self.embedding_size, self.context_size, latent_dim, self.hidden_size
@@ -607,7 +647,9 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
         latents = self.latent_generator(context, noise)
         raw = self.query_decoder(query_embeddings, context, latents)
         gate = self.dispersion_gate(query_embeddings, context)
-        sample_positive, bound = centre_and_scale(base_positive, raw, gate)
+        sample_positive, bound = centre_and_scale(
+            base_positive, raw, gate, deviation_clip=self.deviation_clip
+        )
         return ContinuousPosteriorPrediction(base_probabilities, sample_positive, gate, bound)
 
 
@@ -771,6 +813,9 @@ def continuous_checkpoint(
     if isinstance(model, NanoTabPFNContinuousPosteriorModel):
         model_type = CONTINUOUS_CHECKPOINT_TYPE
         architecture["latent_dim"] = model.latent_dim
+        # ``None`` means the original un-clipped deviations.  Checkpoints written
+        # before the clip existed omit the key and must reload onto that path.
+        architecture["deviation_clip"] = model.deviation_clip
     elif isinstance(model, NanoTabPFNBetaConcentrationModel):
         model_type = BETA_CHECKPOINT_TYPE
         architecture["min_concentration"] = model.min_concentration
@@ -833,7 +878,12 @@ def load_continuous_checkpoint(
         "context_size": architecture.get("context_size"),
     }
     if model_type == CONTINUOUS_CHECKPOINT_TYPE:
-        model = NanoTabPFNContinuousPosteriorModel(backbone, latent_dim=architecture["latent_dim"], **shared)
+        model = NanoTabPFNContinuousPosteriorModel(
+            backbone,
+            latent_dim=architecture["latent_dim"],
+            deviation_clip=architecture.get("deviation_clip"),
+            **shared,
+        )
     else:
         model = NanoTabPFNBetaConcentrationModel(
             backbone, min_concentration=architecture.get("min_concentration", 1e-2), **shared
