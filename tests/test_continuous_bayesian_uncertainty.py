@@ -14,9 +14,11 @@ from tfmplayground.continuous_interface import (
 )
 from tfmplayground.experiments.continuous_episodes import (
     ALL_FAMILIES,
+    ANALYTIC_FAMILIES,
     CANDIDATE_COUNTS,
     HELDOUT_FAMILIES,
     HELDOUT_REGIME,
+    MULTIREGIME_HELDOUT_PAIRS,
     TRAIN_FAMILIES,
     TRAIN_REGIME,
     available_support_sizes,
@@ -24,6 +26,7 @@ from tfmplayground.experiments.continuous_episodes import (
     exact_candidate_posterior,
     random_label_episode,
     sample_episode,
+    sample_multiregime_episode,
     sample_paired_episode,
 )
 from tfmplayground.experiments.continuous_sweep import (
@@ -708,13 +711,75 @@ class EpisodeTests(unittest.TestCase):
     def test_curriculum_weights_sum_to_one(self):
         weights = ContinuousTrainingConfig().curriculum()
         self.assertAlmostEqual(sum(weights.values()), 1.0, places=6)
-        self.assertAlmostEqual(weights["ambiguous"], 0.40)
-        self.assertAlmostEqual(weights["identifiable"], 0.25)
-        self.assertAlmostEqual(weights["noisy"], 0.20)
+        self.assertAlmostEqual(weights["ambiguous"], 0.30)
+        self.assertAlmostEqual(weights["identifiable"], 0.20)
+        self.assertAlmostEqual(weights["noisy"], 0.15)
         self.assertAlmostEqual(weights["paired"], 0.15)
+        self.assertAlmostEqual(weights["multiregime"], 0.20)
         rng = np.random.default_rng(11)
         drawn = {curriculum_condition(rng, weights) for _ in range(200)}
-        self.assertEqual(drawn, {"ambiguous", "identifiable", "noisy", "paired"})
+        self.assertEqual(drawn, {"ambiguous", "identifiable", "noisy", "paired", "multiregime"})
+
+
+class MultiregimeEpisodeTests(unittest.TestCase):
+    def test_shapes_and_metadata(self):
+        rng = np.random.default_rng(3)
+        episode = sample_multiregime_episode(
+            rng, regime=TRAIN_REGIME, batch_size=2, support_size=64, query_count=6, contamination=0.3
+        )
+        self.assertEqual(episode.condition, "multiregime")
+        self.assertEqual(tuple(episode.support_x.shape[:2]), (2, 64))
+        self.assertEqual(tuple(episode.query_x.shape[:2]), (2, 6))
+        self.assertEqual(tuple(episode.candidate_query_positive.shape), (2, 2, 6))
+        self.assertEqual(tuple(episode.posterior.shape), (2, 2))
+        self.assertIsNotNone(episode.query_regime_source)
+        self.assertEqual(tuple(episode.query_regime_source.shape), (2, 6))
+        self.assertTrue(set(episode.query_regime_source.flatten().tolist()) <= {0, 1})
+
+    def test_heldout_regime_draws_only_reserved_pairs(self):
+        seen = set()
+        for seed in range(60):
+            rng = np.random.default_rng(seed)
+            episode = sample_multiregime_episode(rng, regime=HELDOUT_REGIME, batch_size=1, support_size=32, query_count=4)
+            seen.add(frozenset({episode.metadata["base_family"], episode.metadata["other_family"]}))
+        self.assertTrue(seen)
+        self.assertTrue(seen.issubset(set(MULTIREGIME_HELDOUT_PAIRS)))
+
+    def test_train_regime_never_draws_reserved_pairs(self):
+        seen = set()
+        for seed in range(200):
+            rng = np.random.default_rng(1000 + seed)
+            episode = sample_multiregime_episode(rng, regime=TRAIN_REGIME, batch_size=1, support_size=32, query_count=4)
+            seen.add(frozenset({episode.metadata["base_family"], episode.metadata["other_family"]}))
+        self.assertTrue(seen.isdisjoint(set(MULTIREGIME_HELDOUT_PAIRS)))
+        self.assertTrue(seen.issubset({frozenset({a, b}) for a in ANALYTIC_FAMILIES for b in ANALYTIC_FAMILIES if a != b}))
+
+    def test_deterministic_given_seed(self):
+        first = sample_multiregime_episode(np.random.default_rng(7), support_size=32, query_count=4, contamination=0.2)
+        second = sample_multiregime_episode(np.random.default_rng(7), support_size=32, query_count=4, contamination=0.2)
+        torch.testing.assert_close(first.support_x, second.support_x, atol=0, rtol=0)
+        torch.testing.assert_close(first.support_y, second.support_y, atol=0, rtol=0)
+        torch.testing.assert_close(first.query_regime_source, second.query_regime_source, atol=0, rtol=0)
+
+    def test_no_regime_label_reaches_the_model_inputs(self):
+        """query_regime_source is diagnostic-only: never present in support_x/support_y/query_x."""
+        episode = sample_multiregime_episode(np.random.default_rng(2), support_size=16, query_count=4)
+        model_inputs = (episode.support_x, episode.support_y, episode.query_x)
+        for tensor in model_inputs:
+            self.assertNotEqual(tensor.shape, episode.query_regime_source.shape)
+
+    def test_posterior_is_a_valid_distribution_over_two_candidates(self):
+        episode = sample_multiregime_episode(np.random.default_rng(4), batch_size=3, support_size=48, query_count=5)
+        self.assertEqual(episode.posterior.shape[-1], 2)
+        torch.testing.assert_close(episode.posterior.sum(dim=-1), torch.ones(3), atol=1e-5, rtol=0)
+        self.assertTrue(bool((episode.posterior >= 0).all()))
+
+    def test_contamination_zero_matches_single_regime_query_labels(self):
+        """With contamination=0, every query row is base-regime and unlabelled as 'other'."""
+        episode = sample_multiregime_episode(
+            np.random.default_rng(9), batch_size=1, support_size=32, query_count=6, contamination=0.0
+        )
+        self.assertTrue(bool((episode.query_regime_source == 0).all()))
 
 
 class CheckpointTests(unittest.TestCase):

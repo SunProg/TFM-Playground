@@ -38,7 +38,18 @@ TRAIN_FAMILIES = ("linear", "threshold", "tree", "sparse_interaction", "smooth",
 #: Families never seen during training; model selection uses these.
 HELDOUT_FAMILIES = ("dense_interaction", "tree_scm")
 
-CONDITIONS = ("ambiguous", "identifiable", "noisy", "paired")
+CONDITIONS = ("ambiguous", "identifiable", "noisy", "paired", "multiregime")
+#: Analytic family pairs reserved for multiregime validation only.  Family-level
+#: held-out/train splits (``TRAIN_FAMILIES``/``HELDOUT_FAMILIES``) don't work for
+#: multiregime episodes because ``HELDOUT_FAMILIES`` has only one analytic member
+#: (``dense_interaction``) -- there is no second analytic family in the held-out
+#: set to mix it with.  Instead, multiregime reserves specific *pairs* of the six
+#: analytic families for validation and trains on the rest.  These two pairs were
+#: also the ones inspected by hand in ``paper/tabpfn_multi_regime_results.md``.
+MULTIREGIME_HELDOUT_PAIRS = frozenset({frozenset({"smooth", "linear"}), frozenset({"dense_interaction", "tree"})})
+#: Fraction of support rows and, independently, of query rows relabelled under
+#: the other family in a multiregime episode.
+MULTIREGIME_CONTAMINATION_RANGE = (0.1, 0.5)
 #: Share of support rows on which the candidates genuinely disagree.  This is
 #: the *only* thing separating an ambiguous episode from an identifiable one.
 AMBIGUOUS_IDENTIFYING_FRACTION = 0.0
@@ -91,6 +102,12 @@ class ContinuousEpisode:
             quantity on support rows.
         posterior: ``(batch, candidate)`` exact candidate posterior ``rho_h``.
         label_noise: the controlled noise probability ``eta``.
+        query_regime_source: ``(batch, query)`` diagnostic-only tag, 0 for a
+            query row labelled under the episode's own ``truth`` candidate and
+            1 for a query row secretly relabelled under a different regime
+            (``condition == "multiregime"`` only; zeros elsewhere). Never fed
+            to any model -- used only to score predictions by regime after
+            the fact, exactly as in ``paper/tabpfn_multi_regime_results.md``.
     """
 
     support_x: torch.Tensor
@@ -104,6 +121,7 @@ class ContinuousEpisode:
     condition: str
     family: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    query_regime_source: torch.Tensor | None = None
 
     @property
     def num_candidates(self) -> int:
@@ -126,6 +144,7 @@ class ContinuousEpisode:
             self.condition,
             self.family,
             dict(self.metadata),
+            None if self.query_regime_source is None else self.query_regime_source.to(device),
         )
 
 
@@ -621,6 +640,162 @@ def sample_paired_episode(
     short = _assemble(short_items, noise=effective_noise, condition="paired", family=family, metadata=metadata)
     long = _assemble(long_items, noise=effective_noise, condition="paired", family=family, metadata=metadata)
     return short.to(device), long.to(device)
+
+
+def _build_multiregime_item(
+    regime: EpisodeRegime,
+    rng: np.random.Generator,
+    *,
+    base_family: str,
+    other_family: str,
+    support_size: int,
+    query_count: int,
+    noise: float,
+    features: int,
+    contamination: float,
+) -> dict[str, np.ndarray]:
+    rows = max(support_size + query_count + 16, 4 * (support_size + query_count))
+    x = rng.normal(size=(rows, features))
+    scales = 10.0 ** rng.uniform(*regime.scale_exponent, size=features)
+    x = (x * scales[None, :]).astype(np.float32)
+    quantile = float(rng.uniform(*regime.imbalance_range))
+    labels_base = _labels_from_scores(_ANALYTIC_SCORES[base_family](rng, x), quantile)
+    labels_other = _labels_from_scores(_ANALYTIC_SCORES[other_family](rng, x), quantile)
+
+    order = rng.permutation(rows)
+    support_indices = order[:support_size]
+    query_indices = order[support_size : support_size + query_count]
+
+    support_source = np.zeros(support_size, dtype=np.int64)
+    query_source = np.zeros(query_count, dtype=np.int64)
+    support_labels = labels_base[support_indices].copy()
+    query_labels = labels_base[query_indices].copy()
+
+    n_contam_support = int(round(support_size * contamination))
+    if n_contam_support:
+        pos = rng.choice(support_size, size=n_contam_support, replace=False)
+        support_labels[pos] = labels_other[support_indices][pos]
+        support_source[pos] = 1
+    n_contam_query = int(round(query_count * contamination))
+    if n_contam_query:
+        pos = rng.choice(query_count, size=n_contam_query, replace=False)
+        query_labels[pos] = labels_other[query_indices][pos]
+        query_source[pos] = 1
+
+    support_y = np.logical_xor(support_labels, rng.random(support_size) < noise).astype(np.float32)
+    query_y = np.logical_xor(query_labels, rng.random(query_count) < noise).astype(np.int64)
+
+    # Two "candidates" -- the base and other label functions -- with the exact
+    # Bayes posterior over which one the *support* evidence looks like.  This
+    # keeps multiregime episodes compatible with the existing teacher/loss
+    # machinery (``exact_candidate_posterior``, ``teacher_targets``) even
+    # though the truth for an individual row is a per-row mixture, not a
+    # single resolved candidate the way it is for every other condition.
+    candidate_support = _candidate_probabilities(
+        np.stack([labels_base[support_indices], labels_other[support_indices]]), noise
+    )
+    candidate_query = _candidate_probabilities(
+        np.stack([labels_base[query_indices], labels_other[query_indices]]), noise
+    )
+    posterior = exact_candidate_posterior(support_y.astype(np.int64), candidate_support)
+    return {
+        "support_x": x[support_indices],
+        "support_y": support_y,
+        "query_x": x[query_indices],
+        "query_y": query_y,
+        "query_regime_source": query_source,
+        "candidate_support_positive": candidate_support.astype(np.float32),
+        "candidate_query_positive": candidate_query.astype(np.float32),
+        "posterior": posterior.astype(np.float32),
+    }
+
+
+def _multiregime_pairs(heldout: bool) -> list[tuple[str, str]]:
+    return [
+        (a, b)
+        for i, a in enumerate(ANALYTIC_FAMILIES)
+        for b in ANALYTIC_FAMILIES[i + 1 :]
+        if (frozenset({a, b}) in MULTIREGIME_HELDOUT_PAIRS) == heldout
+    ]
+
+
+def sample_multiregime_episode(
+    rng: np.random.Generator,
+    *,
+    regime: EpisodeRegime = TRAIN_REGIME,
+    batch_size: int = 2,
+    support_size: int | None = None,
+    query_count: int | None = None,
+    noise: float | None = None,
+    contamination: float | None = None,
+    device: torch.device | str = "cpu",
+    max_support_size: int = max(SUPPORT_SIZES),
+) -> ContinuousEpisode:
+    """Support and query rows are secretly a row-level mixture of two families.
+
+    Two analytic families are evaluated on one shared feature table (the same
+    construction tested by hand in ``paper/tabpfn_multi_regime_results.md``),
+    and a ``contamination`` fraction of support rows -- and, independently, of
+    query rows -- are relabelled under the second family.  Nothing in
+    ``(support_x, support_y, query_x)`` marks which rows came from which
+    family; ``query_regime_source`` on the returned episode carries that
+    information for scoring only, never as training input.
+
+    Held out at the *pair* level (``MULTIREGIME_HELDOUT_PAIRS``), not the
+    family level: ``HELDOUT_REGIME`` has only one analytic family
+    (``dense_interaction``), so there is no second held-out family to mix it
+    with.  ``regime is HELDOUT_REGIME`` selects the reserved validation pairs;
+    any other regime selects the complementary training pairs.
+    """
+    pairs = _multiregime_pairs(heldout=regime is HELDOUT_REGIME)
+    base_family, other_family = pairs[int(rng.integers(len(pairs)))]
+    if rng.random() < 0.5:
+        base_family, other_family = other_family, base_family
+    support_size = support_size or int(rng.choice(available_support_sizes(max_support_size)))
+    query_count = query_count or int(rng.integers(4, 9))
+    noise = float(rng.choice(NOISE_LEVELS)) if noise is None else float(noise)
+    effective_noise = max(noise, MIN_EFFECTIVE_NOISE)
+    contamination = (
+        float(rng.uniform(*MULTIREGIME_CONTAMINATION_RANGE)) if contamination is None else float(contamination)
+    )
+    features = int(rng.integers(regime.min_features, regime.max_features + 1))
+
+    items = [
+        _build_multiregime_item(
+            regime,
+            rng,
+            base_family=base_family,
+            other_family=other_family,
+            support_size=support_size,
+            query_count=query_count,
+            noise=effective_noise,
+            features=features,
+            contamination=contamination,
+        )
+        for _ in range(batch_size)
+    ]
+    episode = ContinuousEpisode(
+        _stack(items, "support_x"),
+        _stack(items, "support_y"),
+        _stack(items, "query_x"),
+        _stack(items, "query_y"),
+        _stack(items, "candidate_query_positive"),
+        _stack(items, "candidate_support_positive"),
+        _stack(items, "posterior"),
+        effective_noise,
+        "multiregime",
+        f"{base_family}+{other_family}",
+        {
+            "support_size": support_size,
+            "query_count": query_count,
+            "features": features,
+            "contamination": contamination,
+            "base_family": base_family,
+            "other_family": other_family,
+        },
+        _stack(items, "query_regime_source"),
+    )
+    return episode.to(device)
 
 
 def random_label_episode(

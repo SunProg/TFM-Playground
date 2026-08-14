@@ -1,0 +1,386 @@
+[
+  {
+    "contamination": 0.0,
+    "pair": "linear+threshold",
+    "model": "nanoTabPFN",
+    "base_auc": 0.914869151139292,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "linear+threshold",
+    "model": "TabPFN",
+    "base_auc": 0.9206933175624424,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "threshold+tree",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9234867794507128,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "threshold+tree",
+    "model": "TabPFN",
+    "base_auc": 0.934904753113854,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "tree+sparse_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9250337293886418,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "tree+sparse_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.9622357604059564,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.959481682253663,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.9721028935152143,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "dense_interaction+smooth",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8922797289170894,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "dense_interaction+smooth",
+    "model": "TabPFN",
+    "base_auc": 0.9092653935776523,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "smooth+linear",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8374019437831576,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.0,
+    "pair": "smooth+linear",
+    "model": "TabPFN",
+    "base_auc": 0.8725362707414532,
+    "other_auc": null,
+    "other_auc_ci": null
+  },
+  {
+    "contamination": 0.2,
+    "pair": "linear+threshold",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9235477511591665,
+    "other_auc": 0.6684405882749813,
+    "other_auc_ci": {
+      "mean": 0.6684405882749813,
+      "lower": 0.5495300904999547,
+      "upper": 0.7714896662477307
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "linear+threshold",
+    "model": "TabPFN",
+    "base_auc": 0.9392694312585795,
+    "other_auc": 0.6872872258656865,
+    "other_auc_ci": {
+      "mean": 0.6872872258656865,
+      "lower": 0.5554638501023306,
+      "upper": 0.8032765294902301
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "threshold+tree",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9418707803086558,
+    "other_auc": 0.6618678653187435,
+    "other_auc_ci": {
+      "mean": 0.6618678653187435,
+      "lower": 0.555474333332702,
+      "upper": 0.766316393981835
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "threshold+tree",
+    "model": "TabPFN",
+    "base_auc": 0.9574317617094453,
+    "other_auc": 0.6741350537311418,
+    "other_auc_ci": {
+      "mean": 0.6741350537311418,
+      "lower": 0.5603978013619241,
+      "upper": 0.7732539915966387
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "tree+sparse_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9228862596226041,
+    "other_auc": 0.526646096717207,
+    "other_auc_ci": {
+      "mean": 0.526646096717207,
+      "lower": 0.407232770713607,
+      "upper": 0.6482063334982683
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "tree+sparse_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.9554658238313221,
+    "other_auc": 0.44683334968187327,
+    "other_auc_ci": {
+      "mean": 0.44683334968187327,
+      "lower": 0.32686497153209115,
+      "upper": 0.5690397877361645
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.9421257755061044,
+    "other_auc": 0.6267832917374808,
+    "other_auc_ci": {
+      "mean": 0.6267832917374808,
+      "lower": 0.5128774725501284,
+      "upper": 0.7355413537549407
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.9554047091143175,
+    "other_auc": 0.5302027888893256,
+    "other_auc_ci": {
+      "mean": 0.5302027888893256,
+      "lower": 0.4102052518496266,
+      "upper": 0.6505753240961314
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "dense_interaction+smooth",
+    "model": "nanoTabPFN",
+    "base_auc": 0.886160830512805,
+    "other_auc": 0.5185385110465001,
+    "other_auc_ci": {
+      "mean": 0.5185385110465001,
+      "lower": 0.38840845477643476,
+      "upper": 0.638037037037037
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "dense_interaction+smooth",
+    "model": "TabPFN",
+    "base_auc": 0.9076974537436109,
+    "other_auc": 0.44183977889405246,
+    "other_auc_ci": {
+      "mean": 0.44183977889405246,
+      "lower": 0.3177039215686275,
+      "upper": 0.5644853368176539
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "smooth+linear",
+    "model": "nanoTabPFN",
+    "base_auc": 0.7853002418482978,
+    "other_auc": 0.6503702830061542,
+    "other_auc_ci": {
+      "mean": 0.6503702830061542,
+      "lower": 0.5284987815437902,
+      "upper": 0.7624699074074075
+    }
+  },
+  {
+    "contamination": 0.2,
+    "pair": "smooth+linear",
+    "model": "TabPFN",
+    "base_auc": 0.8131369248600155,
+    "other_auc": 0.6609998337848431,
+    "other_auc_ci": {
+      "mean": 0.6609998337848431,
+      "lower": 0.5439627530364374,
+      "upper": 0.7746087032990474
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "linear+threshold",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8836359480382063,
+    "other_auc": 0.7387377619400365,
+    "other_auc_ci": {
+      "mean": 0.7387377619400365,
+      "lower": 0.6636483028017242,
+      "upper": 0.8073709624003368
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "linear+threshold",
+    "model": "TabPFN",
+    "base_auc": 0.9216871283327535,
+    "other_auc": 0.8027750064723993,
+    "other_auc_ci": {
+      "mean": 0.8027750064723993,
+      "lower": 0.7307609798825633,
+      "upper": 0.8689315025252524
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "threshold+tree",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8815315317526593,
+    "other_auc": 0.7777302212677869,
+    "other_auc_ci": {
+      "mean": 0.7777302212677869,
+      "lower": 0.7073336632633466,
+      "upper": 0.8408598925783286
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "threshold+tree",
+    "model": "TabPFN",
+    "base_auc": 0.8822682673738484,
+    "other_auc": 0.8041298875123744,
+    "other_auc_ci": {
+      "mean": 0.8041298875123744,
+      "lower": 0.7388453833162135,
+      "upper": 0.8647726138720458
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "tree+sparse_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8533840529068173,
+    "other_auc": 0.701680185709617,
+    "other_auc_ci": {
+      "mean": 0.701680185709617,
+      "lower": 0.6260251452432825,
+      "upper": 0.773103788648907
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "tree+sparse_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.8776817928436532,
+    "other_auc": 0.6308377379691646,
+    "other_auc_ci": {
+      "mean": 0.6308377379691646,
+      "lower": 0.5472033544988509,
+      "upper": 0.7112206194899631
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "nanoTabPFN",
+    "base_auc": 0.8730387164076084,
+    "other_auc": 0.7430886240324154,
+    "other_auc_ci": {
+      "mean": 0.7430886240324154,
+      "lower": 0.6677306361360851,
+      "upper": 0.809712926904708
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "sparse_interaction+dense_interaction",
+    "model": "TabPFN",
+    "base_auc": 0.8978482255622111,
+    "other_auc": 0.6539627972575037,
+    "other_auc_ci": {
+      "mean": 0.6539627972575037,
+      "lower": 0.5761318740329904,
+      "upper": 0.7386545989556533
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "dense_interaction+smooth",
+    "model": "nanoTabPFN",
+    "base_auc": 0.839023037798952,
+    "other_auc": 0.5113585645465245,
+    "other_auc_ci": {
+      "mean": 0.5113585645465245,
+      "lower": 0.42350729574457274,
+      "upper": 0.5910744533284069
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "dense_interaction+smooth",
+    "model": "TabPFN",
+    "base_auc": 0.8841283050101476,
+    "other_auc": 0.6193922254777092,
+    "other_auc_ci": {
+      "mean": 0.6193922254777092,
+      "lower": 0.5409576848768347,
+      "upper": 0.696200755454621
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "smooth+linear",
+    "model": "nanoTabPFN",
+    "base_auc": 0.5891332098439411,
+    "other_auc": 0.8740444883533415,
+    "other_auc_ci": {
+      "mean": 0.8740444883533415,
+      "lower": 0.8235023568632294,
+      "upper": 0.9230864119433199
+    }
+  },
+  {
+    "contamination": 0.4,
+    "pair": "smooth+linear",
+    "model": "TabPFN",
+    "base_auc": 0.6738229236071671,
+    "other_auc": 0.8799876851213617,
+    "other_auc_ci": {
+      "mean": 0.8799876851213617,
+      "lower": 0.824508972594886,
+      "upper": 0.9297718748791474
+    }
+  }
+]

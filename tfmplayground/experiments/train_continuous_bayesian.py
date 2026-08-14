@@ -36,6 +36,7 @@ from tfmplayground.experiments.continuous_episodes import (
     available_support_sizes,
     curriculum_condition,
     sample_episode,
+    sample_multiregime_episode,
     sample_paired_episode,
 )
 from tfmplayground.interface import init_model_from_state_dict_file
@@ -80,10 +81,11 @@ class ContinuousTrainingConfig:
     accumulate_gradients: int = 1
     gradient_clip: float = 1.0
     # Curriculum
-    ambiguous_probability: float = 0.40
-    identifiable_probability: float = 0.25
-    noisy_probability: float = 0.20
+    ambiguous_probability: float = 0.30
+    identifiable_probability: float = 0.20
+    noisy_probability: float = 0.15
     paired_probability: float = 0.15
+    multiregime_probability: float = 0.20
     # Loss weights
     energy_weight: float = 1.0
     mutual_information_weight: float = 0.5
@@ -109,6 +111,7 @@ class ContinuousTrainingConfig:
             "identifiable": self.identifiable_probability,
             "noisy": self.noisy_probability,
             "paired": self.paired_probability,
+            "multiregime": self.multiregime_probability,
         }
 
 
@@ -369,6 +372,27 @@ def _episode_loss(
             monotonicity.detach()
         )
         return total, metrics
+    if condition == "multiregime":
+        episode = sample_multiregime_episode(
+            rng,
+            regime=regime,
+            batch_size=config.batch_size,
+            support_size=support_size,
+            query_count=query_count,
+            device=config.device,
+            max_support_size=config.max_support_size,
+        )
+        prediction = model(
+            episode.support_x,
+            episode.support_y,
+            episode.query_x,
+            sample_seed=sample_seed,
+            num_samples=config.num_samples,
+        )
+        total, metrics, _ = continuous_losses(prediction, episode, config)
+        metrics["evidence_monotonicity_loss"] = 0.0
+        metrics.update(_multiregime_error_gap(prediction, episode))
+        return total, metrics
     episode = sample_episode(
         rng,
         regime=regime,
@@ -391,6 +415,52 @@ def _episode_loss(
     return total, metrics
 
 
+def _multiregime_error_gap(prediction, episode: ContinuousEpisode) -> dict[str, float]:
+    """Diagnostic only, never part of the loss.
+
+    Two different gaps, and only one of them can move during training:
+
+    - ``multiregime_*_error`` / ``multiregime_error_gap``: mean absolute error
+      of the *frozen* vanilla mean (``prediction.base_positive``) on base- vs.
+      other-regime query rows. This is a fixed property of the untouched mean
+      path and is identical every validation call regardless of how well the
+      uncertainty head trains -- a baseline characterization only, not a
+      training signal.
+    - ``multiregime_*_mutual_information`` / ``multiregime_mutual_information_gap``:
+      the *trainable* uncertainty head's predicted mutual information on base-
+      vs. other-regime rows. This is what should move if the head learns to
+      flag contaminated queries as more uncertain; a model with no such signal
+      shows a gap near zero throughout training, the same negative result as
+      every other condition in this trial.
+    """
+    if episode.query_regime_source is None:
+        return {}
+    source = episode.query_regime_source
+    base_mask = source == 0
+    other_mask = source == 1
+    result: dict[str, float] = {}
+
+    information = prediction.mutual_information().detach()
+    if base_mask.any():
+        result["multiregime_base_mutual_information"] = float(information[base_mask].mean())
+    if other_mask.any():
+        result["multiregime_other_mutual_information"] = float(information[other_mask].mean())
+    if base_mask.any() and other_mask.any():
+        result["multiregime_mutual_information_gap"] = (
+            result["multiregime_other_mutual_information"] - result["multiregime_base_mutual_information"]
+        )
+
+    predicted_mean = prediction.base_positive.detach()
+    error = (predicted_mean - episode.query_y.to(predicted_mean.dtype)).abs()
+    if base_mask.any():
+        result["multiregime_base_error"] = float(error[base_mask].mean())
+    if other_mask.any():
+        result["multiregime_other_error"] = float(error[other_mask].mean())
+    if base_mask.any() and other_mask.any():
+        result["multiregime_error_gap"] = result["multiregime_other_error"] - result["multiregime_base_error"]
+    return result
+
+
 @torch.no_grad()
 def validation_metrics(model, config: ContinuousTrainingConfig) -> dict[str, float]:
     """Held-out-*family* validation; training never sees these generators."""
@@ -398,7 +468,7 @@ def validation_metrics(model, config: ContinuousTrainingConfig) -> dict[str, flo
     rng = np.random.default_rng(config.seed + 10_001)
     regime = _regime(config, HELDOUT_REGIME)
     totals: dict[str, list[float]] = {}
-    conditions = ("ambiguous", "identifiable", "noisy", "paired")
+    conditions = ("ambiguous", "identifiable", "noisy", "paired", "multiregime")
     for index in range(config.validation_episodes):
         condition = conditions[index % len(conditions)]
         _loss, metrics = _episode_loss(
@@ -592,6 +662,7 @@ def build_parser() -> argparse.ArgumentParser:
         "identifiable_probability",
         "noisy_probability",
         "paired_probability",
+        "multiregime_probability",
         "energy_weight",
         "mutual_information_weight",
         "variance_weight",
