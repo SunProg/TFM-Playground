@@ -64,6 +64,7 @@ class ContinuousTrainingConfig:
     # Architecture
     model_type: str = "continuous"  # "continuous" or "beta"
     uncertainty_mode: str = "adapters"  # "frozen", "adapters", or "full"
+    context_mode: str = "deepsets"  # "deepsets" or "cross_attention"
     adapter_bottleneck: int = 32
     latent_dim: int = 32
     num_samples: int = 32
@@ -276,6 +277,8 @@ def validate_config(config: ContinuousTrainingConfig) -> None:
         raise ValueError("model_type must be 'continuous' or 'beta'.")
     if config.uncertainty_mode not in {"frozen", "adapters", "full"}:
         raise ValueError("uncertainty_mode must be 'frozen', 'adapters', or 'full'.")
+    if config.context_mode not in {"deepsets", "cross_attention"}:
+        raise ValueError("context_mode must be 'deepsets' or 'cross_attention'.")
     if config.model_type == "beta" and config.uncertainty_mode != "adapters":
         raise ValueError("The Beta ablation is defined with the adapter-equipped uncertainty encoder.")
     for name in ("batch_size", "validation_interval", "patience", "accumulate_gradients", "validation_episodes"):
@@ -301,6 +304,7 @@ def build_model(config: ContinuousTrainingConfig, backbone) -> Any:
             backbone,
             uncertainty_mode=config.uncertainty_mode,
             adapter_bottleneck=config.adapter_bottleneck,
+            context_mode=config.context_mode,
             latent_dim=config.latent_dim,
             num_samples=config.num_samples,
             inference_seed=config.inference_seed,
@@ -309,6 +313,7 @@ def build_model(config: ContinuousTrainingConfig, backbone) -> Any:
         backbone,
         uncertainty_mode=config.uncertainty_mode,
         adapter_bottleneck=config.adapter_bottleneck,
+        context_mode=config.context_mode,
         num_samples=config.num_samples,
         inference_seed=config.inference_seed,
     )
@@ -602,6 +607,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default=str(get_default_device()))
     parser.add_argument("--model-type", choices=("continuous", "beta"), default=defaults.model_type)
     parser.add_argument("--uncertainty-mode", choices=("frozen", "adapters", "full"), default=defaults.uncertainty_mode)
+    parser.add_argument("--context-mode", choices=("deepsets", "cross_attention"), default=defaults.context_mode)
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--no-scm-families", dest="include_scm_families", action="store_false")
     parser.set_defaults(include_scm_families=defaults.include_scm_families)

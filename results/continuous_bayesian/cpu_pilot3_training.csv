@@ -1,0 +1,4 @@
+arm,context_mode,uncertainty_mode,moment_weight,max_support_size,seed,best_step,validation_selection_loss,validation_predicted_mutual_information,validation_teacher_mutual_information,validation_dispersion_gate,validation_deviation_shape_ratio,validation_mean_preservation_error,mean_backbone_unchanged
+deepsets_adapter,deepsets,adapters,4.0,128,2402,50,0.122123,0.004698,0.050893,0.268136,0.674181,5.4016709327697754e-08,True
+crossattn_adapter,cross_attention,adapters,4.0,128,2402,50,0.116334,0.00035,0.050893,0.072576,0.680863,3.4924596548080444e-08,True
+crossattn_frozen,cross_attention,frozen,4.0,128,2402,50,0.117698,0.002561,0.050893,0.182848,0.695452,4.842877388000488e-08,True

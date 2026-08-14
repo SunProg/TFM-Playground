@@ -58,6 +58,10 @@ into an adapted layer without renaming.
 - **Support pooling.** Target-column embeddings of the labelled rows go through a per-row MLP; the mean and
   variance across support rows are concatenated and mapped to the episode context `c_D`. This is a DeepSets
   encoder, so it is permutation invariant. There are no learned hypothesis tokens anywhere in the model.
+  Note that the DeepSets pooling belongs to this head only: nanoTabPFN is attention-only and does no set
+  pooling, and its datapoint attention has already conditioned every query embedding on the support rows
+  before the head sees them. `c_D` is therefore an additional global summary, not the head's only route to
+  support information.
 - **Latent draws.** `z_s = latent_generator(c_D, epsilon_s)`, a conditional residual MLP whose output is
   added to `epsilon_s`. The noise `epsilon_s` comes from a scrambled Sobol sequence mapped to standard
   normal values by the Gaussian inverse CDF, in antithetic pairs (`z` and `-z`), so the noise set has an
@@ -278,6 +282,11 @@ The numbers below are from the **second** pilot, run after the dispersion-thrott
 next section. A `moment_weight = 4` variant of the adapter arm is included because the moment terms are
 numerically swamped by the joint query loss.
 
+> **Superseded.** This pilot used the region-based ambiguous/identifiable contrast, which the encoder
+> probe later showed to be a shortcut. The episode generator has since changed, so these numbers are not
+> comparable with the third pilot below. They are kept because the dispersion-throttling narrative depends
+> on them.
+
 Configuration for all arms: adapter bottleneck 32, latent dimension 32, `S = 32`, `max_support_size = 128`
 (a compute cap; the CREATE sweep uses the full 32–512 range), seed 2402. Learning rate 3e-4 for the head
 and adapter arms and 3e-5 for the fully trainable copy. Artifacts:
@@ -433,6 +442,122 @@ question: MI was higher on identifiable and noisy episodes (target 0) than on am
 0.178), which is the slot trial's failure signature. That is a condition-discrimination problem, and it is
 what the sweep exists to answer.
 
+## Encoder probe and the region shortcut
+
+The second pilot left one hypothesis standing: the uncertainty head cannot tell ambiguous episodes from
+identifiable ones, so a near-constant small gate is its loss-minimizing output. That hypothesis is about
+the *inputs* of the head, so it was tested directly rather than through another training run.
+
+`tfmplayground/experiments/probe_uncertainty_encoder.py` trains a small supervised head on **frozen**
+uncertainty representations to regress the projected-teacher mutual information and epistemic variance. No
+posterior sampling, no bounded gate, and no energy distance are involved, so a design that cannot fit the
+teacher here cannot learn it inside the full objective either. Three contexts are compared: the current
+global `deepsets` pool, per-query `cross_attention` over the support rows, and `cross_attention_local`
+which adds kNN label-agreement and neighbour-distance features. Training uses the training families,
+early stopping uses a fresh *in-family* validation split, and scoring uses held-out families — the
+in-family/held-out split separates "cannot represent the target" from "cannot transfer it".
+
+A first version of this probe trained on a fixed 96-episode set and produced a misleading result:
+cross-attention reached a training loss of 6.5e-05 against DeepSets' 9.5e-03 while scoring a held-out
+condition AUC of 0.32, below chance. That was memorization of a small fixed set, an artifact of the probe
+rather than a fact about the encoder, and it is why the reported protocol uses three splits with early
+stopping.
+
+| Context | Episode contrast | In-family MI R² | Held-out MI R² | In-family AUC | Held-out AUC |
+|---|---|---:|---:|---:|---:|
+| deepsets | region (old) | 0.263 | 0.012 | 0.662 | 0.423 |
+| cross_attention | region (old) | 0.337 | −0.031 | 0.621 | 0.352 |
+| cross_attention_local | region (old) | 0.324 | −0.017 | 0.594 | 0.367 |
+| deepsets | evidence (new) | **−0.009** | −0.031 | 0.572 | 0.428 |
+| cross_attention | evidence (new) | 0.180 | **0.090** | 0.547 | 0.464 |
+| cross_attention_local | evidence (new) | 0.090 | −0.001 | 0.590 | 0.433 |
+
+Under the original region-based contrast, no design transferred: held-out R² was at or below zero and the
+held-out condition AUC was *below chance* for all three, meaning the learned mapping inverted on new
+function families. That inversion is the same one the full pilots show, reproduced in a setting where
+sampling, the gate, and the objective are all removed.
+
+### The region shortcut
+
+The generator used to draw ambiguous support rows from the low-disagreement region and identifiable
+support rows from the high-disagreement region, so the conditions differed in support *difficulty* as well
+as in evidence content. Difficulty is a family-specific surface cue, and a head that keys on it will
+invert whenever a new family's geometry reverses the association.
+
+`_select_rows` now takes a single `identifying_fraction`. Queries are always the highest-disagreement
+rows, the support always comes from the same base region with the same size, and only the share of
+genuinely disagreeing support rows varies: 0.0 for ambiguous, 0.25–1.0 for identifiable. The
+non-identifying part of the support is forced to exact agreement, so the identifying rows are the only
+evidence about which candidate is active. `sample_paired_episode` is now the same helper called at
+fractions 0 and `f`, so its two arms share support size, queries, and candidates — a sharper test than the
+old prefix-versus-extension pair, whose arms also differed in how much data they had.
+
+Removing the shortcut is what the second half of the table measures, and it is decisive in an unwelcome
+direction: **DeepSets' in-family R² collapses from 0.263 to −0.009.** Essentially all of its apparent
+skill was the shortcut. Cross-attention retains real signal (0.180 in-family) and produces the only
+positive held-out R² anywhere in either experiment (0.090), with its inversion largely gone (held-out AUC
+0.352 → 0.464).
+
+So the per-query context is a genuine improvement over the global pool, and it is now available as
+`context_mode="cross_attention"` with `deepsets` kept as the default so existing checkpoints reload
+unchanged. But it clears neither promotion floor (R² 0.30, AUC 0.85), so the encoder change alone does not
+justify the CREATE sweep.
+
+Two cautions on how much this result supports. First, the gain is measured against a baseline that the
+same table shows to be worthless once the shortcut is gone (in-family R² −0.009), so "better than
+DeepSets" is a low bar. Second, because nanoTabPFN's datapoint attention already conditions each query on
+the support rows, this context is a seventh such attention layer rather than a newly added capability;
+that is consistent with a small gain and it means the result should not be read as having located the
+missing mechanism.
+
+The hypothesis these numbers actually leave standing is that frozen target-column embeddings, trained to
+predict the mean, carry little information about posterior width. The decisive test is the same probe with
+the uncertainty backbone's **adapters trainable**, which asks whether adapting the representation makes
+the target learnable across families. That is exactly the "is freezing the limiting factor" question this
+trial is meant to answer, and it has not been run.
+
+## Third pilot: the evidence contrast, and cross-attention in the full model
+
+Same budget as before (400 steps, `max_support_size = 128`, seed 2402, bottleneck 32, latent 32, `S = 32`,
+`moment_weight = 4`), now on the evidence-contrast generator. Artifacts:
+`results/continuous_bayesian/cpu-pilot3-synthetic/`.
+
+| Arm | Condition | Gate | MI | Teacher MI |
+|---|---|---:|---:|---:|
+| deepsets, adapters | ambiguous | 0.260 | **0.0053** | 0.1699 |
+| deepsets, adapters | identifiable | 0.252 | 0.0043 | 0.0000 |
+| deepsets, adapters | noisy | 0.256 | 0.0053 | 0.0000 |
+| cross-attention, adapters | ambiguous | 0.066 | 0.0003 | 0.1699 |
+| cross-attention, adapters | identifiable | 0.062 | 0.0003 | 0.0000 |
+| cross-attention, frozen | ambiguous | 0.157 | 0.0021 | 0.1699 |
+| cross-attention, frozen | identifiable | 0.159 | 0.0019 | 0.0000 |
+| context resampling | ambiguous | 1.000 | 0.0629 | 0.1699 |
+| context resampling | identifiable | 1.000 | 0.0781 | 0.0000 |
+
+Three things to record, one good and two not.
+
+**The inversion is gone.** For the first time a learned arm orders the conditions correctly: the DeepSets
+adapter arm predicts more mutual information on ambiguous episodes (0.0053) than on identifiable ones
+(0.0043), where every earlier pilot had the ordering backwards. Removing the region shortcut is what did
+this, and it is the one clean win of this iteration. The non-learned context-resampling baseline stays
+inverted (0.0629 versus 0.0781), as expected, since nothing about it changed.
+
+**The magnitude did not move.** The gate is still flat — 0.260 / 0.252 / 0.256 across conditions whose
+teacher mutual information differs by 0.17 nats. A correct *ordering* with a 2% gate difference is not a
+usable epistemic signal.
+
+**Cross-attention regressed the full model.** Its gate collapsed to 0.066 and its mutual information to
+0.0003, an order of magnitude below the DeepSets arm it was meant to improve on. This is the opposite of
+the probe result and is the clearest evidence for the correction noted above: because nanoTabPFN's
+datapoint attention already conditions each query on the support rows, the extra attention layer adds
+parameters without adding information, and the extra parameters make collapse easier. `deepsets` therefore
+stays the default, and `cross_attention` is retained as a documented option that lost in the only test that
+matters.
+
+Every arm early-stopped at step 50, meaning validation *worsened* from there on. Combined with the flat
+gate, that says the objective is actively driving these models toward zero dispersion rather than failing
+to reach it.
+
 ## TabArena evaluation (pending)
 
 The harness evaluates every arm on the same 20 official binary tasks used by the slot trial, with identical
@@ -534,14 +659,25 @@ What the second pilot newly settles, and what it rules out:
   identifiable episodes (target 0) than on ambiguous ones (target 0.164). This is the slot trial's failure
   signature reproduced in a slot-free model, which is evidence that the failure was never about slots.
 
-Reading of "freezing versus posterior capacity versus data": the evidence now points away from both
-freezing and posterior capacity, and at the **uncertainty signal available to the encoder**. The pathway
-from support to dispersion is a DeepSets summary `c_D` of the support target embeddings plus a per-query
-embedding; nothing in it explicitly measures *how much plausible functions consistent with this support
-disagree on this query*. An ambiguous and an identifiable episode drawn from the same family differ in
-exactly that quantity and can look very similar under a permutation-invariant mean/variance pooling of
-support embeddings. That is the hypothesis the next iteration should attack, and it is a different one
-from the hypothesis the sweep was designed to test.
+Reading of "freezing versus posterior capacity versus data": the evidence points away from both freezing
+and posterior capacity, and at the **uncertainty signal carried by the frozen representation**.
+
+One clarification matters for interpreting this, because an earlier version of this section got the
+mechanism wrong. nanoTabPFN itself contains no set pooling: it is attention-only, and its datapoint
+attention already has every query row attend to the labelled support rows, once per layer for six layers.
+The query target embedding handed to the uncertainty head is therefore *already* a support-conditioned
+representation. The `DeepSetsSupportEncoder` is part of this trial's head, not part of the backbone, and
+its role is to summarize the support set *again* into a single global vector.
+
+That reframes the problem. The head does not lack access to query-relevant support evidence — the
+backbone supplies it. What the head adds is a lossy global bottleneck on top, and what the frozen
+representation lacks is not locality but *posterior width*: the target-column embeddings are optimized to
+produce the predictive mean, and nothing in the pretraining objective requires them to encode how much
+plausible functions consistent with the support disagree at a query.
+
+This also right-sizes the per-query `cross_attention` context introduced below. It is a seventh
+query-to-support attention layer stacked on six existing ones, not a missing mechanism being restored, and
+its held-out gain is correspondingly modest.
 
 What is still open:
 

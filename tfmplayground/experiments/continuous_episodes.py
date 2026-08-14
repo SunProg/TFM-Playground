@@ -39,6 +39,10 @@ TRAIN_FAMILIES = ("linear", "threshold", "tree", "sparse_interaction", "smooth",
 HELDOUT_FAMILIES = ("dense_interaction", "tree_scm")
 
 CONDITIONS = ("ambiguous", "identifiable", "noisy", "paired")
+#: Share of support rows on which the candidates genuinely disagree.  This is
+#: the *only* thing separating an ambiguous episode from an identifiable one.
+AMBIGUOUS_IDENTIFYING_FRACTION = 0.0
+IDENTIFIABLE_IDENTIFYING_FRACTION = (0.25, 1.0)
 #: Structured label-noise levels ``eta``.
 NOISE_LEVELS = (0.00, 0.05, 0.10, 0.20, 0.35)
 SUPPORT_SIZES = (32, 64, 128, 256, 512)
@@ -354,24 +358,44 @@ def _select_rows(
     support_size: int,
     query_count: int,
     rng: np.random.Generator,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Pick support and query rows realizing the requested episode condition."""
+    identifying_fraction: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Pick support and query rows, varying only how much evidence identifies.
+
+    Queries are always the highest-disagreement rows and the support is always
+    drawn from the same low-disagreement base region, so ambiguous and
+    identifiable episodes differ *only* in ``identifying_fraction`` -- the share
+    of support rows on which the candidates genuinely disagree.
+
+    Selecting the support from a different region per condition, as an earlier
+    version did, made the conditions differ in support difficulty as well as in
+    evidence content.  That is a family-specific surface cue rather than a fact
+    about the posterior, and an encoder probe showed heads latching onto it and
+    then *inverting* on held-out function families.
+
+    Returns the support indices, the query indices, and how many support rows
+    are identifying, which the caller needs in order to force the rest to agree.
+    """
+    if not 0.0 <= identifying_fraction <= 1.0:
+        raise ValueError("identifying_fraction must lie in [0, 1].")
+    if condition == "noisy":
+        # Every candidate is identical here, so disagreement is zero everywhere
+        # and any ordering is arbitrary.
+        order = rng.permutation(labels.shape[1])
+        return order[:support_size], order[support_size : support_size + query_count], 0
     disagreement = labels.astype(np.float64).var(axis=0)
-    rows = labels.shape[1]
-    if condition in {"ambiguous", "paired"}:
-        order = np.argsort(disagreement, kind="stable")
-        support_indices = order[:support_size]
-        remaining = order[support_size:]
-        query_indices = remaining[np.argsort(-disagreement[remaining], kind="stable")[:query_count]]
-    elif condition == "identifiable":
-        order = np.argsort(-disagreement, kind="stable")
-        support_indices = order[:support_size]
-        query_indices = order[support_size : support_size + query_count]
-    else:
-        order = rng.permutation(rows)
-        support_indices = order[:support_size]
-        query_indices = order[support_size : support_size + query_count]
-    return support_indices, query_indices
+    descending = np.argsort(-disagreement, kind="stable")
+    query_indices = descending[:query_count]
+    remaining = descending[query_count:]
+    identifying_count = int(round(identifying_fraction * support_size))
+    identifying_count = min(identifying_count, max(0, remaining.size - support_size))
+    agreeing_count = support_size - identifying_count
+    # ``remaining`` is sorted by descending disagreement: the head identifies
+    # the candidate, the tail is uninformative about it.
+    identifying = remaining[:identifying_count]
+    agreeing = remaining[remaining.size - agreeing_count :] if agreeing_count else remaining[:0]
+    support_indices = np.concatenate((agreeing, identifying))
+    return support_indices, query_indices, identifying_count
 
 
 def _build_item(
@@ -385,6 +409,7 @@ def _build_item(
     query_count: int,
     noise: float,
     features: int,
+    identifying_fraction: float = 0.0,
     extra_support: int = 0,
 ) -> dict[str, np.ndarray]:
     rows = max(support_size + query_count + extra_support + 16, 4 * (support_size + query_count))
@@ -394,13 +419,14 @@ def _build_item(
     if condition == "noisy":
         # Candidates agree everywhere, so all remaining uncertainty is aleatoric.
         labels = np.repeat(labels[:1], num_candidates, axis=0)
-    support_indices, query_indices = _select_rows(labels, condition, support_size + extra_support, query_count, rng)
-    if condition == "ambiguous":
-        # Structured disagreement is kept on the queries, but the support rows
-        # are made exactly uninformative about which candidate is active.  With
-        # many candidates, naturally agreeing rows are too rare to select, and
-        # a partially identifying support would make "ambiguous" a misnomer.
-        labels[:, support_indices] = labels[0, support_indices]
+    support_indices, query_indices, identifying_count = _select_rows(
+        labels, condition, support_size + extra_support, query_count, rng, identifying_fraction
+    )
+    # The non-identifying part of the support is made exactly uninformative, so
+    # the only evidence about which candidate is active is the identifying rows.
+    # With many candidates, naturally agreeing rows are too rare to select.
+    agreeing_indices = support_indices[: support_indices.size - identifying_count]
+    labels[:, agreeing_indices] = labels[0, agreeing_indices]
     candidate_support = _candidate_probabilities(labels[:, support_indices], noise)
     candidate_query = _candidate_probabilities(labels[:, query_indices], noise)
     truth = int(rng.integers(num_candidates))
@@ -477,6 +503,11 @@ def sample_episode(
     effective_noise = max(noise, MIN_EFFECTIVE_NOISE)
     # One feature count per batch keeps every episode in the batch stackable.
     features = int(rng.integers(regime.min_features, regime.max_features + 1))
+    identifying_fraction = (
+        float(rng.uniform(*IDENTIFIABLE_IDENTIFYING_FRACTION))
+        if condition == "identifiable"
+        else AMBIGUOUS_IDENTIFYING_FRACTION
+    )
     items = [
         _build_item(
             regime,
@@ -488,6 +519,7 @@ def sample_episode(
             query_count=query_count,
             noise=effective_noise,
             features=features,
+            identifying_fraction=identifying_fraction,
         )
         for _ in range(batch_size)
     ]
@@ -501,6 +533,7 @@ def sample_episode(
             "support_size": support_size,
             "query_count": query_count,
             "features": features,
+            "identifying_fraction": identifying_fraction,
         },
     )
     return episode.to(device)
@@ -517,24 +550,27 @@ def sample_paired_episode(
     noise: float | None = None,
     family: str | None = None,
     device: torch.device | str = "cpu",
-    prefix_fraction: float = 0.5,
+    identifying_fraction: float = 0.5,
     max_support_size: int = max(SUPPORT_SIZES),
 ) -> tuple[ContinuousEpisode, ContinuousEpisode]:
-    """Return a short-prefix episode and its genuinely more identifying extension.
+    """Return a matched pair differing only in how identifying the support is.
 
-    Both episodes share queries and candidate functions.  The extended episode
-    adds support rows on which the candidates disagree, so a correct posterior
-    must not increase its mutual information.
+    Both arms share the candidate functions, the query rows, the support size,
+    and the support region.  The first arm has no identifying support rows and
+    the second has ``identifying_fraction`` of them, so a correct posterior must
+    not increase its mutual information from the first to the second.  Holding
+    the support size fixed makes this a sharper test than the earlier
+    prefix-versus-extension construction, in which the arms also differed in
+    how much data they had.
     """
-    if not 0 < prefix_fraction < 1:
-        raise ValueError("prefix_fraction must lie strictly between zero and one.")
+    if not 0 < identifying_fraction <= 1:
+        raise ValueError("identifying_fraction must lie in (0, 1].")
     family = family or str(rng.choice(regime.families))
     num_candidates = num_candidates or int(rng.choice(CANDIDATE_COUNTS))
     support_size = support_size or int(rng.choice(available_support_sizes(max_support_size)))
     query_count = query_count or int(rng.integers(4, 9))
     noise = float(rng.choice(NOISE_LEVELS)) if noise is None else float(noise)
     effective_noise = max(noise, MIN_EFFECTIVE_NOISE)
-    prefix_size = max(2, int(round(prefix_fraction * support_size)))
     features = int(rng.integers(regime.min_features, regime.max_features + 1))
 
     short_items: list[dict[str, np.ndarray]] = []
@@ -544,29 +580,27 @@ def sample_paired_episode(
         x, labels, _info = sample_candidate_pool(
             regime, rng, family=family, num_candidates=num_candidates, rows=rows, features=features
         )
-        disagreement = labels.astype(np.float64).var(axis=0)
-        order = np.argsort(disagreement, kind="stable")
-        agreeing = order[:prefix_size]
-        remaining = order[prefix_size:]
-        ranked = remaining[np.argsort(-disagreement[remaining], kind="stable")]
-        query_indices = ranked[:query_count]
-        # Identifying rows are support rows on which candidates disagree.
-        identifying = ranked[query_count : query_count + (support_size - prefix_size)]
-        # The prefix is exactly uninformative; the extension genuinely identifies.
-        labels[:, agreeing] = labels[0, agreeing]
-        short_indices = agreeing
-        long_indices = np.concatenate((agreeing, identifying))
         truth = int(rng.integers(num_candidates))
-        candidate_query = _candidate_probabilities(labels[:, query_indices], effective_noise)
-        query_clean = labels[truth, query_indices]
-        query_y = np.logical_xor(query_clean, rng.random(query_clean.shape) < effective_noise).astype(np.int64)
-        for indices, bucket in ((short_indices, short_items), (long_indices, long_items)):
-            candidate_support = _candidate_probabilities(labels[:, indices], effective_noise)
-            clean = labels[truth, indices]
+        for fraction, bucket in ((0.0, short_items), (identifying_fraction, long_items)):
+            # Each arm gets its own copy so that forcing one arm's agreeing rows
+            # to agree cannot leak into the other.
+            arm_labels = labels.copy()
+            support_indices, query_indices, identifying_count = _select_rows(
+                arm_labels, "paired", support_size, query_count, rng, fraction
+            )
+            agreeing = support_indices[: support_indices.size - identifying_count]
+            arm_labels[:, agreeing] = arm_labels[0, agreeing]
+            candidate_support = _candidate_probabilities(arm_labels[:, support_indices], effective_noise)
+            candidate_query = _candidate_probabilities(arm_labels[:, query_indices], effective_noise)
+            clean = arm_labels[truth, support_indices]
             support_y = np.logical_xor(clean, rng.random(clean.shape) < effective_noise).astype(np.float32)
+            query_clean = arm_labels[truth, query_indices]
+            query_y = np.logical_xor(
+                query_clean, rng.random(query_clean.shape) < effective_noise
+            ).astype(np.int64)
             bucket.append(
                 {
-                    "support_x": x[indices].astype(np.float32),
+                    "support_x": x[support_indices].astype(np.float32),
                     "support_y": support_y,
                     "query_x": x[query_indices].astype(np.float32),
                     "query_y": query_y,
@@ -582,7 +616,7 @@ def sample_paired_episode(
         "num_candidates": num_candidates,
         "support_size": support_size,
         "query_count": query_count,
-        "prefix_size": prefix_size,
+        "identifying_fraction": identifying_fraction,
     }
     short = _assemble(short_items, noise=effective_noise, condition="paired", family=family, metadata=metadata)
     long = _assemble(long_items, noise=effective_noise, condition="paired", family=family, metadata=metadata)

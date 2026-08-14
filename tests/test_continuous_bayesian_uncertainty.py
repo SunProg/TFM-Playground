@@ -260,6 +260,107 @@ class ContinuousPosteriorModelTests(unittest.TestCase):
         torch.testing.assert_close(first, second.sample_positive, atol=0, rtol=0)
 
 
+class ContextModeTests(unittest.TestCase):
+    """Per-query cross-attention context, selected by an encoder probe."""
+
+    def _model(self, mode: str, seed: int = 50):
+        return NanoTabPFNContinuousPosteriorModel(
+            tiny_backbone(seed), latent_dim=8, num_samples=8, context_mode=mode
+        ).eval()
+
+    def test_cross_attention_preserves_the_model_symmetries(self):
+        model = self._model("cross_attention")
+        support_x, support_y, query_x = tiny_episode()
+        prediction = model(support_x, support_y, query_x)
+        vanilla = model.mean_backbone(support_x, support_y, query_x)[..., :2].softmax(-1)
+        torch.testing.assert_close(prediction.marginal_probabilities(), vanilla, atol=0, rtol=0)
+        self.assertLessEqual(float(prediction.mean_preservation_error().max()), 1e-6)
+        order = torch.randperm(support_x.shape[1], generator=torch.Generator().manual_seed(2))
+        permuted = model(support_x[:, order], support_y[:, order], query_x)
+        torch.testing.assert_close(
+            permuted.mutual_information(), prediction.mutual_information(), atol=1e-5, rtol=1e-4
+        )
+        query_order = torch.tensor([2, 0, 3, 1])
+        reordered = model(support_x, support_y, query_x[:, query_order])
+        torch.testing.assert_close(
+            reordered.sample_positive, prediction.sample_positive[:, :, query_order], atol=1e-5, rtol=1e-4
+        )
+
+    def test_latent_draws_stay_query_independent(self):
+        """One latent sample must remain one coherent function over all queries.
+
+        Only the decoder and the gate may see a per-query context; the latent
+        generator keeps consuming the global pool.
+        """
+        model = self._model("cross_attention", seed=51)
+        support_x, support_y, query_x = tiny_episode()
+        support, query = model._uncertainty_representations(
+            support_x, support_y, query_x, num_mem_chunks=1
+        )
+        global_context, query_context = model._contexts(support, query)
+        self.assertEqual(global_context.shape, (support_x.shape[0], model.context_size))
+        self.assertEqual(query_context.shape[:2], query_x.shape[:2])
+        order = torch.tensor([2, 0, 3, 1])
+        _reordered_global, _ = model._contexts(support, query[:, order])
+        torch.testing.assert_close(_reordered_global, global_context, atol=0, rtol=0)
+
+    def test_deepsets_remains_the_default_and_broadcasts(self):
+        model = self._model("deepsets", seed=52)
+        self.assertEqual(model.context_mode, "deepsets")
+        self.assertIsNone(model.query_context_encoder)
+        support_x, support_y, query_x = tiny_episode()
+        support, query = model._uncertainty_representations(
+            support_x, support_y, query_x, num_mem_chunks=1
+        )
+        global_context, query_context = model._contexts(support, query)
+        torch.testing.assert_close(
+            query_context, global_context[:, None].expand(-1, query_x.shape[1], -1), atol=0, rtol=0
+        )
+
+    def test_checkpoint_without_context_mode_loads_as_deepsets(self):
+        model = self._model("deepsets", seed=53)
+        episode = tiny_episode()
+        expected = model(*episode).sample_positive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy_context.pth"
+            save_continuous_checkpoint(
+                path,
+                model,
+                training_config={},
+                source_checkpoint_path="checkpoints/nanotabpfn.pth",
+                source_checkpoint_sha256="5" * 64,
+                stage="continuous_adapters",
+            )
+            checkpoint = torch.load(path, weights_only=False)
+            del checkpoint["architecture"]["context_mode"]
+            torch.save(checkpoint, path)
+            restored, _checkpoint = load_continuous_checkpoint(path)
+        self.assertEqual(restored.context_mode, "deepsets")
+        torch.testing.assert_close(restored(*episode).sample_positive, expected, atol=0, rtol=0)
+
+    def test_cross_attention_round_trip(self):
+        model = self._model("cross_attention", seed=54)
+        episode = tiny_episode()
+        expected = model(*episode).sample_positive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cross.pth"
+            save_continuous_checkpoint(
+                path,
+                model,
+                training_config={},
+                source_checkpoint_path="checkpoints/nanotabpfn.pth",
+                source_checkpoint_sha256="6" * 64,
+                stage="continuous_adapters",
+            )
+            restored, checkpoint = load_continuous_checkpoint(path)
+        self.assertEqual(checkpoint["architecture"]["context_mode"], "cross_attention")
+        torch.testing.assert_close(restored(*episode).sample_positive, expected, atol=0, rtol=0)
+
+    def test_unknown_context_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            NanoTabPFNContinuousPosteriorModel(tiny_backbone(55), latent_dim=8, context_mode="global")
+
+
 class BetaAblationTests(unittest.TestCase):
     def test_beta_mean_is_exactly_vanilla_and_concentration_is_positive(self):
         model = NanoTabPFNBetaConcentrationModel(tiny_backbone(13), num_samples=8).eval()
@@ -518,6 +619,30 @@ class EpisodeTests(unittest.TestCase):
             noise=0.05, family="tree",
         )
         self.assertGreater(float(episode.posterior.max(dim=-1).values.min()), 0.5)
+        self.assertGreater(episode.metadata["identifying_fraction"], 0.0)
+
+    def test_conditions_differ_only_in_identifying_evidence(self):
+        """The ambiguous/identifiable contrast must not be a support-difficulty cue.
+
+        Selecting the support from a different region per condition let probe
+        heads latch onto a family-specific surface cue and then invert on
+        held-out families, so shape and region are now held fixed.
+        """
+        ambiguous = sample_episode(
+            np.random.default_rng(21), condition="ambiguous", batch_size=1, num_candidates=8,
+            support_size=64, query_count=6, noise=0.05, family="linear",
+        )
+        identifiable = sample_episode(
+            np.random.default_rng(21), condition="identifiable", batch_size=1, num_candidates=8,
+            support_size=64, query_count=6, noise=0.05, family="linear",
+        )
+        self.assertEqual(ambiguous.support_x.shape, identifiable.support_x.shape)
+        self.assertEqual(ambiguous.query_x.shape, identifiable.query_x.shape)
+        self.assertAlmostEqual(ambiguous.metadata["identifying_fraction"], 0.0)
+        torch.testing.assert_close(
+            ambiguous.posterior, torch.full((1, 8), 1.0 / 8), atol=1e-5, rtol=1e-4
+        )
+        self.assertGreater(float(identifiable.posterior.max()), 0.5)
 
     def test_noisy_episodes_have_no_candidate_disagreement(self):
         rng = np.random.default_rng(7)
@@ -532,9 +657,13 @@ class EpisodeTests(unittest.TestCase):
         short, long = sample_paired_episode(
             rng, batch_size=1, num_candidates=8, support_size=64, query_count=5, noise=0.05, family="linear"
         )
-        self.assertLess(short.support_x.shape[1], long.support_x.shape[1])
+        # The arms differ only in how identifying the support is: same support
+        # size, same queries, same candidates.
+        self.assertEqual(short.support_x.shape, long.support_x.shape)
         torch.testing.assert_close(short.query_x, long.query_x)
-        self.assertLess(float(short.posterior.max()), float(long.posterior.max()))
+        torch.testing.assert_close(short.candidate_query_positive, long.candidate_query_positive)
+        self.assertAlmostEqual(float(short.posterior.max()), 1.0 / 8, places=4)
+        self.assertGreater(float(long.posterior.max()), 0.5)
 
     def test_families_and_regimes_are_disjoint(self):
         self.assertEqual(set(TRAIN_FAMILIES) & set(HELDOUT_FAMILIES), set())

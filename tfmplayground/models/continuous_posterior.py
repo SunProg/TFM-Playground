@@ -30,6 +30,10 @@ CONTINUOUS_CHECKPOINT_TYPE = "nanotabpfn_continuous_posterior"
 BETA_CHECKPOINT_TYPE = "nanotabpfn_beta_concentration"
 CHECKPOINT_FORMAT_VERSION = 1
 UNCERTAINTY_MODES = ("frozen", "adapters", "full")
+#: How the support set is summarized for the dispersion pathway.  ``deepsets``
+#: is the original global pool and remains the default so that existing
+#: checkpoints reload unchanged.
+CONTEXT_MODES = ("deepsets", "cross_attention")
 #: Probability margin kept away from zero and one so that entropies stay finite.
 PROBABILITY_MARGIN = 1e-6
 #: Default soft-clip applied to standardized deviations, in RMS units.
@@ -320,6 +324,33 @@ class DeepSetsSupportEncoder(nn.Module):
         return self.pool(torch.cat((mean, variance), dim=-1))
 
 
+class QueryConditionedSupportEncoder(nn.Module):
+    """Per-query context: each query attends over the labelled support rows.
+
+    A global mean/variance pool cannot express "the labelled evidence relevant
+    to *this* query is decisive", which is the quantity separating an ambiguous
+    episode from an identifiable one.  Attention is permutation invariant in the
+    support rows and equivariant in the queries, so both model symmetries are
+    preserved.
+    """
+
+    def __init__(self, embedding_size: int, context_size: int, num_attention_heads: int = 4):
+        super().__init__()
+        self.query_projection = nn.Linear(embedding_size, embedding_size)
+        self.attention = nn.MultiheadAttention(embedding_size, num_attention_heads, batch_first=True)
+        self.projection = nn.Linear(embedding_size, context_size)
+        self.norm = nn.LayerNorm(context_size)
+
+    def forward(self, support_embeddings: torch.Tensor, query_embeddings: torch.Tensor) -> torch.Tensor:
+        attended = self.attention(
+            self.query_projection(query_embeddings),
+            support_embeddings,
+            support_embeddings,
+            need_weights=False,
+        )[0]
+        return self.norm(self.projection(attended))
+
+
 class LatentGenerator(nn.Module):
     """Conditional residual MLP mapping ``(c_D, epsilon_s)`` to ``z_s``."""
 
@@ -353,11 +384,12 @@ class QueryDeviationDecoder(nn.Module):
         )
 
     def forward(self, query_embeddings: torch.Tensor, context: torch.Tensor, latents: torch.Tensor) -> torch.Tensor:
-        # query_embeddings: (batch, query, embedding); latents: (batch, sample, latent)
+        # query_embeddings: (batch, query, embedding); context: (batch, query,
+        # context); latents: (batch, sample, latent)
         query_count = query_embeddings.shape[1]
         num_samples = latents.shape[1]
         query = query_embeddings[:, None].expand(-1, num_samples, -1, -1)
-        context_expanded = context[:, None, None].expand(-1, num_samples, query_count, -1)
+        context_expanded = context[:, None].expand(-1, num_samples, -1, -1)
         latent = latents[:, :, None].expand(-1, -1, query_count, -1)
         return self.body(torch.cat((query, context_expanded, latent), dim=-1)).squeeze(-1)
 
@@ -374,8 +406,8 @@ class DispersionGate(nn.Module):
         )
 
     def forward(self, query_embeddings: torch.Tensor, context: torch.Tensor) -> torch.Tensor:
-        context_expanded = context[:, None].expand(-1, query_embeddings.shape[1], -1)
-        return torch.sigmoid(self.body(torch.cat((query_embeddings, context_expanded), dim=-1)).squeeze(-1))
+        # context is per query: (batch, query, context).
+        return torch.sigmoid(self.body(torch.cat((query_embeddings, context), dim=-1)).squeeze(-1))
 
 
 # --------------------------------------------------------------------------- #
@@ -481,10 +513,13 @@ class _MeanPreservingUncertaintyModel(nn.Module):
         hidden_size: int | None = None,
         context_size: int | None = None,
         uncertainty_backbone: NanoTabPFNModel | None = None,
+        context_mode: str = "deepsets",
     ):
         super().__init__()
         if uncertainty_mode not in UNCERTAINTY_MODES:
             raise ValueError(f"uncertainty_mode must be one of {UNCERTAINTY_MODES}.")
+        if context_mode not in CONTEXT_MODES:
+            raise ValueError(f"context_mode must be one of {CONTEXT_MODES}.")
         if backbone.num_outputs < 2:
             raise ValueError("The binary experiment requires a backbone with at least two outputs.")
         self.uncertainty_mode = uncertainty_mode
@@ -497,8 +532,33 @@ class _MeanPreservingUncertaintyModel(nn.Module):
         self.embedding_size = backbone.embedding_size
         self.hidden_size = backbone.mlp_hidden_size if hidden_size is None else hidden_size
         self.context_size = backbone.embedding_size if context_size is None else context_size
+        self.context_mode = context_mode
+        # The DeepSets pool is always built: the latent generator consumes a
+        # *global* context so that one latent draw stays one coherent function
+        # across the whole query set.  Only the decoder and the gate may use a
+        # per-query context.
         self.support_encoder = DeepSetsSupportEncoder(self.embedding_size, self.hidden_size, self.context_size)
+        self.query_context_encoder = (
+            QueryConditionedSupportEncoder(self.embedding_size, self.context_size)
+            if context_mode == "cross_attention"
+            else None
+        )
         self._apply_freezing()
+
+    def _contexts(
+        self, support_embeddings: torch.Tensor, query_embeddings: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return the global latent context and the per-query decoding context.
+
+        The two coincide in ``deepsets`` mode, where the per-query context is the
+        global one broadcast over queries.
+        """
+        global_context = self.support_encoder(support_embeddings)
+        if self.query_context_encoder is None:
+            query_context = global_context[:, None].expand(-1, query_embeddings.shape[1], -1)
+        else:
+            query_context = self.query_context_encoder(support_embeddings, query_embeddings)
+        return global_context, query_context
 
     def _apply_freezing(self) -> None:
         # The mean path is frozen for the lifetime of the model.
@@ -571,6 +631,7 @@ class _MeanPreservingUncertaintyModel(nn.Module):
             "adapter_bottleneck": self.adapter_bottleneck,
             "hidden_size": self.hidden_size,
             "context_size": self.context_size,
+            "context_mode": self.context_mode,
         }
 
 
@@ -595,6 +656,7 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
         hidden_size: int | None = None,
         context_size: int | None = None,
         uncertainty_backbone: NanoTabPFNModel | None = None,
+        context_mode: str = "deepsets",
         deviation_clip: float | None = DEFAULT_DEVIATION_CLIP,
     ):
         super().__init__(
@@ -604,6 +666,7 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
             hidden_size=hidden_size,
             context_size=context_size,
             uncertainty_backbone=uncertainty_backbone,
+            context_mode=context_mode,
         )
         if latent_dim < 1:
             raise ValueError("latent_dim must be positive.")
@@ -636,17 +699,18 @@ class NanoTabPFNContinuousPosteriorModel(_MeanPreservingUncertaintyModel):
         support_embeddings, query_embeddings = self._uncertainty_representations(
             support_x, support_y, query_x, num_mem_chunks=num_mem_chunks
         )
-        context = self.support_encoder(support_embeddings)
+        global_context, query_context = self._contexts(support_embeddings, query_embeddings)
         noise = sobol_standard_normal(
             num_samples,
             self.latent_dim,
             seed=sample_seed,
-            device=context.device,
-            dtype=context.dtype,
+            device=global_context.device,
+            dtype=global_context.dtype,
         )
-        latents = self.latent_generator(context, noise)
-        raw = self.query_decoder(query_embeddings, context, latents)
-        gate = self.dispersion_gate(query_embeddings, context)
+        # The latent draw is deliberately query-independent.
+        latents = self.latent_generator(global_context, noise)
+        raw = self.query_decoder(query_embeddings, query_context, latents)
+        gate = self.dispersion_gate(query_embeddings, query_context)
         sample_positive, bound = centre_and_scale(
             base_positive, raw, gate, deviation_clip=self.deviation_clip
         )
@@ -672,6 +736,7 @@ class NanoTabPFNBetaConcentrationModel(_MeanPreservingUncertaintyModel):
         hidden_size: int | None = None,
         context_size: int | None = None,
         uncertainty_backbone: NanoTabPFNModel | None = None,
+        context_mode: str = "deepsets",
     ):
         super().__init__(
             backbone,
@@ -680,6 +745,7 @@ class NanoTabPFNBetaConcentrationModel(_MeanPreservingUncertaintyModel):
             hidden_size=hidden_size,
             context_size=context_size,
             uncertainty_backbone=uncertainty_backbone,
+            context_mode=context_mode,
         )
         if num_samples < 2 or num_samples % 2 != 0:
             raise ValueError("num_samples must be an even number of at least two.")
@@ -709,9 +775,8 @@ class NanoTabPFNBetaConcentrationModel(_MeanPreservingUncertaintyModel):
         support_embeddings, query_embeddings = self._uncertainty_representations(
             support_x, support_y, query_x, num_mem_chunks=num_mem_chunks
         )
-        context = self.support_encoder(support_embeddings)
-        context_expanded = context[:, None].expand(-1, query_embeddings.shape[1], -1)
-        raw = self.concentration_head(torch.cat((query_embeddings, context_expanded), dim=-1)).squeeze(-1)
+        _global_context, query_context = self._contexts(support_embeddings, query_embeddings)
+        raw = self.concentration_head(torch.cat((query_embeddings, query_context), dim=-1)).squeeze(-1)
         concentration = F.softplus(raw) + self.min_concentration
         alpha = base_positive * concentration
         beta = (1.0 - base_positive) * concentration
@@ -876,6 +941,8 @@ def load_continuous_checkpoint(
         "inference_seed": architecture.get("inference_seed", 0),
         "hidden_size": architecture.get("hidden_size"),
         "context_size": architecture.get("context_size"),
+        # Checkpoints written before the per-query context existed omit the key.
+        "context_mode": architecture.get("context_mode", "deepsets"),
     }
     if model_type == CONTINUOUS_CHECKPOINT_TYPE:
         model = NanoTabPFNContinuousPosteriorModel(

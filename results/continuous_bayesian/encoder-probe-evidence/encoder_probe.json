@@ -1,0 +1,91 @@
+{
+  "config": {
+    "seed": 5505,
+    "checkpoint": "checkpoints/nanotabpfn.pth",
+    "device": "cpu",
+    "train_episodes": 240,
+    "validation_episodes": 60,
+    "evaluation_episodes": 60,
+    "support_size": 128,
+    "query_count": 6,
+    "steps": 1500,
+    "validation_interval": 50,
+    "patience": 6,
+    "learning_rate": 0.001,
+    "hidden_size": 128,
+    "context_size": 96,
+    "num_attention_heads": 4
+  },
+  "results": [
+    {
+      "mode": "deepsets",
+      "parameters": 165858,
+      "train_loss": 0.01279815100133419,
+      "best_step": 300,
+      "in_family": {
+        "loss": 0.01217374112457037,
+        "mutual_information_r2": -0.008539795875549316,
+        "epistemic_variance_r2": -0.019887208938598633,
+        "mutual_information_spearman": -0.004566903720089317,
+        "condition_auc": 0.5723611111111111
+      },
+      "held_out_family": {
+        "loss": 0.017770856618881226,
+        "mutual_information_r2": -0.030826210975646973,
+        "epistemic_variance_r2": -0.03758203983306885,
+        "mutual_information_spearman": -0.00924508278506249,
+        "condition_auc": 0.4284027777777778
+      }
+    },
+    {
+      "mode": "cross_attention",
+      "parameters": 258338,
+      "train_loss": 0.0006781620904803276,
+      "best_step": 200,
+      "in_family": {
+        "loss": 0.010400352068245411,
+        "mutual_information_r2": 0.1804807186126709,
+        "epistemic_variance_r2": -0.173254132270813,
+        "mutual_information_spearman": 0.23985234047570897,
+        "condition_auc": 0.5466666666666666
+      },
+      "held_out_family": {
+        "loss": 0.016294587403535843,
+        "mutual_information_r2": 0.09044688940048218,
+        "epistemic_variance_r2": -0.1956639289855957,
+        "mutual_information_spearman": 0.08565251739393741,
+        "condition_auc": 0.4635416666666667
+      }
+    },
+    {
+      "mode": "cross_attention_local",
+      "parameters": 259638,
+      "train_loss": 0.001077363034710288,
+      "best_step": 300,
+      "in_family": {
+        "loss": 0.011321273632347584,
+        "mutual_information_r2": 0.09033125638961792,
+        "epistemic_variance_r2": -0.1510465145111084,
+        "mutual_information_spearman": 0.27804590710945615,
+        "condition_auc": 0.5904861111111112
+      },
+      "held_out_family": {
+        "loss": 0.017634497955441475,
+        "mutual_information_r2": -0.0006160736083984375,
+        "epistemic_variance_r2": -0.18246924877166748,
+        "mutual_information_spearman": -0.0632929219283419,
+        "condition_auc": 0.4330555555555555
+      }
+    }
+  ],
+  "decision": {
+    "best_mode": "cross_attention",
+    "best_in_family_r2": 0.1804807186126709,
+    "best_held_out_family_r2": 0.09044688940048218,
+    "beats_deepsets": true,
+    "clears_r2_floor": false,
+    "clears_condition_auc_floor": false,
+    "generalizes_in_family": false,
+    "proceed": false
+  }
+}
