@@ -20,9 +20,12 @@ LEARNING_RATES = (1e-5, 3e-5, 1e-4)
 MULTIREGIME_PROBABILITIES = (0.2, 0.3, 0.5)
 SUPPORT_SIZES = (64, 128)
 
-SCREENING_STEPS = 1500
+#: 100,000 steps, no early stopping: patience larger than max_steps / validation
+#: interval means the "stale >= patience" check in finetune() can never trigger
+#: within the run, so every task uses its full step budget.
+SCREENING_STEPS = 100_000
 SCREENING_VALIDATION_INTERVAL = 100
-SCREENING_PATIENCE = 8
+SCREENING_PATIENCE = 10_000_000
 FINAL_STEPS = 3000
 FINAL_VALIDATION_INTERVAL = 100
 FINAL_PATIENCE = 10
