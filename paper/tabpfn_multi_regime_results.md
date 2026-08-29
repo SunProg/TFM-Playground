@@ -49,6 +49,26 @@ warns above 200; running on GPU on CREATE removes that constraint but 512 was ke
 same-size comparison and because it is nanoTabPFN's own generator's largest grid value
 (`continuous_episodes.SUPPORT_SIZES`).
 
+### Analytic prior families
+
+All six families use the same normally distributed feature matrix (with independently sampled per-feature
+scales). Each episode samples fresh function parameters, converts its continuous score to a binary label at
+a sampled quantile, and applies 5% label noise. They are deliberately distinct priors over the
+feature-to-label relationship:
+
+| family | label-generating score |
+|---|---|
+| `linear` | A random weighted sum of all features. |
+| `threshold` | A weighted sum of one to three binary feature tests, each split at a sampled feature quantile. |
+| `tree` | A depth-3 decision tree with sampled split features/cut-points and a random value for each leaf. |
+| `sparse_interaction` | The product of two or three selected features, plus a smaller linear term over those features. |
+| `dense_interaction` | A quadratic form over all features using a random symmetric matrix; this includes dense pairwise interactions. |
+| `smooth` | A sum of two to four sinusoidal functions of random linear projections of the features. |
+
+Thus, “contamination” does not mean corrupted feature values: the exact same `x` can be labelled by either
+of two independently drawn family functions. The reported base/other split identifies which function
+generated the true label for each row and is withheld from the models.
+
 ### Concrete support-set example
 
 512-row support set, contamination=0.2, base=`linear`, contaminant=`tree` (first 10 and last 5 rows shown):
