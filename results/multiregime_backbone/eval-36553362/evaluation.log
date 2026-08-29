@@ -1,0 +1,151 @@
+job_id=36553362
+host=erc-hpc-comp196
+output_dir=/cephfs/volumes/hpc_home/k23139234/17f71989-c3b3-41d8-9315-37daa2fead54/repo/TFM-Playground-uncertainty/results/multiregime_backbone/eval-36553362
+started_at=2026-08-15T00:33:37+01:00
+NVIDIA A30, 580.173.02, 24576 MiB
+cuda_version=12.8 torch=2.9.0+cu128
+               mlp_scm c=0.0   baseline base_auc=0.5745283695373558 other_auc=None
+               mlp_scm c=0.0   seed2402 base_auc=0.5913769011413051 other_auc=None
+               mlp_scm c=0.0   seed2403 base_auc=0.5703358409722843 other_auc=None
+               mlp_scm c=0.0   seed2404 base_auc=0.555511998417798 other_auc=None
+               mlp_scm c=0.2   baseline base_auc=0.49251367189454737 other_auc=0.46931358036789833
+               mlp_scm c=0.2   seed2402 base_auc=0.5436027045535382 other_auc=0.43893778035224185
+               mlp_scm c=0.2   seed2403 base_auc=0.5529814758194338 other_auc=0.5172329680704737
+               mlp_scm c=0.2   seed2404 base_auc=0.5004300785814386 other_auc=0.5732634293351329
+               mlp_scm c=0.4   baseline base_auc=0.5220029429658928 other_auc=0.5330176464046481
+               mlp_scm c=0.4   seed2402 base_auc=0.5411942203667138 other_auc=0.5630827052103973
+               mlp_scm c=0.4   seed2403 base_auc=0.5137590347715572 other_auc=0.5307906114206953
+               mlp_scm c=0.4   seed2404 base_auc=0.489102228501453 other_auc=0.5578984172006873
+              tree_scm c=0.0   baseline base_auc=0.5264227464373871 other_auc=None
+              tree_scm c=0.0   seed2402 base_auc=0.5422502065255385 other_auc=None
+              tree_scm c=0.0   seed2403 base_auc=0.5970594807299044 other_auc=None
+              tree_scm c=0.0   seed2404 base_auc=0.5415340745437803 other_auc=None
+              tree_scm c=0.2   baseline base_auc=0.5394286182313935 other_auc=0.4802049190329772
+              tree_scm c=0.2   seed2402 base_auc=0.5742949463049343 other_auc=0.49843773541547814
+              tree_scm c=0.2   seed2403 base_auc=0.5691038560977376 other_auc=0.6032517669252593
+              tree_scm c=0.2   seed2404 base_auc=0.5911793742964914 other_auc=0.5083419560811863
+              tree_scm c=0.4   baseline base_auc=0.5643326232776358 other_auc=0.47574064882698713
+              tree_scm c=0.4   seed2402 base_auc=0.48272065272311376 other_auc=0.472046323357183
+              tree_scm c=0.4   seed2403 base_auc=0.5628316221819807 other_auc=0.5238604406967275
+              tree_scm c=0.4   seed2404 base_auc=0.5576180212026782 other_auc=0.6405999845237049
+           linear+tree c=0.0   baseline base_auc=0.9124555300688558 other_auc=None
+           linear+tree c=0.0   seed2402 base_auc=0.9115839333388573 other_auc=None
+           linear+tree c=0.0   seed2403 base_auc=0.9298365768444673 other_auc=None
+           linear+tree c=0.0   seed2404 base_auc=0.9537772245524494 other_auc=None
+           linear+tree c=0.2   baseline base_auc=0.8965663767124811 other_auc=0.6745934694974517
+           linear+tree c=0.2   seed2402 base_auc=0.9161862906642831 other_auc=0.5435181200430693
+           linear+tree c=0.2   seed2403 base_auc=0.9145587443338441 other_auc=0.646547226927501
+           linear+tree c=0.2   seed2404 base_auc=0.9097953058424676 other_auc=0.5184277155896654
+           linear+tree c=0.4   baseline base_auc=0.7729032715608215 other_auc=0.6678239339904045
+           linear+tree c=0.4   seed2402 base_auc=0.8897155328355644 other_auc=0.5942647069663649
+           linear+tree c=0.4   seed2403 base_auc=0.8234480153148401 other_auc=0.6957480597413551
+           linear+tree c=0.4   seed2404 base_auc=0.8538237123329654 other_auc=0.6645539471890058
+linear+dense_interaction c=0.0   baseline base_auc=0.930475081402413 other_auc=None
+linear+dense_interaction c=0.0   seed2402 base_auc=0.9365192496894604 other_auc=None
+linear+dense_interaction c=0.0   seed2403 base_auc=0.9459387754544444 other_auc=None
+linear+dense_interaction c=0.0   seed2404 base_auc=0.9273243216204152 other_auc=None
+linear+dense_interaction c=0.2   baseline base_auc=0.9040394251013479 other_auc=0.6996588487445249
+linear+dense_interaction c=0.2   seed2402 base_auc=0.8973012580902111 other_auc=0.5594848158897083
+linear+dense_interaction c=0.2   seed2403 base_auc=0.905182730899632 other_auc=0.5929380408462165
+linear+dense_interaction c=0.2   seed2404 base_auc=0.9010822002066098 other_auc=0.6047560650031363
+linear+dense_interaction c=0.4   baseline base_auc=0.883752146912634 other_auc=0.6301125055616874
+linear+dense_interaction c=0.4   seed2402 base_auc=0.8662501889054325 other_auc=0.6201725332010392
+linear+dense_interaction c=0.4   seed2403 base_auc=0.8821058130112832 other_auc=0.6871013385194195
+linear+dense_interaction c=0.4   seed2404 base_auc=0.866115392284086 other_auc=0.6932876915605032
+      threshold+smooth c=0.0   baseline base_auc=0.9471629143488554 other_auc=None
+      threshold+smooth c=0.0   seed2402 base_auc=0.9438334954112697 other_auc=None
+      threshold+smooth c=0.0   seed2403 base_auc=0.9132518519132125 other_auc=None
+      threshold+smooth c=0.0   seed2404 base_auc=0.9494128149693007 other_auc=None
+      threshold+smooth c=0.2   baseline base_auc=0.9054393346694469 other_auc=0.5070478847173003
+      threshold+smooth c=0.2   seed2402 base_auc=0.9353632159124433 other_auc=0.6000181836160395
+      threshold+smooth c=0.2   seed2403 base_auc=0.961013182028885 other_auc=0.5686379077215888
+      threshold+smooth c=0.2   seed2404 base_auc=0.926189330347059 other_auc=0.5823203683193586
+      threshold+smooth c=0.4   baseline base_auc=0.8617889024461146 other_auc=0.5821999665789169
+      threshold+smooth c=0.4   seed2402 base_auc=0.9026612401919261 other_auc=0.5370645221787058
+      threshold+smooth c=0.4   seed2403 base_auc=0.9097513850418611 other_auc=0.5048830380047378
+      threshold+smooth c=0.4   seed2404 base_auc=0.9438788503635674 other_auc=0.6021833013043452
+sparse_interaction+dense_interaction c=0.0   baseline base_auc=0.8403483634891022 other_auc=None
+sparse_interaction+dense_interaction c=0.0   seed2402 base_auc=0.9091517962035461 other_auc=None
+sparse_interaction+dense_interaction c=0.0   seed2403 base_auc=0.9235103995445285 other_auc=None
+sparse_interaction+dense_interaction c=0.0   seed2404 base_auc=0.8934245649637703 other_auc=None
+sparse_interaction+dense_interaction c=0.2   baseline base_auc=0.8443442731717539 other_auc=0.6951310715532297
+sparse_interaction+dense_interaction c=0.2   seed2402 base_auc=0.8967003922186341 other_auc=0.5659971114045539
+sparse_interaction+dense_interaction c=0.2   seed2403 base_auc=0.8755400506824722 other_auc=0.5803060716151672
+sparse_interaction+dense_interaction c=0.2   seed2404 base_auc=0.8769943037077451 other_auc=0.550985477537143
+sparse_interaction+dense_interaction c=0.4   baseline base_auc=0.7921627784940316 other_auc=0.6694348567564486
+sparse_interaction+dense_interaction c=0.4   seed2402 base_auc=0.7717447269928759 other_auc=0.6492672555164382
+sparse_interaction+dense_interaction c=0.4   seed2403 base_auc=0.8309319186970037 other_auc=0.6312456263402979
+sparse_interaction+dense_interaction c=0.4   seed2404 base_auc=0.7955619595231528 other_auc=0.6738301980190224
+           smooth+tree c=0.0   baseline base_auc=0.7687627389444629 other_auc=None
+           smooth+tree c=0.0   seed2402 base_auc=0.749141891698991 other_auc=None
+           smooth+tree c=0.0   seed2403 base_auc=0.7469615261061618 other_auc=None
+           smooth+tree c=0.0   seed2404 base_auc=0.7434255860372657 other_auc=None
+           smooth+tree c=0.2   baseline base_auc=0.7494436587091621 other_auc=0.6650630798955931
+           smooth+tree c=0.2   seed2402 base_auc=0.7182952645939826 other_auc=0.6022260922177038
+           smooth+tree c=0.2   seed2403 base_auc=0.6701653652826218 other_auc=0.6849713983739192
+           smooth+tree c=0.2   seed2404 base_auc=0.7096501023562125 other_auc=0.6021886779873185
+           smooth+tree c=0.4   baseline base_auc=0.6217982012698181 other_auc=0.6089166562264792
+           smooth+tree c=0.4   seed2402 base_auc=0.6058008928037376 other_auc=0.7155620484276312
+           smooth+tree c=0.4   seed2403 base_auc=0.695762315719985 other_auc=0.7882551899926673
+           smooth+tree c=0.4   seed2404 base_auc=0.6805580791482306 other_auc=0.6997674684117715
+
+=== RANKING (by other-regime AUC, worst degradation first), 56 cells ===
+rank                 source  contam      model  base AUC                 other AUC
+   1                mlp_scm     0.2   seed2402     0.544       0.439 [0.338,0.545]
+   2                mlp_scm     0.2   baseline     0.493       0.469 [0.370,0.574]
+   3               tree_scm     0.4   seed2402     0.483       0.472 [0.402,0.542]
+   4               tree_scm     0.4   baseline     0.564       0.476 [0.398,0.550]
+   5               tree_scm     0.2   baseline     0.539       0.480 [0.383,0.586]
+   6               tree_scm     0.2   seed2402     0.574       0.498 [0.399,0.599]
+   7       threshold+smooth     0.4   seed2403     0.910       0.505 [0.427,0.577]
+   8       threshold+smooth     0.2   baseline     0.905       0.507 [0.399,0.614]
+   9               tree_scm     0.2   seed2404     0.591       0.508 [0.403,0.617]
+  10                mlp_scm     0.2   seed2403     0.553       0.517 [0.409,0.627]
+  11            linear+tree     0.2   seed2404     0.910       0.518 [0.417,0.620]
+  12               tree_scm     0.4   seed2403     0.563       0.524 [0.454,0.593]
+  13                mlp_scm     0.4   seed2403     0.514       0.531 [0.460,0.601]
+  14                mlp_scm     0.4   baseline     0.522       0.533 [0.466,0.606]
+  15       threshold+smooth     0.4   seed2402     0.903       0.537 [0.462,0.608]
+  16            linear+tree     0.2   seed2402     0.916       0.544 [0.442,0.645]
+  17 sparse_interaction+dense_interaction     0.2   seed2404     0.877       0.551 [0.447,0.656]
+  18                mlp_scm     0.4   seed2404     0.489       0.558 [0.490,0.628]
+  19 linear+dense_interaction     0.2   seed2402     0.897       0.559 [0.447,0.671]
+  20                mlp_scm     0.4   seed2402     0.541       0.563 [0.494,0.637]
+  21 sparse_interaction+dense_interaction     0.2   seed2402     0.897       0.566 [0.462,0.673]
+  22       threshold+smooth     0.2   seed2403     0.961       0.569 [0.466,0.672]
+  23                mlp_scm     0.2   seed2404     0.500       0.573 [0.465,0.678]
+  24 sparse_interaction+dense_interaction     0.2   seed2403     0.876       0.580 [0.470,0.681]
+  25       threshold+smooth     0.4   baseline     0.862       0.582 [0.515,0.655]
+  26       threshold+smooth     0.2   seed2404     0.926       0.582 [0.476,0.692]
+  27 linear+dense_interaction     0.2   seed2403     0.905       0.593 [0.495,0.695]
+  28            linear+tree     0.4   seed2402     0.890       0.594 [0.529,0.661]
+  29       threshold+smooth     0.2   seed2402     0.935       0.600 [0.498,0.702]
+  30       threshold+smooth     0.4   seed2404     0.944       0.602 [0.533,0.668]
+  31            smooth+tree     0.2   seed2404     0.710       0.602 [0.503,0.706]
+  32            smooth+tree     0.2   seed2402     0.718       0.602 [0.492,0.703]
+  33               tree_scm     0.2   seed2403     0.569       0.603 [0.504,0.712]
+  34 linear+dense_interaction     0.2   seed2404     0.901       0.605 [0.503,0.712]
+  35            smooth+tree     0.4   baseline     0.622       0.609 [0.533,0.680]
+  36 linear+dense_interaction     0.4   seed2402     0.866       0.620 [0.556,0.685]
+  37 linear+dense_interaction     0.4   baseline     0.884       0.630 [0.565,0.695]
+  38 sparse_interaction+dense_interaction     0.4   seed2403     0.831       0.631 [0.562,0.697]
+  39               tree_scm     0.4   seed2404     0.558       0.641 [0.573,0.708]
+  40            linear+tree     0.2   seed2403     0.915       0.647 [0.547,0.742]
+  41 sparse_interaction+dense_interaction     0.4   seed2402     0.772       0.649 [0.585,0.716]
+  42            linear+tree     0.4   seed2404     0.854       0.665 [0.597,0.729]
+  43            smooth+tree     0.2   baseline     0.749       0.665 [0.563,0.760]
+  44            linear+tree     0.4   baseline     0.773       0.668 [0.606,0.730]
+  45 sparse_interaction+dense_interaction     0.4   baseline     0.792       0.669 [0.600,0.731]
+  46 sparse_interaction+dense_interaction     0.4   seed2404     0.796       0.674 [0.609,0.736]
+  47            linear+tree     0.2   baseline     0.897       0.675 [0.572,0.782]
+  48            smooth+tree     0.2   seed2403     0.670       0.685 [0.585,0.774]
+  49 linear+dense_interaction     0.4   seed2403     0.882       0.687 [0.617,0.750]
+  50 linear+dense_interaction     0.4   seed2404     0.866       0.693 [0.627,0.756]
+  51 sparse_interaction+dense_interaction     0.2   baseline     0.844       0.695 [0.597,0.792]
+  52            linear+tree     0.4   seed2403     0.823       0.696 [0.630,0.757]
+  53 linear+dense_interaction     0.2   baseline     0.904       0.700 [0.615,0.785]
+  54            smooth+tree     0.4   seed2404     0.681       0.700 [0.637,0.764]
+  55            smooth+tree     0.4   seed2402     0.606       0.716 [0.650,0.776]
+  56            smooth+tree     0.4   seed2403     0.696       0.788 [0.730,0.840]
+Wrote multiregime backbone evaluation to /cephfs/volumes/hpc_home/k23139234/17f71989-c3b3-41d8-9315-37daa2fead54/repo/TFM-Playground-uncertainty/results/multiregime_backbone/eval-36553362
+finished_at=2026-08-15T00:36:49+01:00
