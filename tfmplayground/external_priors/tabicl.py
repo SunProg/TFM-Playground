@@ -17,6 +17,10 @@ class TabICLPriorDataLoader(DataLoader):
         max_features (int): Maximum number of features in x.
         max_num_classes (int): Maximum number of classes (for classification tasks).
         prior_type (str): Type of prior: 'mlp_scm', 'tree_scm', 'mix_scm' (default), or 'dummy'.
+        min_train_size (int | float): Lower support-set bound. Integers denote
+            rows; floats denote a fraction of the table length.
+        max_train_size (int | float): Exclusive upper support-set bound. Use an
+            integer one larger than ``min_train_size`` for an exact split.
         device (torch.device): Target device for tensors.
     """
 
@@ -31,6 +35,8 @@ class TabICLPriorDataLoader(DataLoader):
         max_num_classes: int,
         device: torch.device,
         prior_type: str = "mix_scm",
+        min_train_size: int | float = 0.1,
+        max_train_size: int | float = 0.9,
     ):
         self.num_steps = num_steps
         self.batch_size = batch_size
@@ -40,6 +46,8 @@ class TabICLPriorDataLoader(DataLoader):
         self.max_features = max_features
         self.max_num_classes = max_num_classes
         self.prior_type = prior_type
+        self.min_train_size = min_train_size
+        self.max_train_size = max_train_size
         self.device = device
 
         self.pd = TabICLPriorDataset(
@@ -50,6 +58,8 @@ class TabICLPriorDataLoader(DataLoader):
             max_classes=max_num_classes,
             min_seq_len=num_datapoints_min,
             max_seq_len=num_datapoints_max,
+            min_train_size=min_train_size,
+            max_train_size=max_train_size,
             prior_type=prior_type,
         )
 
