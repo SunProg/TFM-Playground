@@ -1,0 +1,159 @@
+{
+  "config": {
+    "checkpoint": "checkpoints/nanotabpfn.pth",
+    "device": "cuda",
+    "seed": 2402,
+    "members": 32,
+    "episodes_per_condition": 20,
+    "support_size": 128,
+    "query_count": 6,
+    "context_size": 1024,
+    "num_mem_chunks": 8,
+    "tabarena_query_cap": 256
+  },
+  "task_ids": [
+    363619,
+    363621,
+    363623,
+    363624,
+    363626,
+    363629,
+    363632,
+    363671,
+    363674,
+    363676,
+    363681,
+    363682,
+    363684,
+    363689,
+    363691,
+    363694,
+    363696,
+    363700,
+    363706,
+    363712
+  ],
+  "row_count": 456,
+  "summary": [
+    {
+      "source": "synthetic",
+      "layer_index": 0,
+      "layer_fraction": 0.0,
+      "raw_variance_mean": 0.0016093167068902403,
+      "scale_free_variance_mean": 0.0016074558171870498,
+      "effective_rank_mean": 1.267238736152649,
+      "support_raw_variance_mean": 0.000756658099029058,
+      "support_scale_free_variance_mean": 3.941450135395522e-06
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 1,
+      "layer_fraction": 0.2,
+      "raw_variance_mean": 0.0028714681917335837,
+      "scale_free_variance_mean": 0.002859149837361959,
+      "effective_rank_mean": 1.6403104384740195,
+      "support_raw_variance_mean": 0.000988106755539775,
+      "support_scale_free_variance_mean": 5.128288159994554e-06
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 2,
+      "layer_fraction": 0.4,
+      "raw_variance_mean": 0.003083480965384903,
+      "scale_free_variance_mean": 0.003141124466007265,
+      "effective_rank_mean": 2.1229656517505644,
+      "support_raw_variance_mean": 0.0012557956855744124,
+      "support_scale_free_variance_mean": 6.649448827526309e-06
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 3,
+      "layer_fraction": 0.6,
+      "raw_variance_mean": 0.016254711562457183,
+      "scale_free_variance_mean": 0.016407347874095042,
+      "effective_rank_mean": 4.095506091912587,
+      "support_raw_variance_mean": 0.01035893107764423,
+      "support_scale_free_variance_mean": 5.423680649982998e-05
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 4,
+      "layer_fraction": 0.8,
+      "raw_variance_mean": 0.027752874543269475,
+      "scale_free_variance_mean": 0.02842694070811073,
+      "effective_rank_mean": 2.705518144369125,
+      "support_raw_variance_mean": 0.017606587102636694,
+      "support_scale_free_variance_mean": 9.360620727723774e-05
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 5,
+      "layer_fraction": 1.0,
+      "raw_variance_mean": 0.08023588142047326,
+      "scale_free_variance_mean": 0.076771658907334,
+      "effective_rank_mean": 2.222877977291743,
+      "support_raw_variance_mean": 0.03808339294046163,
+      "support_scale_free_variance_mean": 0.00018899106847432753
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 0,
+      "layer_fraction": 0.0,
+      "raw_variance_mean": 0.0006840810710855294,
+      "scale_free_variance_mean": 0.0006852319656900363,
+      "effective_rank_mean": 1.38563933968544,
+      "support_raw_variance_mean": 0.00033027389781636884,
+      "support_scale_free_variance_mean": 1.721111285490906e-06
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 1,
+      "layer_fraction": 0.2,
+      "raw_variance_mean": 0.0008702214054210344,
+      "scale_free_variance_mean": 0.0008669112266943557,
+      "effective_rank_mean": 1.971693180501461,
+      "support_raw_variance_mean": 0.0004006795224995585,
+      "support_scale_free_variance_mean": 2.0793252097917048e-06
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 2,
+      "layer_fraction": 0.4,
+      "raw_variance_mean": 0.0008201718537748093,
+      "scale_free_variance_mean": 0.0008339456653629895,
+      "effective_rank_mean": 2.4450319185853004,
+      "support_raw_variance_mean": 0.00047713245112390723,
+      "support_scale_free_variance_mean": 2.5263515155415917e-06
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 3,
+      "layer_fraction": 0.6,
+      "raw_variance_mean": 0.003602530647185631,
+      "scale_free_variance_mean": 0.0036303318775026128,
+      "effective_rank_mean": 3.5794062316417694,
+      "support_raw_variance_mean": 0.0026085288773174398,
+      "support_scale_free_variance_mean": 1.3640431092198924e-05
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 4,
+      "layer_fraction": 0.8,
+      "raw_variance_mean": 0.00392578580067493,
+      "scale_free_variance_mean": 0.004018360181362368,
+      "effective_rank_mean": 3.3912839144468307,
+      "support_raw_variance_mean": 0.0031540665368083864,
+      "support_scale_free_variance_mean": 1.676619854151795e-05
+    },
+    {
+      "source": "tabarena",
+      "layer_index": 5,
+      "layer_fraction": 1.0,
+      "raw_variance_mean": 0.011095665046013892,
+      "scale_free_variance_mean": 0.010594276216579601,
+      "effective_rank_mean": 2.743196651339531,
+      "support_raw_variance_mean": 0.010032379475887865,
+      "support_scale_free_variance_mean": 4.986954377272923e-05
+    }
+  ]
+}

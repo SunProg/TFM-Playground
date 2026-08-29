@@ -1,0 +1,66 @@
+{
+  "config": {
+    "checkpoint": "checkpoints/nanotabpfn.pth",
+    "device": "cuda",
+    "seed": 2402,
+    "members": 32,
+    "episodes_per_condition": 20,
+    "support_size": 128,
+    "query_count": 6,
+    "context_size": 1024,
+    "num_mem_chunks": 8,
+    "tabarena_query_cap": 256
+  },
+  "task_ids": [],
+  "row_count": 360,
+  "summary": [
+    {
+      "source": "synthetic",
+      "layer_index": 0,
+      "layer_fraction": 0.0,
+      "raw_variance_mean": 0.0016093167068902403,
+      "scale_free_variance_mean": 0.0016074558171870498,
+      "effective_rank_mean": 1.267238736152649
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 1,
+      "layer_fraction": 0.2,
+      "raw_variance_mean": 0.0028714681917335837,
+      "scale_free_variance_mean": 0.002859149837361959,
+      "effective_rank_mean": 1.6403104384740195
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 2,
+      "layer_fraction": 0.4,
+      "raw_variance_mean": 0.003083480965384903,
+      "scale_free_variance_mean": 0.003141124466007265,
+      "effective_rank_mean": 2.1229656517505644
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 3,
+      "layer_fraction": 0.6,
+      "raw_variance_mean": 0.016254711562457183,
+      "scale_free_variance_mean": 0.016407347874095042,
+      "effective_rank_mean": 4.095506091912587
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 4,
+      "layer_fraction": 0.8,
+      "raw_variance_mean": 0.027752874543269475,
+      "scale_free_variance_mean": 0.02842694070811073,
+      "effective_rank_mean": 2.705518144369125
+    },
+    {
+      "source": "synthetic",
+      "layer_index": 5,
+      "layer_fraction": 1.0,
+      "raw_variance_mean": 0.08023588142047326,
+      "scale_free_variance_mean": 0.076771658907334,
+      "effective_rank_mean": 2.222877977291743
+    }
+  ]
+}
