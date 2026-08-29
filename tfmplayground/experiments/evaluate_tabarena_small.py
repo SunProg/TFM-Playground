@@ -40,7 +40,16 @@ from openml.config import set_root_cache_directory
 from openml.tasks import TaskType
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    brier_score_loss,
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import RepeatedStratifiedKFold, train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -73,6 +82,8 @@ class SmallTabArenaConfig:
     cache_directory: str | None = None
     max_predictors: int = 10
     subsample: int = 200
+    support_size: int | None = None
+    require_full_subsample: bool = False
     folds: int = 5
     repeats: int = 20
     query_chunk_size: int = 128
@@ -85,12 +96,15 @@ class SmallTabArenaConfig:
     synthetic_noise: float = 0.0
     contamination: float = 0.0
     synthetic_seed: int = 2402
+    save_query_predictions: bool = False
+    plot_outcome_distributions: bool = False
     task_ids: tuple[int, ...] = tuple(TABARENA_TASKS)
 
 
 def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
     """Binary classification, no missing values, at most `max_predictors` predictors."""
     selected = []
+    required_rows = _evaluation_rows(config)
     for task_id in config.task_ids:
         try:
             task = openml.tasks.get_task(task_id, download_splits=False)
@@ -102,7 +116,12 @@ def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
             missing = int(qualities.get("NumberOfMissingValues", 0) or 0)
             # OpenML counts the target in NumberOfFeatures.
             predictors = int(qualities["NumberOfFeatures"]) - 1
-            if classes != 2 or missing != 0 or predictors > config.max_predictors:
+            if (
+                classes != 2
+                or missing != 0
+                or predictors > config.max_predictors
+                or (config.require_full_subsample and int(qualities["NumberOfInstances"]) < required_rows)
+            ):
                 continue
             selected.append(
                 {
@@ -115,6 +134,22 @@ def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
         except Exception:  # keep the audit trail complete rather than aborting discovery
             continue
     return selected
+
+
+def _evaluation_rows(config: SmallTabArenaConfig) -> int:
+    """Rows sampled per dataset; optionally derive an exact CV support size."""
+    if config.support_size is None:
+        return config.subsample
+    if config.folds < 2 or config.support_size <= 0:
+        raise ValueError("support_size requires a positive value and at least two folds.")
+    numerator = config.support_size * config.folds
+    denominator = config.folds - 1
+    if numerator % denominator:
+        raise ValueError(
+            "support_size must yield an integral dataset size for the selected fold count. "
+            f"Got support_size={config.support_size}, folds={config.folds}."
+        )
+    return numerator // denominator
 
 
 def _build_tabpfn(config: SmallTabArenaConfig):
@@ -248,6 +283,7 @@ def run(config: SmallTabArenaConfig) -> Path:
     # regime so a model's regime-specific behaviour is visible rather than hidden in one total.
     rows: list[dict[str, Any]] = []
     regime_rows: list[dict[str, Any]] = []
+    prediction_rows: list[dict[str, Any]] = []
     for task_info in tasks:
         task = openml.tasks.get_task(task_info["task_id"], download_splits=False)
         dataset = task.get_dataset(download_data=False)
@@ -262,7 +298,7 @@ def run(config: SmallTabArenaConfig) -> Path:
                 depth=config.synthetic_depth,
                 noise=config.synthetic_noise,
             )
-        x, y = _subsample(x, y, config.subsample, config.seed)
+        x, y = _subsample(x, y, _evaluation_rows(config), config.seed)
         # Multi-regime arm: a second labelling regime, aligned row-for-row with the subsampled
         # features so it can be mixed into a context without disturbing X.
         regime_labels = (
@@ -332,6 +368,8 @@ def run(config: SmallTabArenaConfig) -> Path:
                 regime_labels=regime_labels,
                 query_regimes=query_regimes,
             ):
+                probability = np.asarray(probability)
+                predicted = probability >= 0.5
                 rows.append(
                     {
                         "dataset": task_info["dataset"],
@@ -340,7 +378,18 @@ def run(config: SmallTabArenaConfig) -> Path:
                         "fold": fold_index,
                         "model": model_name,
                         "roc_auc": roc_auc_score(query_labels, probability),
-                        "accuracy": accuracy_score(query_labels, probability >= 0.5),
+                        "accuracy": accuracy_score(query_labels, predicted),
+                        # Positive-class classification metrics; ``zero_division=0``
+                        # makes a fold with no predicted positives explicitly score 0.
+                        "precision": precision_score(query_labels, predicted, zero_division=0),
+                        "recall": recall_score(query_labels, predicted, zero_division=0),
+                        "f1": f1_score(query_labels, predicted, zero_division=0),
+                        "specificity": float(np.mean(~predicted[query_labels == 0])),
+                        "auprc": average_precision_score(query_labels, probability),
+                        "cross_entropy": log_loss(query_labels, probability, labels=[0, 1]),
+                        "brier": brier_score_loss(query_labels, probability),
+                        "support_positive_pct": 100.0 * float(np.mean(y_train == 1)),
+                        "query_positive_pct": 100.0 * float(np.mean(query_labels == 1)),
                         "fit_seconds": fit_seconds,
                         # In-context models do essentially all their work at predict time, so a
                         # training-time-only comparison would make them look free. Recorded
@@ -358,6 +407,25 @@ def run(config: SmallTabArenaConfig) -> Path:
                         "test_rows": len(query_labels),
                     }
                 )
+                if config.save_query_predictions or config.plot_outcome_distributions:
+                    for query_index, (label, score, query_regime) in enumerate(
+                        zip(query_labels, np.asarray(probability), query_regimes, strict=True)
+                    ):
+                        prediction_rows.append(
+                            {
+                                "dataset": task_info["dataset"],
+                                "task_id": task_info["task_id"],
+                                "predictors": task_info["predictors"],
+                                "fold": fold_index,
+                                "query_index": query_index,
+                                "model": model_name,
+                                "true_label": int(label),
+                                "positive_probability": float(score),
+                                "query_regime": query_regime,
+                                "labels": config.label_source,
+                                "contamination": config.contamination,
+                            }
+                        )
                 if regime_labels is not None:
                     # Score only the query rows belonging to each regime. This is a genuine
                     # per-regime query evaluation, rather than rescoring the entire query set
@@ -478,17 +546,40 @@ def run(config: SmallTabArenaConfig) -> Path:
                 )
 
         pd.DataFrame(rows).to_csv(output_dir / "fold_metrics.csv", index=False)
+        if prediction_rows:
+            pd.DataFrame(prediction_rows).to_csv(output_dir / "query_predictions.csv", index=False)
         done = len({row["dataset"] for row in rows})
         print(f"[{done}/{len(tasks)}] {task_info['dataset']} complete", flush=True)
 
     metrics = pd.DataFrame(rows)
     metrics.to_csv(output_dir / "fold_metrics.csv", index=False)
+    if prediction_rows:
+        predictions = pd.DataFrame(prediction_rows)
+        predictions.to_csv(output_dir / "query_predictions.csv", index=False)
+        if config.plot_outcome_distributions:
+            from tfmplayground.experiments.plot_tabarena_outcome_distributions import (
+                plot_outcome_distributions,
+            )
+
+            plot_directory = output_dir / "outcome_distributions"
+            plot_outcome_distributions(predictions, plot_directory)
+            print(f"Wrote outcome-distribution plots to {plot_directory}", flush=True)
     per_dataset = (
         metrics.groupby(["dataset", "model", "labels"], as_index=False)
         .agg(
+            predictors=("predictors", "first"),
             roc_auc=("roc_auc", "mean"),
             roc_auc_std=("roc_auc", "std"),
             accuracy=("accuracy", "mean"),
+            precision=("precision", "mean"),
+            recall=("recall", "mean"),
+            f1=("f1", "mean"),
+            specificity=("specificity", "mean"),
+            auprc=("auprc", "mean"),
+            cross_entropy=("cross_entropy", "mean"),
+            brier=("brier", "mean"),
+            support_positive_pct=("support_positive_pct", "mean"),
+            query_positive_pct=("query_positive_pct", "mean"),
             fit_seconds_total=("fit_seconds", "sum"),
             # min_count=1 so an all-NaN group stays NaN rather than collapsing to 0.0:
             # the nano-family in-context models have no separable fit/predict split, and
@@ -500,11 +591,47 @@ def run(config: SmallTabArenaConfig) -> Path:
         )
     )
     per_dataset.to_csv(output_dir / "per_dataset.csv", index=False)
+    print("Per-dataset results:", flush=True)
+    print(
+        per_dataset[
+            [
+                "dataset",
+                "model",
+                "labels",
+                "predictors",
+                "roc_auc",
+                "accuracy",
+                "precision",
+                "recall",
+                "f1",
+                "specificity",
+                "auprc",
+                "cross_entropy",
+                "brier",
+                "support_positive_pct",
+                "query_positive_pct",
+                "fit_seconds_total",
+                "predict_seconds_total",
+                "folds",
+            ]
+        ]
+        .sort_values(["model", "dataset"])
+        .round(4)
+        .to_string(index=False),
+        flush=True,
+    )
     overall = (
         per_dataset.groupby(["model", "labels"], as_index=False)
         .agg(
             mean_roc_auc=("roc_auc", "mean"),
             mean_accuracy=("accuracy", "mean"),
+            mean_precision=("precision", "mean"),
+            mean_recall=("recall", "mean"),
+            mean_f1=("f1", "mean"),
+            mean_specificity=("specificity", "mean"),
+            mean_auprc=("auprc", "mean"),
+            mean_cross_entropy=("cross_entropy", "mean"),
+            mean_brier=("brier", "mean"),
             fit_seconds_total=("fit_seconds_total", "sum"),
             predict_seconds_total=pd.NamedAgg(
                 column="predict_seconds_total", aggfunc=lambda s: s.sum(min_count=1)
@@ -580,6 +707,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-directory", default=None)
     parser.add_argument("--max-predictors", type=int, default=10)
     parser.add_argument("--subsample", type=int, default=200)
+    parser.add_argument(
+        "--support-size",
+        type=int,
+        default=None,
+        help=(
+            "Exact labelled-context rows per CV fold. Derives a stratified dataset "
+            "subsample of support_size * folds / (folds - 1); overrides --subsample."
+        ),
+    )
+    parser.add_argument(
+        "--require-full-subsample",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Exclude datasets that contain fewer rows than the requested subsample.",
+    )
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--repeats", type=int, default=20)
     parser.add_argument("--query-chunk-size", type=int, default=128)
@@ -615,6 +757,21 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--synthetic-seed", type=int, default=2402)
+    parser.add_argument(
+        "--save-query-predictions",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Write every held-out positive-class probability to query_predictions.csv.",
+    )
+    parser.add_argument(
+        "--plot-outcome-distributions",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Write per-dataset/model negative-versus-positive score-interval plots. "
+            "Also writes query_predictions.csv; requires matplotlib."
+        ),
+    )
     parser.add_argument("--seed", type=int, default=2402)
     return parser
 

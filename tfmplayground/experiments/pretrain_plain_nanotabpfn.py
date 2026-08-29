@@ -7,6 +7,7 @@ import csv
 import json
 import math
 import random
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -36,7 +37,7 @@ class PlainPretrainingConfig:
     seed: int = 2402
     device: str = "cuda"
     require_cuda: bool = False
-    max_steps: int = 50_000
+    max_steps: int = 10_000
     micro_batch_size: int = 8
     accumulate_gradients: int = 4
     learning_rate: float = 1e-4
@@ -53,17 +54,17 @@ class PlainPretrainingConfig:
     max_features: int = 12
     max_classes: int = 2
     prior_type: str = "mix_scm"
-    prior_mode: Literal["plain", "multiregime"] = "plain"
+    prior_mode: Literal["plain", "multiregime", "curriculum"] = "plain"
     multiregime_contamination: float = 0.3
     embedding_size: int = 192
     num_attention_heads: int = 6
     mlp_hidden_size: int = 768
     num_layers: int = 6
-    epoch_steps: int = 1_000
+    epoch_steps: int = 500
     tabarena_every_epoch: bool = False
     tabarena_folds: int = 5
-    tabarena_repeats: int = 1
-    tabarena_subsample: int = 200
+    tabarena_repeats: int = 10
+    tabarena_subsample: int = 2_048
     tabarena_cache_directory: str | None = None
     tensorboard: bool = True
 
@@ -131,6 +132,44 @@ def multiregime_batch(config: PlainPretrainingConfig, rng: np.random.Generator):
     )
 
 
+def multiregime_probability(config: PlainPretrainingConfig, step: int) -> float:
+    """Return the multiregime share for this optimizer step.
+
+    ``curriculum`` presents only ordinary TabICL ``mix_scm`` tables for the
+    first 10% of the update budget, then linearly ramps the *episode* mixture
+    from 0% to 50% between 10% and 50%, and retains a 50% multiregime share
+    for the rest of training.  It is intentionally independent of the
+    learning-rate schedule so that the curriculum remains explicit in run
+    metadata.
+    """
+    if config.prior_mode == "plain":
+        return 0.0
+    if config.prior_mode == "multiregime":
+        return 1.0
+    plain_end = 0.10 * config.max_steps
+    ramp_end = 0.50 * config.max_steps
+    if step <= plain_end:
+        return 0.0
+    if step >= ramp_end:
+        return 0.5
+    return 0.5 * (step - plain_end) / (ramp_end - plain_end)
+
+
+def training_batch(
+    config: PlainPretrainingConfig,
+    prior,
+    episode_rng: np.random.Generator,
+    step: int,
+):
+    """Draw one training batch under the configured ordinary/multiregime curriculum."""
+    probability = multiregime_probability(config, step)
+    if probability == 0.0 or episode_rng.random() >= probability:
+        if prior is None:
+            raise RuntimeError("The ordinary TabICL prior is required for this curriculum batch.")
+        return next(iter(prior))
+    return multiregime_batch(config, episode_rng)
+
+
 def _scheduler_lambda(config: PlainPretrainingConfig):
     def schedule(step: int) -> float:
         if step < config.warmup_steps:
@@ -166,7 +205,19 @@ def validate(model: NanoTabPFNModel, config: PlainPretrainingConfig) -> dict[str
     with _preserved_rng_state():
         set_randomness_seed(config.seed + 100_000)
         model.eval()
-        losses = [float(query_loss(model, batch)) for batch in make_prior(config, batches=config.validation_batches)]
+        batches = iter(make_prior(config, batches=config.validation_batches * _MAX_NON_FINITE_BATCH_RETRIES))
+        losses = []
+        for _ in range(config.validation_batches):
+            for _attempt in range(_MAX_NON_FINITE_BATCH_RETRIES):
+                loss = query_loss(model, next(batches))
+                if torch.isfinite(loss):
+                    losses.append(float(loss))
+                    break
+            else:
+                raise RuntimeError(
+                    "Could not draw a finite validation batch within "
+                    f"{_MAX_NON_FINITE_BATCH_RETRIES} attempts."
+                )
     model.train()
     return {"query_cross_entropy": float(np.mean(losses)), "validation_batches": len(losses)}
 
@@ -296,8 +347,8 @@ def run_pretraining(
         raise ValueError("validation_interval, checkpoint_interval, and epoch_steps must be positive.")
     if not 0 < config.support_size < config.rows:
         raise ValueError("support_size must leave at least one query row.")
-    if config.prior_mode not in {"plain", "multiregime"}:
-        raise ValueError("prior_mode must be 'plain' or 'multiregime'.")
+    if config.prior_mode not in {"plain", "multiregime", "curriculum"}:
+        raise ValueError("prior_mode must be 'plain', 'multiregime', or 'curriculum'.")
 
     output = Path(output_dir)
     if resume_checkpoint is None:
@@ -324,7 +375,7 @@ def run_pretraining(
             raise ValueError("Resume checkpoint is missing RNG state and cannot resume reproducibly.")
         _restore_rng_state(rng_state)
 
-    prior = make_prior(config, batches=1) if config.prior_mode == "plain" else None
+    prior = make_prior(config, batches=1) if config.prior_mode != "multiregime" else None
     episode_rng = np.random.default_rng(config.seed + 1)
     if resume_checkpoint is not None:
         episode_rng.bit_generator.state = state["episode_rng_state"]
@@ -332,12 +383,13 @@ def run_pretraining(
     mode = "a" if resume_checkpoint is not None else "w"
     writer = _make_tensorboard_writer(output) if config.tensorboard else _NullWriter()
     with history_path.open(mode) as history:
+        epoch_started_at = time.perf_counter()
         for step in range(start_step + 1, config.max_steps + 1):
             optimizer.zero_grad(set_to_none=True)
             loss_total = 0.0
             for _ in range(config.accumulate_gradients):
                 for _attempt in range(_MAX_NON_FINITE_BATCH_RETRIES):
-                    batch = next(iter(prior)) if prior is not None else multiregime_batch(config, episode_rng)
+                    batch = training_batch(config, prior, episode_rng, step)
                     loss = query_loss(model, batch)
                     if torch.isfinite(loss):
                         break
@@ -359,6 +411,7 @@ def run_pretraining(
                 validation = validate(model, config)
             epoch = step // config.epoch_steps
             tabarena = None
+            epoch_seconds = None
             if step % config.epoch_steps == 0:
                 epoch_checkpoint = output / f"epoch-{epoch:03d}-checkpoint.pth"
                 torch.save(
@@ -366,22 +419,34 @@ def run_pretraining(
                 )
                 if config.tabarena_every_epoch:
                     tabarena = evaluate_tabarena_epoch(epoch_checkpoint, output, config, epoch)
+                    # The checkpoint is needed to evaluate this epoch, but retaining all
+                    # twenty per-seed copies is unnecessary. Keep the documented 10k
+                    # resumable milestones (and the final checkpoint) instead.
+                    if step % config.checkpoint_interval != 0:
+                        epoch_checkpoint.unlink()
+                epoch_seconds = time.perf_counter() - epoch_started_at
+                epoch_started_at = time.perf_counter()
             row = {
                 "step": step,
                 "epoch": epoch,
                 "query_cross_entropy": loss_total,
                 "gradient_norm": gradient_norm,
                 "learning_rate": optimizer.param_groups[0]["lr"],
+                "multiregime_probability": multiregime_probability(config, step),
+                **({"epoch_seconds": epoch_seconds} if epoch_seconds is not None else {}),
                 **({f"validation_{key}": value for key, value in validation.items()} if validation else {}),
                 **(tabarena or {}),
             }
             history.write(json.dumps(row, sort_keys=True) + "\n")
             history.flush()
-            if validation is not None:
+            if validation is not None or epoch_seconds is not None:
                 print(json.dumps(row, sort_keys=True), flush=True)
             writer.add_scalar("train/query_cross_entropy", loss_total, step)
             writer.add_scalar("train/gradient_norm", gradient_norm, step)
             writer.add_scalar("train/learning_rate", optimizer.param_groups[0]["lr"], step)
+            writer.add_scalar("train/multiregime_probability", multiregime_probability(config, step), step)
+            if epoch_seconds is not None:
+                writer.add_scalar("train/epoch_seconds", epoch_seconds, step)
             if validation is not None:
                 writer.add_scalar("validation/query_cross_entropy", validation["query_cross_entropy"], step)
             if tabarena is not None:
@@ -431,7 +496,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("learning_rate", "min_learning_rate", "weight_decay", "gradient_clip", "multiregime_contamination"):
         parser.add_argument(f"--{name.replace('_', '-')}", type=float, default=getattr(defaults, name))
     parser.add_argument("--prior-type", default=defaults.prior_type, choices=("mlp_scm", "tree_scm", "mix_scm"))
-    parser.add_argument("--prior-mode", choices=("plain", "multiregime"), default=defaults.prior_mode)
+    parser.add_argument("--prior-mode", choices=("plain", "multiregime", "curriculum"), default=defaults.prior_mode)
     parser.add_argument(
         "--tabarena-every-epoch",
         action=argparse.BooleanOptionalAction,

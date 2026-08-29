@@ -9,9 +9,11 @@ from unittest.mock import patch
 import torch
 
 from tfmplayground.experiments import evaluate_plain_nanotabpfn as evaluation
+from tfmplayground.experiments.evaluate_tabarena_small import SmallTabArenaConfig, _evaluation_rows
 from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     PlainPretrainingConfig,
     make_prior,
+    multiregime_probability,
     run_pretraining,
 )
 from tfmplayground.external_priors.tabicl import TabICLPriorDataLoader
@@ -44,6 +46,11 @@ class _TinyPrior:
 
 
 class TabICLPriorLoaderTests(unittest.TestCase):
+    def test_support_size_derives_exact_five_fold_dataset_sizes(self):
+        self.assertEqual(_evaluation_rows(SmallTabArenaConfig(folds=5, support_size=512)), 640)
+        self.assertEqual(_evaluation_rows(SmallTabArenaConfig(folds=5, support_size=1024)), 1280)
+        self.assertEqual(_evaluation_rows(SmallTabArenaConfig(folds=5, support_size=2048)), 2560)
+
     @patch("tfmplayground.external_priors.tabicl.TabICLPriorDataset", _FakeTabICLPrior)
     def test_exact_integer_support_split_is_forwarded_and_preserved(self):
         loader = TabICLPriorDataLoader(
@@ -112,6 +119,17 @@ class _BoundedFlakyDraws:
 
 
 class PretrainingSmokeTests(unittest.TestCase):
+    def test_curriculum_probability_has_plain_ramp_and_multiregime_phases(self):
+        config = PlainPretrainingConfig(
+            prior_mode="curriculum",
+            max_steps=100,
+        )
+        self.assertEqual(multiregime_probability(config, 1), 0.0)
+        self.assertEqual(multiregime_probability(config, 10), 0.0)
+        self.assertAlmostEqual(multiregime_probability(config, 30), 0.25)
+        self.assertEqual(multiregime_probability(config, 50), 0.5)
+        self.assertEqual(multiregime_probability(config, 99), 0.5)
+
     def test_tiny_cpu_run_writes_resumable_inference_checkpoint(self):
         config = PlainPretrainingConfig(
             device="cpu",
@@ -154,6 +172,29 @@ class PretrainingSmokeTests(unittest.TestCase):
             history = [json.loads(line) for line in (output / "history.jsonl").read_text().splitlines()]
             self.assertEqual([row["step"] for row in history], [1, 2, 3])
 
+    def test_tabarena_epoch_checkpoints_are_pruned_except_resumable_milestones(self):
+        config = self._tiny_config(
+            max_steps=2,
+            epoch_steps=1,
+            checkpoint_interval=2,
+            tabarena_every_epoch=True,
+        )
+
+        def fake_prior(config, *, batches, device=None):
+            del device
+            return _TinyPrior(batches, config.support_size, config.query_size)
+
+        with tempfile.TemporaryDirectory() as temporary, patch(
+            "tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior
+        ), patch(
+            "tfmplayground.experiments.pretrain_plain_nanotabpfn.evaluate_tabarena_epoch",
+            return_value={"tabarena_mean_roc_auc": 0.5, "tabarena_mean_accuracy": 0.5},
+        ):
+            output = run_pretraining(config, Path(temporary) / "run")
+            self.assertFalse((output / "epoch-001-checkpoint.pth").exists())
+            self.assertTrue((output / "epoch-002-checkpoint.pth").exists())
+            self.assertTrue((output / "checkpoint-000002.pth").exists())
+
     def _tiny_config(self, **overrides) -> PlainPretrainingConfig:
         defaults = dict(
             device="cpu",
@@ -192,6 +233,12 @@ class PretrainingSmokeTests(unittest.TestCase):
             history = [json.loads(line) for line in (output / "history.jsonl").read_text().splitlines()]
             self.assertEqual([row["step"] for row in history], [1, 2, 3])
             self.assertTrue(all(math.isfinite(row["query_cross_entropy"]) for row in history))
+            validation_losses = [
+                row["validation_query_cross_entropy"]
+                for row in history
+                if "validation_query_cross_entropy" in row
+            ]
+            self.assertTrue(all(math.isfinite(value) for value in validation_losses))
 
     def test_persistently_non_finite_batches_still_raise_after_retry_budget(self):
         config = self._tiny_config(max_steps=1)
@@ -201,11 +248,12 @@ class PretrainingSmokeTests(unittest.TestCase):
             del config, device
             return _BoundedFlakyDraws(flaky, batches)
 
-        with tempfile.TemporaryDirectory() as temporary, patch(
-            "tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch("tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior),
+            self.assertRaisesRegex(RuntimeError, "Could not draw a finite training batch"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "Could not draw a finite training batch"):
-                run_pretraining(config, Path(temporary) / "run")
+            run_pretraining(config, Path(temporary) / "run")
 
 
 class LockedEvaluationTests(unittest.TestCase):

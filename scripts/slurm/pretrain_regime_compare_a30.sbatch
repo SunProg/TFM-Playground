@@ -11,13 +11,13 @@
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
-# Submit once with PRIOR_MODE=plain and once with PRIOR_MODE=multiregime.
+# Set PRIOR_MODE to plain, multiregime, or curriculum.
 # Both arms have identical model, optimizer, update budget, geometry, and
 # epoch-level TabArena-small evaluation; only the synthetic training prior differs.
 set -euo pipefail
 
-: "${PRIOR_MODE:?Set PRIOR_MODE to plain or multiregime when submitting.}"
-case "${PRIOR_MODE}" in plain|multiregime) ;; *) echo "Invalid PRIOR_MODE=${PRIOR_MODE}" >&2; exit 2 ;; esac
+: "${PRIOR_MODE:?Set PRIOR_MODE to plain, multiregime, or curriculum when submitting.}"
+case "${PRIOR_MODE}" in plain|multiregime|curriculum) ;; *) echo "Invalid PRIOR_MODE=${PRIOR_MODE}" >&2; exit 2 ;; esac
 readonly PROJECT_DIR="${SLURM_SUBMIT_DIR}"
 readonly PYTHON_BIN="${PROJECT_DIR}/.venv/bin/python"
 readonly SEEDS=(2402 2403 2404 2405 2406)
@@ -38,8 +38,8 @@ srun "${PYTHON_BIN}" -m tfmplayground.experiments.pretrain_plain_nanotabpfn \
     --seed "${SEED}" \
     --prior-mode "${PRIOR_MODE}" \
     --multiregime-contamination 0.30 \
-    --max-steps 50000 \
-    --epoch-steps 1000 \
+    --max-steps 10000 \
+    --epoch-steps 500 \
     --micro-batch-size 8 \
     --accumulate-gradients 4 \
     --learning-rate 0.0001 \
@@ -58,7 +58,7 @@ srun "${PYTHON_BIN}" -m tfmplayground.experiments.pretrain_plain_nanotabpfn \
     --prior-type mix_scm \
     --tabarena-every-epoch \
     --tabarena-folds 5 \
-    --tabarena-repeats 1 \
-    --tabarena-subsample 200 \
+    --tabarena-repeats 10 \
+    --tabarena-subsample 2048 \
     --tabarena-cache-directory "${PROJECT_DIR}/.cache/openml" \
     --tensorboard
