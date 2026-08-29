@@ -307,6 +307,97 @@ def _scm_candidates(
     raise RuntimeError(f"Could not draw finite binary {family} candidates within {max_attempts} attempts.")
 
 
+def _scm_cross_family_candidates(
+    families: tuple[str, str],
+    rows: int,
+    features: int,
+    rng: np.random.Generator,
+    *,
+    max_attempts: int = 32,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Draw one MLP-SCM and one tree-SCM label rule on an identical X table."""
+    from tabicl.prior._dataset import SCMPrior
+    from tabicl.prior._mlp_scm import MLPSCM
+    from tabicl.prior._reg2cls import Reg2Cls
+    from tabicl.prior._tree_scm import TreeSCM
+
+    from tfmplayground.experiments.prior_bimodal_episodes import (
+        PriorBimodalConfig,
+        _rng_state,
+        _sample_params,
+        _set_rng_state,
+    )
+
+    if len(families) != 2 or set(families) != set(SCM_FAMILIES):
+        raise ValueError(f"Cross-family episodes require exactly {SCM_FAMILIES}, got {families!r}")
+    outer_state = _rng_state()
+    try:
+        for _attempt in range(max_attempts):
+            models: list[torch.nn.Module] = []
+            params_by_family: list[dict] = []
+            for family in families:
+                episode_config = PriorBimodalConfig(
+                    initial_support_count=max(2, rows // 2),
+                    stream_count=0,
+                    query_count=1,
+                    min_features=features,
+                    max_features=features,
+                    device="cpu",
+                    prior_type=family,
+                )
+                prior = SCMPrior(
+                    batch_size=1,
+                    min_features=features,
+                    max_features=features,
+                    max_classes=2,
+                    min_seq_len=rows,
+                    max_seq_len=rows + 1,
+                    min_train_size=max(2, rows // 2),
+                    max_train_size=max(3, rows // 2 + 1),
+                    prior_type=family,
+                    n_jobs=1,
+                    device="cpu",
+                )
+                _seed_all(int(rng.integers(0, 2**31 - 1)))
+                params = _sample_params(prior, episode_config, rows, features)
+                prior_cls = MLPSCM if family == "mlp_scm" else TreeSCM
+                _seed_all(int(rng.integers(0, 2**31 - 1)))
+                with torch.no_grad():
+                    models.append(prior_cls(**params))
+                params_by_family.append(params)
+
+            # Sample causes once, then evaluate both label mechanisms on them.
+            _seed_all(int(rng.integers(0, 2**31 - 1)))
+            with torch.no_grad():
+                shared_raw_x = models[0].xsampler.sample()
+            processed_x = None
+            labels = []
+            for model, params in zip(models, params_by_family, strict=True):
+                _seed_all(int(rng.integers(0, 2**31 - 1)))
+                with torch.no_grad():
+                    value = model.layers(shared_raw_x)
+                    if value.shape[-1] == 1:
+                        value = value.squeeze(-1)
+                    x_value, y_value = Reg2Cls(params)(shared_raw_x.clone(), value)
+                if processed_x is None:
+                    processed_x = x_value.float()
+                elif not torch.equal(processed_x, x_value.float()):
+                    break
+                labels.append(y_value)
+            else:
+                if (
+                    processed_x is not None
+                    and torch.isfinite(processed_x).all()
+                    and all(value.unique().numel() == 2 for value in labels)
+                ):
+                    x_array = processed_x.reshape(-1, features).cpu().numpy().astype(np.float64)
+                    y_array = torch.stack(labels).reshape(2, -1).cpu().numpy().astype(np.int64)
+                    return x_array[:rows], y_array[:, :rows]
+    finally:
+        _set_rng_state(outer_state)
+    raise RuntimeError("Could not draw finite binary cross-family SCM candidates within max_attempts.")
+
+
 def sample_candidate_pool(
     regime: EpisodeRegime,
     rng: np.random.Generator,
@@ -802,7 +893,7 @@ def _build_scm_multiregime_item(
     regime: EpisodeRegime,
     rng: np.random.Generator,
     *,
-    family: str,
+    family: str | tuple[str, str],
     support_size: int,
     query_count: int,
     noise: float,
@@ -814,7 +905,12 @@ def _build_scm_multiregime_item(
     table, rather than two hand-written analytic score functions.
     """
     rows = support_size + query_count + 16
-    x, labels = _scm_candidates(family, 2, rows, features, rng)
+    if isinstance(family, tuple):
+        x, labels = _scm_cross_family_candidates(family, rows, features, rng)
+        family_name = "+".join(family)
+    else:
+        x, labels = _scm_candidates(family, 2, rows, features, rng)
+        family_name = family
     x = x.astype(np.float32)
     labels_base, labels_other = labels[0], labels[1]
 
@@ -857,6 +953,7 @@ def _build_scm_multiregime_item(
         "candidate_support_positive": candidate_support.astype(np.float32),
         "candidate_query_positive": candidate_query.astype(np.float32),
         "posterior": posterior.astype(np.float32),
+        "family": family_name,
     }
 
 
@@ -864,6 +961,7 @@ def sample_scm_multiregime_episode(
     rng: np.random.Generator,
     *,
     regime: EpisodeRegime = TRAIN_REGIME,
+    family: str | tuple[str, str] | None = None,
     batch_size: int = 2,
     support_size: int | None = None,
     query_count: int | None = None,
@@ -876,18 +974,25 @@ def sample_scm_multiregime_episode(
 
     Unlike ``sample_multiregime_episode`` (hand-written analytic score
     functions), the two regimes here are two independent draws from the same
-    structured SCM family (``mlp_scm`` for ``TRAIN_REGIME``, ``tree_scm`` for
-    ``HELDOUT_REGIME``) via ``_scm_candidates`` -- the same TabICL prior
+    structured SCM family via ``_scm_candidates`` -- the same TabICL prior
     library ``tfmplayground/external_priors`` uses for the actual pretraining
     dumps, not this file's bespoke families. Both draws share one sampled
     feature table (``shared_raw_x`` inside ``_scm_candidates``), so the
     "which regime" question is entirely about the label function, never a
-    surface cue in the features. Held out at the family level -- ``mlp_scm``
-    is training-only, ``tree_scm`` is held-out-only -- which is what
-    ``sample_multiregime_episode`` could not do since ``HELDOUT_REGIME`` has
-    only one analytic family.
+    surface cue in the features.  ``family`` can explicitly select either
+    TabICL SCM family; retaining the regime-based default preserves the
+    held-out-family synthetic experiments that use this sampler elsewhere.
     """
-    family = "tree_scm" if regime is HELDOUT_REGIME else "mlp_scm"
+    if family is None:
+        family = "tree_scm" if regime is HELDOUT_REGIME else "mlp_scm"
+    if isinstance(family, tuple):
+        if len(family) != 2 or set(family) != set(SCM_FAMILIES):
+            raise ValueError(f"Cross-family episodes require exactly {SCM_FAMILIES}, got {family!r}")
+        family_name = "+".join(family)
+    elif family in SCM_FAMILIES:
+        family_name = family
+    else:
+        raise ValueError(f"family must be one of {SCM_FAMILIES}, got {family!r}")
     support_size = support_size or int(rng.choice(available_support_sizes(max_support_size)))
     query_count = query_count or int(rng.integers(4, 9))
     noise = float(rng.choice(NOISE_LEVELS)) if noise is None else float(noise)
@@ -920,13 +1025,13 @@ def sample_scm_multiregime_episode(
         _stack(items, "posterior"),
         effective_noise,
         "multiregime",
-        family,
+        family_name,
         {
             "support_size": support_size,
             "query_count": query_count,
             "features": features,
             "contamination": contamination,
-            "family": family,
+            "family": family_name,
         },
         _stack(items, "query_regime_source"),
     )
