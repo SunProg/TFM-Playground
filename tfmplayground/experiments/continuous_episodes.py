@@ -108,6 +108,12 @@ class ContinuousEpisode:
             (``condition == "multiregime"`` only; zeros elsewhere). Never fed
             to any model -- used only to score predictions by regime after
             the fact, exactly as in ``paper/tabpfn_multi_regime_results.md``.
+        support_regime_source: ``(batch, support)``, the same tag for the
+            labelled rows.  Also diagnostic only and never fed to any model.
+            It exists so slot-attention heads can be scored on whether their
+            per-row support attention actually partitions the context by
+            regime, which is a question about the mechanism rather than about
+            predictive accuracy.
     """
 
     support_x: torch.Tensor
@@ -122,6 +128,7 @@ class ContinuousEpisode:
     family: str
     metadata: dict[str, Any] = field(default_factory=dict)
     query_regime_source: torch.Tensor | None = None
+    support_regime_source: torch.Tensor | None = None
 
     @property
     def num_candidates(self) -> int:
@@ -145,6 +152,7 @@ class ContinuousEpisode:
             self.family,
             dict(self.metadata),
             None if self.query_regime_source is None else self.query_regime_source.to(device),
+            None if self.support_regime_source is None else self.support_regime_source.to(device),
         )
 
 
@@ -795,6 +803,7 @@ def _build_multiregime_item(
         "query_x": x[query_indices],
         "query_y": query_y,
         "query_regime_source": query_source,
+        "support_regime_source": support_source,
         "candidate_support_positive": candidate_support.astype(np.float32),
         "candidate_query_positive": candidate_query.astype(np.float32),
         "posterior": posterior.astype(np.float32),
@@ -885,6 +894,7 @@ def sample_multiregime_episode(
             "other_family": other_family,
         },
         _stack(items, "query_regime_source"),
+        _stack(items, "support_regime_source"),
     )
     return episode.to(device)
 
@@ -950,6 +960,7 @@ def _build_scm_multiregime_item(
         "query_x": x[query_indices],
         "query_y": query_y,
         "query_regime_source": query_source,
+        "support_regime_source": support_source,
         "candidate_support_positive": candidate_support.astype(np.float32),
         "candidate_query_positive": candidate_query.astype(np.float32),
         "posterior": posterior.astype(np.float32),
@@ -1034,6 +1045,7 @@ def sample_scm_multiregime_episode(
             "family": family_name,
         },
         _stack(items, "query_regime_source"),
+        _stack(items, "support_regime_source"),
     )
     return episode.to(device)
 

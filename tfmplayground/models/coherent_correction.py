@@ -13,6 +13,7 @@ from torch import nn
 
 from tfmplayground.models.hypothesis import HypothesisPrediction
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.slot_attention import SlotBindingMixin, slot_binding_kwargs
 
 
 def permutation_invariant_folds(
@@ -74,8 +75,16 @@ class VariationalPrediction(HypothesisPrediction):
         return (1.0 - F.cosine_similarity(reference, self.context_slots, dim=-1)).mean()
 
 
-class _SharedHypothesisHead(nn.Module):
-    def __init__(self, backbone: NanoTabPFNModel, num_hypotheses: int = 2, num_outputs: int = 2):
+class _SharedHypothesisHead(SlotBindingMixin, nn.Module):
+    def __init__(
+        self,
+        backbone: NanoTabPFNModel,
+        num_hypotheses: int = 2,
+        num_outputs: int = 2,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
+    ):
         super().__init__()
         if num_hypotheses != 2 or num_outputs != 2:
             raise ValueError("The correction models currently require two binary hypotheses.")
@@ -84,16 +93,20 @@ class _SharedHypothesisHead(nn.Module):
         self.num_outputs = num_outputs
         embedding_size = backbone.embedding_size
         hidden_size = backbone.mlp_hidden_size
-        self.hypothesis_queries = nn.Parameter(torch.empty(num_hypotheses, embedding_size))
-        nn.init.normal_(self.hypothesis_queries, std=embedding_size**-0.5)
-        self.slot_attention = nn.MultiheadAttention(embedding_size, backbone.num_attention_heads, batch_first=True)
-        self.slot_norm = nn.LayerNorm(embedding_size)
+        self._init_slot_binding(
+            num_slots=num_hypotheses,
+            embedding_size=embedding_size,
+            mlp_hidden_size=hidden_size,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
+        )
         self.slot_decoder = nn.Sequential(
             nn.Linear(embedding_size * 3, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, num_outputs),
         )
-        self.slot_prior_logits = nn.Parameter(torch.zeros(num_hypotheses))
+        # No per-slot prior: exchangeable slots give slot *index* k no stable
+        # meaning, so a weight attached to it has nothing to describe.
 
     def _encode(
         self,
@@ -107,10 +120,10 @@ class _SharedHypothesisHead(nn.Module):
         )[:, :, -1, :]
         return encoded[:, : support_x.shape[1]], encoded[:, support_x.shape[1] :]
 
-    def _make_slots(self, support_embeddings: torch.Tensor) -> torch.Tensor:
-        seeds = self.hypothesis_queries[None].expand(support_embeddings.shape[0], -1, -1)
-        attended = self.slot_attention(seeds, support_embeddings, support_embeddings, need_weights=False)[0]
-        return self.slot_norm(seeds + attended)
+    def _make_slots(
+        self, support_embeddings: torch.Tensor, *, generator: torch.Generator | None = None
+    ) -> torch.Tensor:
+        return self.make_slots(support_embeddings, generator=generator)[0]
 
     def _decode(self, query_embeddings: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
         query_count = query_embeddings.shape[1]
@@ -142,8 +155,17 @@ class NanoTabPFNCrossFitHypothesisModel(_SharedHypothesisHead):
         num_hypotheses: int = 2,
         num_outputs: int = 2,
         num_partitions: int = 2,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
     ):
-        super().__init__(backbone, num_hypotheses, num_outputs)
+        super().__init__(
+            backbone,
+            num_hypotheses,
+            num_outputs,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
+        )
         if num_partitions < 1:
             raise ValueError("num_partitions must be positive.")
         self.num_partitions = num_partitions
@@ -205,7 +227,7 @@ class NanoTabPFNCrossFitHypothesisModel(_SharedHypothesisHead):
             context_slots.append(torch.stack(partition_slots))
         context_slots_tensor = torch.stack(context_slots, dim=1).permute(2, 1, 0, 3, 4)
         mean_row_log_likelihood = row_log_likelihoods.mean(dim=0)
-        slot_scores = mean_row_log_likelihood.sum(dim=1) + self.slot_prior_logits
+        slot_scores = mean_row_log_likelihood.sum(dim=1)
         return CrossFitPrediction(
             query_logits,
             F.log_softmax(slot_scores, dim=-1),
@@ -222,8 +244,22 @@ class NanoTabPFNVariationalHypothesisModel(_SharedHypothesisHead):
 
     model_type = "nanotabpfn_variational_hypothesis"
 
-    def __init__(self, backbone: NanoTabPFNModel, num_hypotheses: int = 2, num_outputs: int = 2):
-        super().__init__(backbone, num_hypotheses, num_outputs)
+    def __init__(
+        self,
+        backbone: NanoTabPFNModel,
+        num_hypotheses: int = 2,
+        num_outputs: int = 2,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
+    ):
+        super().__init__(
+            backbone,
+            num_hypotheses,
+            num_outputs,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
+        )
         embedding_size = backbone.embedding_size
         hidden_size = backbone.mlp_hidden_size
         self.posterior_row_encoder = nn.Sequential(
@@ -252,7 +288,7 @@ class NanoTabPFNVariationalHypothesisModel(_SharedHypothesisHead):
         slot_logits = self._decode(query_embeddings, slots)
         pooled = self.posterior_row_encoder(support_embeddings).mean(dim=1)
         log_count = pooled.new_full((pooled.shape[0], 1), math.log1p(train_test_split_index))
-        posterior_logits = self.posterior_head(torch.cat((pooled, log_count), dim=-1)) + self.slot_prior_logits
+        posterior_logits = self.posterior_head(torch.cat((pooled, log_count), dim=-1))
         row_diagnostics = pooled[:, None, : self.num_hypotheses]
         fold = permutation_invariant_folds(support_x, num_partitions=1)[0]
         context_slots = []
@@ -290,6 +326,7 @@ def correction_checkpoint(
         "backbone_num_outputs": backbone.num_outputs,
         "num_hypotheses": model.num_hypotheses,
         "num_outputs": model.num_outputs,
+        **model.slot_binding_architecture(),
     }
     if isinstance(model, NanoTabPFNCrossFitHypothesisModel):
         architecture["num_partitions"] = model.num_partitions
@@ -338,6 +375,7 @@ def load_correction_checkpoint(
         "backbone": backbone,
         "num_hypotheses": architecture["num_hypotheses"],
         "num_outputs": architecture["num_outputs"],
+        **slot_binding_kwargs(architecture),
     }
     if checkpoint["model_type"] == NanoTabPFNCrossFitHypothesisModel.model_type:
         model = NanoTabPFNCrossFitHypothesisModel(**common, num_partitions=architecture["num_partitions"])

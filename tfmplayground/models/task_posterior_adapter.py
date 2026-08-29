@@ -19,6 +19,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.slot_attention import SlotBindingMixin, slot_binding_kwargs
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,9 @@ class TaskPosteriorPrediction:
     log_weights: torch.Tensor
     slots: torch.Tensor
     residuals: torch.Tensor
+    #: ``(batch, context, particle)`` slot attention over the labelled context.
+    #: Rows sum to one over particles, so this is a per-row soft assignment.
+    support_attention: torch.Tensor | None = None
 
     def particle_probabilities(self) -> torch.Tensor:
         return self.particle_logits.softmax(dim=-1)
@@ -85,7 +89,7 @@ class _ResidualParticleDecoder(nn.Module):
         return residuals
 
 
-class NanoTabPFNTaskPosteriorAdapter(nn.Module):
+class NanoTabPFNTaskPosteriorAdapter(SlotBindingMixin, nn.Module):
     """Permutation-invariant task posterior whose particles correct vanilla.
 
     ``context_mode='iid_set'`` is the production default.  The complete labeled
@@ -102,6 +106,9 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         max_classes: int = 10,
         context_mode: str = "iid_set",
         residual_logit_bound: float | None = None,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
     ):
         super().__init__()
         if particle_count < 1:
@@ -119,10 +126,15 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         self.max_classes = max_classes
         self.context_mode = context_mode
         embedding_size = backbone.embedding_size
-        self.slot_queries = nn.Parameter(torch.empty(particle_count, embedding_size))
-        nn.init.normal_(self.slot_queries, std=embedding_size**-0.5)
-        self.evidence_attention = nn.MultiheadAttention(embedding_size, backbone.num_attention_heads, batch_first=True)
-        self.slot_norm = nn.LayerNorm(embedding_size)
+        self._init_slot_binding(
+            num_slots=particle_count,
+            embedding_size=embedding_size,
+            mlp_hidden_size=backbone.mlp_hidden_size,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
+        )
+        # One head shared by every slot, so it is permutation equivariant and
+        # carries no per-index meaning.
         self.posterior_head = nn.Linear(embedding_size, 1)
         nn.init.zeros_(self.posterior_head.weight)
         nn.init.zeros_(self.posterior_head.bias)
@@ -156,14 +168,19 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         if not 2 <= class_count <= self.max_classes:
             raise ValueError(f"class_count must be between 2 and {self.max_classes}.")
 
-    def _decode_encoded(self, encoded: torch.Tensor, context_count: int, class_count: int) -> TaskPosteriorPrediction:
+    def _decode_encoded(
+        self,
+        encoded: torch.Tensor,
+        context_count: int,
+        class_count: int,
+        *,
+        generator: torch.Generator | None = None,
+    ) -> TaskPosteriorPrediction:
         # Target-column support states contain label embeddings after repeated
         # feature/row attention, hence each evidence item depends on both x_i and y_i.
         evidence = encoded[:, :context_count, -1, :]
         query_states = encoded[:, context_count:, -1, :]
-        seeds = self.slot_queries[None].expand(encoded.shape[0], -1, -1)
-        attended = self.evidence_attention(seeds, evidence, evidence, need_weights=False)[0]
-        slots = self.slot_norm(seeds + attended)
+        slots, support_attention = self.make_slots(evidence, generator=generator)
         log_weights = F.log_softmax(self.posterior_head(slots).squeeze(-1), dim=-1)
         vanilla_logits = self.backbone.decoder(query_states)[..., :class_count]
         residuals = self.residual_decoder(query_states, slots)[..., :class_count]
@@ -174,6 +191,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             log_weights=log_weights,
             slots=slots,
             residuals=residuals,
+            support_attention=support_attention,
         )
 
     def forward(
@@ -184,6 +202,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         *,
         class_count: int | None = None,
         num_mem_chunks: int = 1,
+        generator: torch.Generator | None = None,
     ) -> TaskPosteriorPrediction:
         if self.context_mode != "iid_set":
             raise ValueError(
@@ -197,7 +216,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             train_test_split_index=context_x.shape[1],
             num_mem_chunks=num_mem_chunks,
         )
-        return self._decode_encoded(encoded, context_x.shape[1], class_count)
+        return self._decode_encoded(encoded, context_x.shape[1], class_count, generator=generator)
 
     def forward_sequential(
         self,
@@ -209,6 +228,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
         *,
         class_count: int | None = None,
         num_mem_chunks: int = 1,
+        generator: torch.Generator | None = None,
     ) -> TaskPosteriorPrediction:
         """Compatibility mode: slots use initial evidence; weights use stream labels."""
         if self.context_mode != "sequential":
@@ -223,7 +243,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             train_test_split_index=initial_x.shape[1],
             num_mem_chunks=num_mem_chunks,
         )
-        prediction = self._decode_encoded(encoded, initial_x.shape[1], class_count)
+        prediction = self._decode_encoded(encoded, initial_x.shape[1], class_count, generator=generator)
         stream_count = stream_x.shape[1]
         stream_logits = prediction.particle_logits[:, :stream_count]
         labels = stream_y.long()[:, :, None, None].expand(-1, -1, self.particle_count, 1)
@@ -236,6 +256,7 @@ class NanoTabPFNTaskPosteriorAdapter(nn.Module):
             log_weights=log_weights,
             slots=prediction.slots,
             residuals=prediction.residuals[:, stream_count:],
+            support_attention=prediction.support_attention,
         )
 
 
@@ -411,6 +432,7 @@ def task_posterior_checkpoint(
             "max_classes": model.max_classes,
             "context_mode": model.context_mode,
             "residual_logit_bound": model.residual_decoder.residual_logit_bound,
+            **model.slot_binding_architecture(),
         },
         "model": model.state_dict(),
         "training_config": training_config,
@@ -444,6 +466,7 @@ def load_task_posterior_checkpoint(
         max_classes=architecture["max_classes"],
         context_mode=architecture.get("context_mode", "iid_set"),
         residual_logit_bound=architecture.get("residual_logit_bound"),
+        **slot_binding_kwargs(architecture),
     )
     model.load_state_dict(checkpoint["model"])
     return model, checkpoint

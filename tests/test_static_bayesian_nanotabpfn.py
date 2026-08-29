@@ -127,8 +127,10 @@ class StaticBayesianTests(unittest.TestCase):
                 path, model, training_config={"query_count": 3}, source_checkpoint_sha256="x", stage="frozen"
             )
             loaded, metadata = load_bayesian_checkpoint(path)
-            expected = model(batch.support_x, batch.support_y, batch.query_x).joint_probabilities()
-            actual = loaded(batch.support_x, batch.support_y, batch.query_x).joint_probabilities()
+            # Slot attention resamples its slot initialization while training, so
+            # the round-trip is compared in eval mode, where the draw is seeded.
+            expected = model.eval()(batch.support_x, batch.support_y, batch.query_x).joint_probabilities()
+            actual = loaded.eval()(batch.support_x, batch.support_y, batch.query_x).joint_probabilities()
         torch.testing.assert_close(actual, expected)
         self.assertEqual(metadata["model_type"], "nanotabpfn_bayesian")
 
@@ -155,16 +157,18 @@ class StaticBayesianTests(unittest.TestCase):
         _, metrics = static_bayesian_loss(tiny_model(4), batch)
         self.assertGreaterEqual(metrics["selection_loss"], 0.0)
         self.assertGreaterEqual(metrics["joint_kl"], 0.0)
-        self.assertGreaterEqual(metrics["weight_kl"], 0.0)
         self.assertLessEqual(metrics["selection_loss"], metrics["loss"])
+        # The per-slot and per-weight terms are gone: they scored slots against
+        # named candidate tasks, which is the assignment supervision that slot
+        # competition replaces.  What is left is permutation invariant.
         expected = (
             metrics["joint_kl"] / (config.query_count * np.log(2))
-            + 0.5 * metrics["weight_kl"] / np.log(config.num_hypotheses)
-            + 0.5 * metrics["slot_kl"] / np.log(2)
             + 0.25 * metrics["mi_loss"]
             + 0.25 * metrics["variance_loss"]
         )
         self.assertAlmostEqual(metrics["selection_loss"], expected, places=6)
+        for removed in ("weight_loss", "weight_kl", "slot_loss", "slot_kl"):
+            self.assertNotIn(removed, metrics)
 
     def test_structured_curriculum_and_frozen_training(self):
         try:

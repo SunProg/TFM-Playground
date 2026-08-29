@@ -90,8 +90,12 @@ class CoherentCorrectionTests(unittest.TestCase):
     def test_neutral_duplication_has_no_slot_preference_when_slots_are_identical(self):
         model = NanoTabPFNCrossFitHypothesisModel(tiny_backbone()).eval()
         with torch.no_grad():
-            model.hypothesis_queries[1].copy_(model.hypothesis_queries[0])
-            model.slot_prior_logits.zero_()
+            # Slots are drawn as mu + exp(log_sigma) * noise from one shared
+            # (mu, log_sigma).  Collapsing sigma to zero makes every slot start
+            # at mu, which is this head's way of asking for identical slots now
+            # that there is no per-slot seed parameter to copy.  There is also no
+            # per-slot prior left to zero.
+            model.slot_binding.slots_log_sigma.fill_(float("-inf"))
         prediction = self._predict(model)
         doubled = model(
             (

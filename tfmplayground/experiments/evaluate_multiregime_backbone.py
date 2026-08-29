@@ -99,6 +99,7 @@ def _fixed_pair_episode(
         f"{base_family}+{other_family}",
         {"support_size": support_size, "query_count": query_count, "features": features, "contamination": contamination},
         _stack(items, "query_regime_source"),
+        _stack(items, "support_regime_source"),
     )
     return episode.to(device)
 

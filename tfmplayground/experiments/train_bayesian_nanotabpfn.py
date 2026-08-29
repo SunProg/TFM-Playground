@@ -416,9 +416,17 @@ def _target_joint(posterior: torch.Tensor, hypothesis_probabilities: torch.Tenso
 
 
 def _assignment(prediction, target_probabilities: torch.Tensor) -> torch.Tensor:
-    """Match predicted slots to target hypotheses using a permutation-invariant cost."""
-    # Cost uses query-label cross entropy.  Assignment is intentionally a
-    # discrete operation; gradients flow through the selected matched loss.
+    """Match predicted slots to target hypotheses using a permutation-invariant cost.
+
+    Diagnostics only.  Reporting "which slot bound to which candidate task"
+    needs slots paired with candidates once, and that is a fine use of matching.
+    The training objective must never use it: telling a slot which task it owns
+    is the supervision that slot competition is supposed to replace, and slots
+    drawn from one shared (mu, log_sigma) have no persistent identity to match
+    against anyway.
+    """
+    # Cost uses query-label cross entropy.  Assignment is a discrete operation
+    # and no gradient flows through it.
     raw = getattr(prediction, "raw_query_probabilities", prediction.query_probabilities)
     predicted = raw[..., 1].detach().transpose(1, 2)
     target = target_probabilities.float()[:, :, None, :]
@@ -462,26 +470,10 @@ def static_bayesian_loss(
             candidate_positive = batch.hypothesis_probabilities.float()
         else:
             candidate_positive = batch.hypothesis_labels.float()
-        assignment = _assignment(prediction, candidate_positive)
         target_joint = _target_joint(batch.posterior, candidate_positive)
         joint_loss = -(target_joint * prediction.joint_probabilities().clamp_min(1e-12).log()).sum(-1).mean()
         target_joint_entropy = -(target_joint * target_joint.clamp_min(1e-12).log()).sum(-1).mean()
         joint_kl = (joint_loss - target_joint_entropy).clamp_min(0)
-        target_binary = torch.stack((1 - candidate_positive, candidate_positive), dim=-1).permute(0, 2, 1, 3)
-        raw_logits = getattr(prediction, "raw_slot_logits", prediction.slot_logits)
-        matched_logits = raw_logits.gather(
-            2,
-            assignment[:, None, :, None].expand(-1, query_count, -1, 2),
-        )
-        # Average over batch, queries, and hypotheses. A sum over hypotheses
-        # would make both training scale and validation ranking depend on K.
-        slot_loss = -(target_binary * F.log_softmax(matched_logits, dim=-1)).sum(dim=-1).mean()
-        target_slot_entropy = -(target_binary * target_binary.clamp_min(1e-12).log()).sum(dim=-1).mean()
-        slot_kl = (slot_loss - target_slot_entropy).clamp_min(0)
-        matched_weights = prediction.slot_log_weights.gather(1, assignment)
-        weight_loss = -(batch.posterior * matched_weights).sum(-1).mean()
-        target_weight_entropy = -(batch.posterior * batch.posterior.clamp_min(1e-12).log()).sum(-1).mean()
-        weight_kl = (weight_loss - target_weight_entropy).clamp_min(0)
         candidate_mean = (batch.posterior[:, :, None] * candidate_positive).sum(dim=1)
         target_expected_entropy = (
             batch.posterior[:, :, None] * _binary_entropy(candidate_positive)
@@ -495,33 +487,24 @@ def static_bayesian_loss(
         variance_loss = F.mse_loss(prediction.epistemic_variance(), target_variance)
     else:
         raise ValueError("No-signal diagnostic batches are not valid training batches.")
-    total = joint_loss + 0.5 * weight_loss + 0.5 * slot_loss + 0.25 * mi_loss + 0.25 * variance_loss
+    # Every term is a permutation-invariant function of the whole slot set: the
+    # joint marginalizes over slots, and the mutual-information and variance
+    # targets are statistics of the mixture.  No term names an individual slot,
+    # so the model is never told which slot owns which candidate task and no
+    # slot-to-candidate matching is required.
+    total = joint_loss + 0.25 * mi_loss + 0.25 * variance_loss
     # Cross-entropies include target entropy, which increases mechanically with
     # K. Subtract it for validation/model selection so different hypothesis
     # counts are ranked by approximation error rather than target complexity.
     log_two = math.log(2.0)
     joint_kl_normalized = joint_kl / (query_count * log_two)
-    weight_kl_normalized = weight_kl / math.log(candidate_positive.shape[1])
-    slot_kl_normalized = slot_kl / log_two
-    selection_loss = (
-        joint_kl_normalized
-        + 0.5 * weight_kl_normalized
-        + 0.5 * slot_kl_normalized
-        + 0.25 * mi_loss
-        + 0.25 * variance_loss
-    )
+    selection_loss = joint_kl_normalized + 0.25 * mi_loss + 0.25 * variance_loss
     return total, {
         "loss": float(total.detach()),
         "selection_loss": float(selection_loss.detach()),
         "joint_nll": float(joint_loss.detach()),
         "joint_kl": float(joint_kl.detach()),
         "joint_kl_normalized": float(joint_kl_normalized.detach()),
-        "weight_loss": float(weight_loss.detach()),
-        "weight_kl": float(weight_kl.detach()),
-        "weight_kl_normalized": float(weight_kl_normalized.detach()),
-        "slot_loss": float(slot_loss.detach()),
-        "slot_kl": float(slot_kl.detach()),
-        "slot_kl_normalized": float(slot_kl_normalized.detach()),
         "mi_loss": float(mi_loss.detach()),
         "variance_loss": float(variance_loss.detach()),
         "mean_preservation_error": float(prediction.mean_preservation_error().max().detach()),

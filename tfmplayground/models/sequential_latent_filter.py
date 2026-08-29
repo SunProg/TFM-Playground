@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.slot_attention import SlotBindingMixin, slot_binding_kwargs
 
 
 def _binary_vectors(query_count: int, device: torch.device) -> torch.Tensor:
@@ -73,12 +74,20 @@ class SequentialFilterPrediction:
         return torch.einsum("bsk,bqkc->bsqc", weights.exp(), slot_probabilities)
 
 
-class NanoTabPFNSequentialLatentFilter(nn.Module):
+class NanoTabPFNSequentialLatentFilter(SlotBindingMixin, nn.Module):
     """Two fixed latent states whose probabilities receive online Bayes updates."""
 
     model_type = "nanotabpfn_sequential_latent_filter"
 
-    def __init__(self, backbone: NanoTabPFNModel, num_hypotheses: int = 2, num_outputs: int = 2):
+    def __init__(
+        self,
+        backbone: NanoTabPFNModel,
+        num_hypotheses: int = 2,
+        num_outputs: int = 2,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
+    ):
         super().__init__()
         if num_hypotheses != 2 or num_outputs != 2:
             raise ValueError("The minimal sequential filter requires two binary hypotheses.")
@@ -90,14 +99,13 @@ class NanoTabPFNSequentialLatentFilter(nn.Module):
         self.transition_probability = 0.0
         embedding_size = backbone.embedding_size
 
-        self.hypothesis_queries = nn.Parameter(torch.empty(num_hypotheses, embedding_size))
-        nn.init.normal_(self.hypothesis_queries, std=embedding_size**-0.5)
-        self.slot_attention = nn.MultiheadAttention(
-            embedding_size,
-            backbone.num_attention_heads,
-            batch_first=True,
+        self._init_slot_binding(
+            num_slots=num_hypotheses,
+            embedding_size=embedding_size,
+            mlp_hidden_size=backbone.mlp_hidden_size,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
         )
-        self.slot_norm = nn.LayerNorm(embedding_size)
         self.slot_decoder = nn.Sequential(
             nn.Linear(embedding_size * 3, embedding_size),
             nn.GELU(),
@@ -166,9 +174,7 @@ class NanoTabPFNSequentialLatentFilter(nn.Module):
         support_embeddings = encoded[:, :support_count]
         stream_embeddings = encoded[:, support_count : support_count + stream_count]
         query_embeddings = encoded[:, support_count + stream_count :]
-        seeds = self.hypothesis_queries[None].expand(encoded.shape[0], -1, -1)
-        attended = self.slot_attention(seeds, support_embeddings, support_embeddings, need_weights=False)[0]
-        slots = self.slot_norm(seeds + attended)
+        slots, _support_attention = self.make_slots(support_embeddings)
         return SequentialFilterLogits(
             stream_logits=self._decode(stream_embeddings, slots),
             query_logits=self._decode(query_embeddings, slots),
@@ -311,6 +317,7 @@ def sequential_filter_checkpoint(
             "backbone_num_outputs": backbone.num_outputs,
             "num_hypotheses": model.num_hypotheses,
             "num_outputs": model.num_outputs,
+            **model.slot_binding_architecture(),
             "evidence_logit_scale": model.evidence_logit_scale,
             "query_temperature": model.query_temperature,
             "transition_probability": model.transition_probability,
@@ -367,6 +374,7 @@ def load_sequential_filter_checkpoint(
         backbone,
         num_hypotheses=architecture["num_hypotheses"],
         num_outputs=architecture["num_outputs"],
+        **slot_binding_kwargs(architecture),
     )
     model.load_state_dict(checkpoint["model"])
     model.set_temperatures(

@@ -220,34 +220,28 @@ def hypothesis_loss(
     joint = prediction.joint_probabilities()
     marginals = prediction.marginal_probabilities()
     query_count = batch.query_x.shape[1]
-    weight_loss = torch.zeros((), device=full_x.device)
-    slot_loss = torch.zeros((), device=full_x.device)
 
+    # Only the predictive terms.  Slot attention is never told which slot owns
+    # which task: specialization has to fall out of the slot competition and the
+    # mixture bottleneck, exactly as object slots fall out of reconstruction in
+    # the vision model.  The earlier `slot_loss`/`weight_loss` pair supervised
+    # slot *index* 0 as "all zeros" and index 1 as "all ones", which both defeats
+    # that and is unlearnable once slots are exchangeable.
     if batch.controlled:
         target_joint = exact_binary_joint(batch.posterior_b, query_count)
         joint_loss = -(target_joint * joint.clamp_min(1e-12).log()).sum(-1).mean()
         target_marginals = batch.posterior_b[:, None].expand(-1, query_count)
         target_binary = torch.stack((1.0 - target_marginals, target_marginals), dim=-1)
         marginal_loss = -(target_binary * marginals.clamp_min(1e-12).log()).sum(-1).mean()
-        target_weights = torch.stack((1.0 - batch.posterior_b, batch.posterior_b), dim=-1)
-        weight_loss = -(target_weights * prediction.slot_log_weights).sum(-1).mean()
-        zeros = torch.zeros(batch.query_y.shape, device=full_x.device, dtype=torch.long)
-        ones = torch.ones(batch.query_y.shape, device=full_x.device, dtype=torch.long)
-        slot_loss = 0.5 * (
-            F.cross_entropy(prediction.slot_logits[:, :, 0, :].reshape(-1, 2), zeros.reshape(-1))
-            + F.cross_entropy(prediction.slot_logits[:, :, 1, :].reshape(-1, 2), ones.reshape(-1))
-        )
     else:
         indices = outcome_indices(batch.query_y)
         joint_loss = -joint.gather(1, indices[:, None]).clamp_min(1e-12).log().mean()
         marginal_loss = F.nll_loss(marginals.clamp_min(1e-12).log().reshape(-1, 2), batch.query_y.reshape(-1))
-    total = joint_loss + marginal_loss + 0.25 * weight_loss + 0.25 * slot_loss
+    total = joint_loss + marginal_loss
     return total, {
         "loss": float(total.detach()),
         "joint_loss": float(joint_loss.detach()),
         "marginal_loss": float(marginal_loss.detach()),
-        "weight_loss": float(weight_loss.detach()),
-        "slot_loss": float(slot_loss.detach()),
     }
 
 

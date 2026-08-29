@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.slot_attention import SlotBindingMixin, slot_binding_kwargs
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,11 @@ class HypothesisPrediction:
     slot_logits: torch.Tensor
     slot_log_weights: torch.Tensor
     row_log_evidence: torch.Tensor
+    #: ``(batch, support, hypothesis)`` slot attention over the support rows.
+    #: Under competitive slot attention each support row's weights sum to one, so
+    #: this reads directly as a per-row soft assignment to a hypothesis.  Keyword
+    #: only, so subclasses can keep declaring required fields after it.
+    support_attention: torch.Tensor | None = field(default=None, kw_only=True)
 
     @property
     def query_probabilities(self) -> torch.Tensor:
@@ -173,7 +179,7 @@ class MeanPreservingPrediction(HypothesisPrediction):
         return (self.marginal_probabilities() - self.base_probabilities).abs().amax(dim=(-1, -2))
 
 
-class NanoTabPFNHypothesisModel(nn.Module):
+class NanoTabPFNHypothesisModel(SlotBindingMixin, nn.Module):
     """A two-or-more particle task posterior built on nanoTabPFN embeddings."""
 
     def __init__(
@@ -182,6 +188,9 @@ class NanoTabPFNHypothesisModel(nn.Module):
         num_hypotheses: int = 2,
         num_outputs: int = 2,
         query_count: int | None = None,
+        *,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
     ):
         super().__init__()
         if num_hypotheses < 2:
@@ -197,20 +206,22 @@ class NanoTabPFNHypothesisModel(nn.Module):
         embedding_size = backbone.embedding_size
         hidden_size = backbone.mlp_hidden_size
 
-        self.hypothesis_queries = nn.Parameter(torch.empty(num_hypotheses, embedding_size))
-        nn.init.normal_(self.hypothesis_queries, std=embedding_size**-0.5)
-        self.slot_attention = nn.MultiheadAttention(
-            embedding_size,
-            backbone.num_attention_heads,
-            batch_first=True,
+        self._init_slot_binding(
+            num_slots=num_hypotheses,
+            embedding_size=embedding_size,
+            mlp_hidden_size=hidden_size,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
         )
-        self.slot_norm = nn.LayerNorm(embedding_size)
         self.evidence_head = nn.Sequential(
             nn.Linear(embedding_size * 3, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, 1),
         )
-        self.slot_prior_logits = nn.Parameter(torch.zeros(num_hypotheses))
+        # No per-slot prior parameter: slots are drawn from one shared
+        # (mu, log_sigma) and are exchangeable, so a weight attached to slot
+        # *index* k has nothing stable to describe.  Hypothesis weights come
+        # from the evidence alone.
         self.slot_decoder = nn.Sequential(
             nn.Linear(embedding_size * 3, hidden_size),
             nn.GELU(),
@@ -234,24 +245,22 @@ class NanoTabPFNHypothesisModel(nn.Module):
         if train_test_split_index is None:
             raise TypeError("train_test_split_index is required for the concatenated-table interface.")
         num_mem_chunks = kwargs.pop("num_mem_chunks", 1)
+        generator = kwargs.pop("generator", None)
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {sorted(kwargs)}")
         encoded = self.backbone.encode_table(src, train_test_split_index, num_mem_chunks=num_mem_chunks)
         target_embeddings = encoded[:, :, -1, :]
         support_embeddings = target_embeddings[:, :train_test_split_index]
         query_embeddings = target_embeddings[:, train_test_split_index:]
-        batch_size, support_count, embedding_size = support_embeddings.shape
+        support_count = support_embeddings.shape[1]
 
-        slot_seeds = self.hypothesis_queries[None].expand(batch_size, -1, -1)
-        attended_slots = self.slot_attention(slot_seeds, support_embeddings, support_embeddings, need_weights=False)[0]
-        slots = self.slot_norm(slot_seeds + attended_slots)
+        slots, support_attention = self.make_slots(support_embeddings, generator=generator)
 
         support_expanded = support_embeddings[:, :, None, :].expand(-1, -1, self.num_hypotheses, -1)
         slot_for_support = slots[:, None, :, :].expand(-1, support_count, -1, -1)
         evidence_features = torch.cat((support_expanded, slot_for_support, support_expanded * slot_for_support), dim=-1)
         row_log_evidence = self.evidence_head(evidence_features).squeeze(-1)
-        slot_scores = row_log_evidence.sum(dim=1) + self.slot_prior_logits
-        slot_log_weights = F.log_softmax(slot_scores, dim=-1)
+        slot_log_weights = F.log_softmax(row_log_evidence.sum(dim=1), dim=-1)
 
         query_count = query_embeddings.shape[1]
         if self.num_hypotheses > 2**query_count:
@@ -263,7 +272,9 @@ class NanoTabPFNHypothesisModel(nn.Module):
         slot_for_queries = slots[:, None, :, :].expand(-1, query_count, -1, -1)
         decoder_features = torch.cat((query_expanded, slot_for_queries, query_expanded * slot_for_queries), dim=-1)
         slot_logits = self.slot_decoder(decoder_features)
-        return HypothesisPrediction(slot_logits, slot_log_weights, row_log_evidence)
+        return HypothesisPrediction(
+            slot_logits, slot_log_weights, row_log_evidence, support_attention=support_attention
+        )
 
     def freeze_backbone(self) -> None:
         self.backbone.requires_grad_(False)
@@ -318,8 +329,17 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
         *,
         num_partitions: int = 2,
         likelihood_temperature: float = 0.1,
+        num_slot_iterations: int = 3,
+        competitive_slots: bool = True,
     ):
-        super().__init__(backbone, num_hypotheses, num_outputs, query_count)
+        super().__init__(
+            backbone,
+            num_hypotheses,
+            num_outputs,
+            query_count,
+            num_slot_iterations=num_slot_iterations,
+            competitive_slots=competitive_slots,
+        )
         if num_partitions < 1:
             raise ValueError("num_partitions must be positive.")
         if likelihood_temperature <= 0:
@@ -353,10 +373,10 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
         )[:, :, -1, :]
         return encoded[:, : support_x.shape[1]].detach(), encoded[:, support_x.shape[1] :].detach()
 
-    def _make_slots(self, support_embeddings: torch.Tensor) -> torch.Tensor:
-        seeds = self.hypothesis_queries[None].expand(support_embeddings.shape[0], -1, -1)
-        attended = self.slot_attention(seeds, support_embeddings, support_embeddings, need_weights=False)[0]
-        return self.slot_norm(seeds + attended)
+    def _make_slots(
+        self, support_embeddings: torch.Tensor, *, generator: torch.Generator | None = None
+    ) -> torch.Tensor:
+        return self.make_slots(support_embeddings, generator=generator)[0]
 
     def _decode(self, embeddings: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
         rows = embeddings[:, :, None].expand(-1, -1, self.num_hypotheses, -1)
@@ -369,6 +389,7 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
         support_y: torch.Tensor,
         *,
         num_mem_chunks: int,
+        generator: torch.Generator | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size, support_count = support_y.shape
         if support_count < 4:
@@ -380,7 +401,7 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
                 device=support_x.device,
                 dtype=support_x.dtype,
             )
-            prior = F.log_softmax(self.slot_prior_logits[None].expand(batch_size, -1), dim=-1)
+            prior = F.log_softmax(torch.zeros(batch_size, self.num_hypotheses, device=support_x.device), dim=-1)
             return prior, row_log_evidence, assignments
 
         assignments = _permutation_invariant_folds(support_x, support_y, self.num_partitions)
@@ -406,14 +427,14 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
                     heldout_x,
                     num_mem_chunks=num_mem_chunks,
                 )
-                logits = self._decode(heldout_embeddings, self._make_slots(context_embeddings))
+                logits = self._decode(heldout_embeddings, self._make_slots(context_embeddings, generator=generator))
                 observed = F.log_softmax(logits, dim=-1).gather(
                     -1,
                     heldout_y[:, :, None, None].expand(-1, -1, self.num_hypotheses, 1),
                 ).squeeze(-1)
                 row_log_evidence[partition][heldout_mask] = observed.reshape(-1, self.num_hypotheses)
         mean_evidence = row_log_evidence.mean(dim=0)
-        scores = self.slot_prior_logits[None] + self.likelihood_temperature * mean_evidence.sum(dim=1)
+        scores = self.likelihood_temperature * mean_evidence.sum(dim=1)
         return F.log_softmax(scores, dim=-1), mean_evidence, assignments
 
     def forward(self, *args, **kwargs) -> MeanPreservingPrediction:
@@ -428,6 +449,7 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
         else:
             raise TypeError("Expected (x_train, y_train, x_query) or ((x, y), train_test_split_index=...).")
         num_mem_chunks = kwargs.pop("num_mem_chunks", 1)
+        generator = kwargs.pop("generator", None)
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {sorted(kwargs)}")
         if self.num_hypotheses > 2 ** query_x.shape[1]:
@@ -442,12 +464,13 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
             query_x,
             num_mem_chunks=num_mem_chunks,
         )
-        slots = self._make_slots(support_embeddings)
+        slots, support_attention = self.make_slots(support_embeddings, generator=generator)
         raw_slot_logits = self._decode(query_embeddings, slots)
         slot_log_weights, row_log_evidence, assignments = self._crossfit_log_weights(
             support_x,
             support_y,
             num_mem_chunks=num_mem_chunks,
+            generator=generator,
         )
 
         base_logits = self.backbone.decoder(query_embeddings)[..., :2]
@@ -476,6 +499,7 @@ class NanoTabPFNMeanPreservingBayesianModel(NanoTabPFNHypothesisModel):
             raw_slot_logits,
             base_probabilities,
             assignments,
+            support_attention=support_attention,
         )
 
     def unfreeze_final_backbone_blocks(self, count: int = 2) -> None:
@@ -514,6 +538,7 @@ def hypothesis_checkpoint(
             "mean_preserving": isinstance(model, NanoTabPFNMeanPreservingBayesianModel),
             "num_partitions": getattr(model, "num_partitions", None),
             "likelihood_temperature": getattr(model, "likelihood_temperature", None),
+            **model.slot_binding_architecture(),
         },
         "model": model.state_dict(),
         "source_checkpoint_sha256": source_checkpoint_sha256,
@@ -564,6 +589,7 @@ def load_hypothesis_checkpoint(
         backbone,
         num_hypotheses=architecture["num_hypotheses"],
         num_outputs=architecture["num_outputs"],
+        **slot_binding_kwargs(architecture),
     )
     model.load_state_dict(checkpoint["model"])
     return model, checkpoint
@@ -636,6 +662,7 @@ def load_bayesian_checkpoint(
             num_outputs=architecture["num_outputs"],
             num_partitions=architecture.get("num_partitions") or 2,
             likelihood_temperature=architecture.get("likelihood_temperature") or 0.1,
+            **slot_binding_kwargs(architecture),
         )
     else:
         # Legacy static checkpoints retain their original non-mean-preserving
@@ -644,6 +671,7 @@ def load_bayesian_checkpoint(
             backbone,
             num_hypotheses=architecture["num_hypotheses"],
             num_outputs=architecture["num_outputs"],
+            **slot_binding_kwargs(architecture),
         )
     model.load_state_dict(checkpoint["model"])
     return model, checkpoint
