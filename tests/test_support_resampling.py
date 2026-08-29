@@ -60,6 +60,22 @@ class LayerCaptureTests(unittest.TestCase):
         self.assertEqual(len(capture.captures), model.num_layers)
         for layer_capture in capture.captures:
             self.assertEqual(tuple(layer_capture.shape), (2, 8, model.embedding_size))
+        self.assertIsNone(capture.support_captures)
+
+    def test_capture_support_also_captures_support_rows(self):
+        model = tiny_backbone(9)
+        x, y = torch.randn(2, 18, 3), torch.randint(0, 2, (2, 10)).float()
+        with LayerCapture(model, 10, keep_graph=False, capture_support=True) as capture:
+            with torch.no_grad():
+                model.encode_table((x, y), 10, num_mem_chunks=1)
+        self.assertEqual(len(capture.support_captures), model.num_layers)
+        for support_capture in capture.support_captures:
+            self.assertEqual(tuple(support_capture.shape), (2, 10, model.embedding_size))
+
+    def test_capture_support_rejects_keep_graph(self):
+        model = tiny_backbone(10)
+        with self.assertRaises(ValueError):
+            LayerCapture(model, 10, keep_graph=True, capture_support=True)
 
 
 class SplitFitHeldoutTests(unittest.TestCase):
@@ -153,6 +169,49 @@ class BuildEnsembleTests(unittest.TestCase):
         ratio = ensemble.projected_ratio()
         self.assertTrue((ratio >= -1e-4).all())
         self.assertTrue((ratio <= 1.0 + 1e-4).all())
+
+    def test_support_dispersion_requires_capture_support_first(self):
+        model = tiny_backbone(12)
+        support_x, support_y, query_x = tiny_table(support=20, query=5)
+        ensemble = build_ensemble(model, support_x, support_y, query_x, scheme="bootstrap", members=8, seed=1)
+        with self.assertRaises(RuntimeError):
+            ensemble.support_representation_dispersion()
+
+    def test_support_dispersion_is_well_formed_and_deterministic(self):
+        model = tiny_backbone(13)
+        support_x, support_y, query_x = tiny_table(support=20, query=5)
+        first = build_ensemble(
+            model, support_x, support_y, query_x, scheme="bootstrap", members=16, seed=4, capture_support=True
+        )
+        self.assertEqual(tuple(first.support_indices.shape), (16, 20))
+        self.assertTrue((first.support_indices >= 0).all())
+        self.assertTrue((first.support_indices < 20).all())
+        for embedding in first.layer_support_embeddings:
+            self.assertEqual(tuple(embedding.shape), (16, 20, model.embedding_size))
+        dispersion = first.support_representation_dispersion()
+        self.assertEqual(tuple(dispersion.shape), (model.num_layers,))
+        self.assertTrue((dispersion >= 0).all())
+        scale_free = first.support_scale_free_representation_dispersion()
+        self.assertEqual(tuple(scale_free.shape), (model.num_layers,))
+        self.assertTrue((scale_free >= 0).all())
+
+        second = build_ensemble(
+            model, support_x, support_y, query_x, scheme="bootstrap", members=16, seed=4, capture_support=True
+        )
+        torch.testing.assert_close(
+            first.support_representation_dispersion(), second.support_representation_dispersion(), atol=0, rtol=0
+        )
+
+    def test_capture_support_does_not_change_query_results(self):
+        model = tiny_backbone(14)
+        support_x, support_y, query_x = tiny_table(support=18, query=4)
+        without = build_ensemble(model, support_x, support_y, query_x, scheme="bootstrap", members=6, seed=2)
+        with_support = build_ensemble(
+            model, support_x, support_y, query_x, scheme="bootstrap", members=6, seed=2, capture_support=True
+        )
+        torch.testing.assert_close(without.member_probabilities, with_support.member_probabilities, atol=0, rtol=0)
+        for left, right in zip(without.layer_query_embeddings, with_support.layer_query_embeddings, strict=True):
+            torch.testing.assert_close(left, right, atol=0, rtol=0)
 
     def test_projected_dispersion_requires_gradient_first(self):
         model = tiny_backbone(8)

@@ -137,10 +137,16 @@ class LayerCapture:
     parameters.
     """
 
-    def __init__(self, model: NanoTabPFNModel, split: int, *, keep_graph: bool = False):
+    def __init__(
+        self, model: NanoTabPFNModel, split: int, *, keep_graph: bool = False, capture_support: bool = False
+    ):
+        if capture_support and keep_graph:
+            raise ValueError("capture_support is only meaningful when keep_graph=False.")
         self.split = split
         self.keep_graph = keep_graph
+        self.capture_support = capture_support
         self.captures: list[torch.Tensor] = []
+        self.support_captures: list[torch.Tensor] | None = [] if capture_support else None
         self._handles = [block.register_forward_hook(self._hook) for block in model.transformer_blocks]
 
     def _hook(self, _module, _inputs, output: torch.Tensor) -> None:
@@ -148,6 +154,8 @@ class LayerCapture:
             self.captures.append(output)
         else:
             self.captures.append(output[:, self.split :, -1, :].detach().clone())
+            if self.capture_support:
+                self.support_captures.append(output[:, : self.split, -1, :].detach().clone())
 
     def remove(self) -> None:
         for handle in self._handles:
@@ -188,6 +196,18 @@ class ResampleEnsemble:
             were never in any member's fitting draw, so
             ``Var_b(member_heldout_log_loss)`` is an unbiased per-member
             calibration signal to correlate against query dispersion.
+        layer_support_embeddings: one ``(members, draw_size, embedding)``
+            tensor per block -- every member's resampled support/context rows'
+            own embeddings -- or ``None`` unless ``build_ensemble`` was called
+            with ``capture_support=True``.
+        support_indices: ``(members, draw_size)`` original fit-pool row index
+            drawn into each member's slot, or ``None``. Needed to group
+            ``layer_support_embeddings`` by *original* row identity, since
+            bootstrap draws put a different original row at a given slot in
+            every member.
+        fit_size: number of rows in the fitting pool passed to
+            :func:`build_ensemble`, or ``None``. The range of valid values in
+            ``support_indices``.
     """
 
     scheme: str
@@ -197,6 +217,9 @@ class ResampleEnsemble:
     base_layer_embeddings: list[torch.Tensor]
     base_layer_gradients: list[torch.Tensor] | None = None
     heldout_member_probabilities: torch.Tensor | None = None
+    layer_support_embeddings: list[torch.Tensor] | None = None
+    support_indices: torch.Tensor | None = None
+    fit_size: int | None = None
 
     @property
     def members(self) -> int:
@@ -251,6 +274,51 @@ class ResampleEnsemble:
             scale = self.layer_query_embeddings[layer].square().sum(dim=-1).mean(dim=0).clamp_min(EPSILON)
             rows.append(raw / scale)
         return torch.stack(rows)
+
+    def support_representation_dispersion(self) -> torch.Tensor:
+        """``(layer,)`` mean squared deviation per embedding dimension of support-row embeddings.
+
+        The query-row analog (:meth:`representation_dispersion`) compares the
+        *same* query row's embedding across members, because the query row is
+        always present, unperturbed, at a fixed position. Support rows have no
+        such fixed position: bootstrap resampling puts a different original
+        row at slot ``j`` in every member. This instead groups
+        ``layer_support_embeddings`` by *original* row identity (via
+        ``support_indices``), and computes variance across the members that
+        happened to draw that row (dropped if drawn fewer than twice --
+        negligible in practice since ``draw_size == fit_size`` puts each row's
+        expected total count across the ensemble at ``members``, not ``1``).
+        """
+        if self.layer_support_embeddings is None or self.support_indices is None or self.fit_size is None:
+            raise RuntimeError("Call build_ensemble(..., capture_support=True) first.")
+        flat_indices = self.support_indices.reshape(-1)
+        rows = []
+        for layer in range(self.num_layers):
+            embeddings = self.layer_support_embeddings[layer]
+            embedding_size = embeddings.shape[-1]
+            flat_embeddings = embeddings.reshape(-1, embedding_size)
+            count = torch.zeros(self.fit_size, dtype=flat_embeddings.dtype, device=flat_embeddings.device)
+            total = torch.zeros(self.fit_size, embedding_size, dtype=flat_embeddings.dtype, device=flat_embeddings.device)
+            total_sq = torch.zeros_like(total)
+            count.index_add_(0, flat_indices, torch.ones_like(flat_indices, dtype=flat_embeddings.dtype))
+            total.index_add_(0, flat_indices, flat_embeddings)
+            total_sq.index_add_(0, flat_indices, flat_embeddings.square())
+            valid = count >= 2
+            mean = total[valid] / count[valid, None]
+            variance = (total_sq[valid] / count[valid, None] - mean.square()).clamp_min(0.0)
+            rows.append(variance.mean())
+        return torch.stack(rows)
+
+    def support_scale_free_representation_dispersion(self) -> torch.Tensor:
+        """``(layer,)`` :meth:`support_representation_dispersion` divided by the mean embedding norm."""
+        raw = self.support_representation_dispersion()
+        scales = torch.stack(
+            [
+                embeddings.square().sum(dim=-1).mean().clamp_min(EPSILON)
+                for embeddings in self.layer_support_embeddings
+            ]
+        )
+        return raw / scales
 
     def effective_rank(self) -> torch.Tensor:
         """``(layer, query)`` participation ratio of the member deviation matrix.
@@ -325,23 +393,32 @@ class ResampleEnsemble:
 # Building an ensemble
 # --------------------------------------------------------------------------- #
 def _encode_and_capture(
-    model: NanoTabPFNModel, x: torch.Tensor, y: torch.Tensor, split: int, *, num_mem_chunks: int, keep_graph: bool
-) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    model: NanoTabPFNModel,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    split: int,
+    *,
+    num_mem_chunks: int,
+    keep_graph: bool,
+    capture_support: bool = False,
+) -> tuple[torch.Tensor, list[torch.Tensor], list[torch.Tensor] | None]:
     """Run ``encode_table`` with layer capture; return the query embedding and the captures.
 
     When ``keep_graph`` is ``False`` the captures are already sliced to the
     query rows (see :class:`LayerCapture`); when ``True`` they are the full,
     unsliced block outputs and the caller is responsible for slicing after any
-    gradient call.
+    gradient call. The third return value is one ``(batch, split, embedding)``
+    tensor per block -- the support/context rows' own embeddings -- or
+    ``None`` unless ``capture_support`` is set.
     """
-    with LayerCapture(model, split, keep_graph=keep_graph) as capture:
+    with LayerCapture(model, split, keep_graph=keep_graph, capture_support=capture_support) as capture:
         if keep_graph:
             final = model.encode_table((x, y), split, num_mem_chunks=1)
         else:
             with torch.no_grad():
                 final = model.encode_table((x, y), split, num_mem_chunks=num_mem_chunks)
     query_embedding = final[:, split:, -1, :]
-    return query_embedding, capture.captures
+    return query_embedding, capture.captures, capture.support_captures
 
 
 def build_ensemble(
@@ -357,6 +434,7 @@ def build_ensemble(
     num_mem_chunks: int = 1,
     compute_gradient: bool = True,
     heldout_x: torch.Tensor | None = None,
+    capture_support: bool = False,
 ) -> ResampleEnsemble:
     """Draw ``members`` resamples of ``support_{x,y}`` and score them on ``query_x``.
 
@@ -372,6 +450,11 @@ def build_ensemble(
     score every member on them in the same batched forward pass. Held-out
     predictions are never used to build the layer captures or the decoder
     gradient, only recorded as ``heldout_member_probabilities``.
+
+    ``capture_support=True`` additionally records every member's resampled
+    support rows' own embeddings (``ResampleEnsemble.layer_support_embeddings``
+    / ``support_indices``), enabling
+    :meth:`ResampleEnsemble.support_representation_dispersion`.
     """
     if scheme not in SCHEMES:
         raise ValueError(f"scheme must be one of {SCHEMES}, found {scheme!r}.")
@@ -396,8 +479,14 @@ def build_ensemble(
     )
     stacked_x = torch.cat((member_support_x, scored_x), dim=1)
 
-    scored_embedding, layer_captures = _encode_and_capture(
-        model, stacked_x, member_support_y, draw_size, num_mem_chunks=num_mem_chunks, keep_graph=False
+    scored_embedding, layer_captures, layer_support_captures = _encode_and_capture(
+        model,
+        stacked_x,
+        member_support_y,
+        draw_size,
+        num_mem_chunks=num_mem_chunks,
+        keep_graph=False,
+        capture_support=capture_support,
     )
     logits = model.decoder(scored_embedding)[..., :2]
     scored_probabilities = logits.softmax(dim=-1)[..., 1]
@@ -414,8 +503,15 @@ def build_ensemble(
     # gradient is read from.
     base_x = torch.cat((support_x, query_x), dim=0).unsqueeze(0)
     base_y = support_y.unsqueeze(0)
-    base_query_embedding, base_captures = _encode_and_capture(
-        model, base_x, base_y, fit_size, num_mem_chunks=1, keep_graph=compute_gradient
+    # ``num_mem_chunks`` is safe to reuse here even though ``keep_graph`` may be
+    # True: ``memory_chunking`` disables itself under an active autograd context
+    # regardless of the value passed in (see its docstring), so this only ever
+    # changes peak memory on the ``compute_gradient=False`` path -- exactly the
+    # wide-dataset case that motivated it (a fixed ``num_mem_chunks=1`` base
+    # pass was OOMing on wide TabArena tasks independent of the caller's
+    # setting for the member pass).
+    base_query_embedding, base_captures, _ = _encode_and_capture(
+        model, base_x, base_y, fit_size, num_mem_chunks=num_mem_chunks, keep_graph=compute_gradient
     )
     with torch.no_grad():
         base_logits = model.decoder(base_query_embedding)[..., :2]
@@ -436,6 +532,11 @@ def build_ensemble(
         heldout_member_probabilities=(
             None if heldout_member_probabilities is None else heldout_member_probabilities.detach()
         ),
+        layer_support_embeddings=(
+            None if layer_support_captures is None else [capture.detach() for capture in layer_support_captures]
+        ),
+        support_indices=None if layer_support_captures is None else indices.detach(),
+        fit_size=None if layer_support_captures is None else fit_size,
     )
     if compute_gradient:
         ensemble.decoder_gradient(model.decoder, base_captures, fit_size)
