@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -37,7 +38,7 @@ import torch
 import torch.nn.functional as F
 
 from tfmplayground.experiments.continuous_episodes import (
-    HELDOUT_REGIME,
+    SCM_FAMILIES,
     TRAIN_REGIME,
     sample_episode,
     sample_scm_multiregime_episode,
@@ -55,18 +56,21 @@ from tfmplayground.utils import set_randomness_seed
 #: passed to sample_episode is irrelevant once num_candidates=1: every row
 #: shares the one candidate's label regardless, so any condition works.
 PRIOR_CONDITION = "identifiable"
+MULTIREGIME_SOURCES: tuple[str | tuple[str, str], ...] = (
+    "mlp_scm",
+    "tree_scm",
+    ("mlp_scm", "tree_scm"),
+)
 
 
-def _scm_family(regime) -> str:
-    """The same TRAIN/HELDOUT SCM-family split ``sample_scm_multiregime_episode`` uses.
+def _draw_scm_family(rng: np.random.Generator) -> str:
+    """Sample from every SCM family used by the original ``mix_scm`` prior."""
+    return str(rng.choice(SCM_FAMILIES))
 
-    Both curriculum shares draw from this one official-prior family
-    (``mlp_scm`` in training, ``tree_scm`` in validation) so the "prior" and
-    "multiregime" episodes differ only in whether the support/query rows are a
-    single regime or a row-level mixture of two -- not also in which
-    data-generating family they come from.
-    """
-    return "tree_scm" if regime is HELDOUT_REGIME else "mlp_scm"
+
+def _draw_multiregime_source(rng: np.random.Generator) -> str | tuple[str, str]:
+    """Balance within-MLP, within-tree, and cross-family SCM mixtures."""
+    return MULTIREGIME_SOURCES[int(rng.integers(len(MULTIREGIME_SOURCES)))]
 
 
 @dataclass(frozen=True)
@@ -92,28 +96,52 @@ class BackboneFinetuneConfig:
     #: single-truth prior episode (PRIOR_CONDITION, num_candidates=1).
     multiregime_probability: float = 0.30
     multiregime_contamination: float | None = None
+    #: Restore the lowest synthetic-validation-loss checkpoint and stop after
+    #: ``patience`` non-improving validations. Disable for fixed-budget curves.
+    early_stopping: bool = True
+    #: Persist a trajectory checkpoint after every N updates. ``None`` stores
+    #: only the final model.
+    checkpoint_interval: int | None = None
 
 
 def _draw_condition(rng: np.random.Generator, multiregime_probability: float) -> str:
     return "multiregime" if rng.random() < multiregime_probability else "prior"
 
 
-def sample_condition_episode(rng: np.random.Generator, regime, condition: str, config: BackboneFinetuneConfig):
+def sample_condition_episode(
+    rng: np.random.Generator,
+    condition: str,
+    config: BackboneFinetuneConfig,
+    *,
+    family: str | tuple[str, str] | None = None,
+):
+    """Draw an independent curriculum episode from either SCM family.
+
+    The pretrained checkpoint already saw ``mix_scm``.  Consequently both
+    families belong in the added fine-tuning curriculum and in its synthetic
+    validation distribution; validation has independent random draws, rather
+    than withholding tree-SCM as if it were an unseen prior.
+    """
     if condition == "multiregime":
+        family = _draw_multiregime_source(rng) if family is None else family
         return sample_scm_multiregime_episode(
             rng,
-            regime=regime,
+            regime=TRAIN_REGIME,
+            family=family,
             batch_size=config.batch_size,
             support_size=config.support_size,
             query_count=config.query_count,
             contamination=config.multiregime_contamination,
             device=config.device,
         )
+    family = _draw_scm_family(rng) if family is None else family
+    if family not in SCM_FAMILIES:
+        raise ValueError(f"Single-regime family must be one of {SCM_FAMILIES}, got {family!r}")
     return sample_episode(
         rng,
-        regime=regime,
+        regime=TRAIN_REGIME,
         condition=PRIOR_CONDITION,
-        family=_scm_family(regime),
+        family=family,
         num_candidates=1,
         batch_size=config.batch_size,
         support_size=config.support_size,
@@ -173,7 +201,14 @@ def validate(model, config: BackboneFinetuneConfig) -> dict[str, float]:
         # Half prior, half multiregime, regardless of the training-time
         # probability, so the multiregime diagnostics always get enough data.
         condition = "multiregime" if index % 2 == 0 else "prior"
-        episode = sample_condition_episode(rng, HELDOUT_REGIME, condition, config)
+        # Each source is represented evenly with 24 validation episodes:
+        # eight single-regime draws and four of each multi-regime source.
+        family = (
+            MULTIREGIME_SOURCES[(index // 2) % len(MULTIREGIME_SOURCES)]
+            if condition == "multiregime"
+            else SCM_FAMILIES[(index // 2) % len(SCM_FAMILIES)]
+        )
+        episode = sample_condition_episode(rng, condition, config, family=family)
         loss = float(query_cross_entropy(model, episode))
         totals.setdefault("cross_entropy", []).append(loss)
         for key, value in multiregime_diagnostics(model, episode).items():
@@ -182,7 +217,11 @@ def validate(model, config: BackboneFinetuneConfig) -> dict[str, float]:
     return {key: float(np.mean(values)) for key, values in totals.items()}
 
 
-def finetune(model, config: BackboneFinetuneConfig) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
+def finetune(
+    model,
+    config: BackboneFinetuneConfig,
+    checkpoint_callback: Callable[[Any, int, dict[str, float]], None] | None = None,
+) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     rng = np.random.default_rng(config.seed + 1)
     model.to(config.device)
@@ -200,7 +239,7 @@ def finetune(model, config: BackboneFinetuneConfig) -> tuple[Any, list[dict[str,
         totals: dict[str, float] = {}
         for _micro in range(config.accumulate_gradients):
             condition = _draw_condition(rng, config.multiregime_probability)
-            episode = sample_condition_episode(rng, TRAIN_REGIME, condition, config)
+            episode = sample_condition_episode(rng, condition, config)
             loss = query_cross_entropy(model, episode)
             (loss / config.accumulate_gradients).backward()
             totals["cross_entropy"] = (
@@ -215,16 +254,24 @@ def finetune(model, config: BackboneFinetuneConfig) -> tuple[Any, list[dict[str,
             validation = validate(model, config)
             row.update({f"validation_{key}": value for key, value in validation.items()})
             print(json.dumps(row, sort_keys=True), flush=True)
+            if checkpoint_callback is not None and config.checkpoint_interval and step % config.checkpoint_interval == 0:
+                checkpoint_callback(model, step, validation)
             if validation["cross_entropy"] < best_value - config.min_delta:
                 best_value, best_step, stale = validation["cross_entropy"], step, 0
                 best_state = copy.deepcopy(model.state_dict())
             else:
                 stale += 1
         history.append(row)
-        if stale >= config.patience:
+        if config.early_stopping and stale >= config.patience:
             break
-    model.load_state_dict(best_state)
-    selection = {"best_step": best_step, "best_validation_cross_entropy": best_value}
+    if config.early_stopping:
+        model.load_state_dict(best_state)
+    selection = {
+        "best_step": best_step,
+        "best_validation_cross_entropy": best_value,
+        "early_stopping": config.early_stopping,
+        "executed_steps": history[-1]["step"],
+    }
     return model, history, selection
 
 
@@ -248,8 +295,14 @@ def run_finetune(config: BackboneFinetuneConfig, output_dir: str) -> Path:
     print(f"baseline (pretrained, not fine-tuned): {json.dumps(baseline, sort_keys=True)}", flush=True)
     del baseline_model
 
+    def save_trajectory_checkpoint(model, step: int, validation: dict[str, float]) -> None:
+        torch.save(
+            {"model": model.state_dict(), "config": asdict(config), "step": step, "validation": validation},
+            output / f"backbone-step{step:05d}.pth",
+        )
+
     model = init_model_from_state_dict_file(str(Path(config.checkpoint).expanduser().resolve()))
-    model, history, selection = finetune(model, config)
+    model, history, selection = finetune(model, config, checkpoint_callback=save_trajectory_checkpoint)
     (output / "history.jsonl").write_text("\n".join(json.dumps(row, sort_keys=True) for row in history) + "\n")
     selection["baseline"] = baseline
     (output / "selection.json").write_text(json.dumps(selection, indent=2) + "\n")
@@ -274,11 +327,13 @@ def build_parser() -> argparse.ArgumentParser:
         "support_size",
         "query_count",
         "validation_episodes",
+        "checkpoint_interval",
     ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))
     for name in ("learning_rate", "weight_decay", "min_delta", "gradient_clip", "multiregime_probability"):
         parser.add_argument(f"--{name.replace('_', '-')}", type=float, default=getattr(defaults, name))
     parser.add_argument("--multiregime-contamination", type=float, default=None)
+    parser.add_argument("--early-stopping", action=argparse.BooleanOptionalAction, default=defaults.early_stopping)
     return parser
 
 
