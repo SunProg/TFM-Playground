@@ -35,6 +35,7 @@ from typing import Any
 import numpy as np
 import openml
 import pandas as pd
+import torch
 from openml.config import set_root_cache_directory
 from openml.tasks import TaskType
 from sklearn.ensemble import RandomForestClassifier
@@ -62,6 +63,9 @@ from tfmplayground.utils import get_default_device, set_randomness_seed
 class SmallTabArenaConfig:
     seed: int = 2402
     official_checkpoint: str = "checkpoints/nanotabpfn.pth"
+    backbone_checkpoints: str = ""
+    standalone_checkpoints: str = ""
+    include_vanilla: bool = True
     integrated_checkpoints: str = ""
     adaptive_checkpoints: str = ""
     output_dir: str | None = None
@@ -133,6 +137,24 @@ def _build_tabpfn(config: SmallTabArenaConfig):
     return TabPFNClassifier(device=config.device)
 
 
+def load_backbone_checkpoint(path: str, *, reference_checkpoint: str):
+    """Load a full-backbone fine-tune written by ``finetune_multiregime_backbone``.
+
+    The fine-tune stores a state dict under ``"model"`` but deliberately does
+    not duplicate the architecture metadata from the official checkpoint.
+    Reconstruct the official architecture first, then overlay the fine-tuned
+    parameters.
+    """
+    raw = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(raw, dict) or "model" not in raw:
+        raise ValueError(
+            f"Expected a full-backbone fine-tune checkpoint with a 'model' state dict: {path}"
+        )
+    model = init_model_from_state_dict_file(reference_checkpoint)
+    model.load_state_dict(raw["model"])
+    return model
+
+
 def _artificial_labels(
     frame: pd.DataFrame, *, seed: int, hidden: int, depth: int, noise: float = 0.0
 ) -> np.ndarray:
@@ -195,7 +217,18 @@ def run(config: SmallTabArenaConfig) -> Path:
     output_dir.mkdir(parents=True, exist_ok=False)
     (output_dir / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
 
-    vanilla = init_model_from_state_dict_file(config.official_checkpoint)
+    vanilla = init_model_from_state_dict_file(config.official_checkpoint) if config.include_vanilla else None
+    backbone_models = {}
+    for entry in filter(None, config.backbone_checkpoints.split(",")):
+        name, path = entry.split("=", 1)
+        if name == "vanilla":
+            raise ValueError("'vanilla' is reserved for the official checkpoint.")
+        backbone_models[name] = load_backbone_checkpoint(path, reference_checkpoint=config.official_checkpoint)
+    for entry in filter(None, config.standalone_checkpoints.split(",")):
+        name, path = entry.split("=", 1)
+        if name == "vanilla" or name in backbone_models:
+            raise ValueError(f"Duplicate or reserved standalone checkpoint name: {name!r}.")
+        backbone_models[name] = init_model_from_state_dict_file(path)
     integrated = {}
     for entry in filter(None, config.integrated_checkpoints.split(",")):
         name, path = entry.split("=", 1)
@@ -359,15 +392,28 @@ def run(config: SmallTabArenaConfig) -> Path:
                             }
                         )
 
-            start = time.perf_counter()
-            vanilla_probability = predict_vanilla(
-                vanilla, train_x, y_train, test_x,
-                device=config.device,
-                query_chunk_size=config.query_chunk_size,
-                num_mem_chunks=config.num_mem_chunks,
-            )
-            record("vanilla", vanilla_probability, time.perf_counter() - start)
-            release_device_memory(config.device)
+            vanilla_probability = None
+            if vanilla is not None:
+                start = time.perf_counter()
+                vanilla_probability = predict_vanilla(
+                    vanilla, train_x, y_train, test_x,
+                    device=config.device,
+                    query_chunk_size=config.query_chunk_size,
+                    num_mem_chunks=config.num_mem_chunks,
+                )
+                record("vanilla", vanilla_probability, time.perf_counter() - start)
+                release_device_memory(config.device)
+
+            for name, model in backbone_models.items():
+                start = time.perf_counter()
+                probability = predict_vanilla(
+                    model, train_x, y_train, test_x,
+                    device=config.device,
+                    query_chunk_size=config.query_chunk_size,
+                    num_mem_chunks=config.num_mem_chunks,
+                )
+                record(name, probability, time.perf_counter() - start)
+                release_device_memory(config.device)
 
             for name, model in integrated.items():
                 start = time.perf_counter()
@@ -382,6 +428,8 @@ def run(config: SmallTabArenaConfig) -> Path:
                 release_device_memory(config.device)
 
             for name, model in adaptive.items():
+                if vanilla_probability is None:
+                    raise ValueError("Adaptive checkpoints require --include-vanilla for their vanilla reference.")
                 start = time.perf_counter()
                 probability, _ = predict_adaptive(
                     model, train_x, y_train, test_x, vanilla_probability,
@@ -501,6 +549,22 @@ def run(config: SmallTabArenaConfig) -> Path:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--official-checkpoint", default="checkpoints/nanotabpfn.pth")
+    parser.add_argument(
+        "--backbone-checkpoints",
+        default="",
+        help="Comma-separated name=path list of full-backbone fine-tune checkpoints.",
+    )
+    parser.add_argument(
+        "--standalone-checkpoints",
+        default="",
+        help="Comma-separated name=path list of inference-compatible standalone nanoTabPFN checkpoints.",
+    )
+    parser.add_argument(
+        "--include-vanilla",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Evaluate the official checkpoint alongside supplied models.",
+    )
     parser.add_argument(
         "--integrated-checkpoints",
         default="",
