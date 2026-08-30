@@ -100,14 +100,19 @@ class SweepTests(unittest.TestCase):
     def test_grid_is_slot_count_outermost_with_unique_labels(self):
         configurations = screening_configurations()
         slot_cells = len(PRIOR_MODES) * len(SLOT_COUNTS)
-        # Slot grid, then one vanilla control per prior mode appended last.
-        self.assertEqual(len(configurations), slot_cells + len(PRIOR_MODES))
+        # Slot grid first, then one control per prior mode for each extra model
+        # kind, appended in a fixed order so extending never re-maps an index.
+        extra_kinds = ("vanilla", "slot_backbone")
+        self.assertEqual(len(configurations), slot_cells + len(PRIOR_MODES) * len(extra_kinds))
         self.assertTrue(all(c["model_kind"] == "slot" for c in configurations[:slot_cells]))
-        self.assertTrue(all(c["model_kind"] == "vanilla" for c in configurations[slot_cells:]))
-        self.assertEqual(
-            [configuration_label(c) for c in configurations[slot_cells:]],
-            [f"{prior_mode}-vanilla" for prior_mode in PRIOR_MODES],
-        )
+        for offset, kind in enumerate(extra_kinds):
+            start = slot_cells + offset * len(PRIOR_MODES)
+            block = configurations[start : start + len(PRIOR_MODES)]
+            self.assertTrue(all(c["model_kind"] == kind for c in block), kind)
+            self.assertEqual(
+                [configuration_label(c) for c in block],
+                [f"{prior_mode}-{kind}" for prior_mode in PRIOR_MODES],
+            )
         # Slot count outermost, so the original K=2 arms keep indices 0..3 and an
         # in-flight array is not re-mapped by extending the grid.
         self.assertEqual([c["prior_mode"] for c in configurations[:4]], list(PRIOR_MODES))
