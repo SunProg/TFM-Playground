@@ -65,6 +65,7 @@ from tfmplayground.experiments.evaluate_integrated_tabarena import (
 from tfmplayground.interface import get_feature_preprocessor, init_model_from_state_dict_file
 from tfmplayground.models.adaptive_particle_filter import load_adaptive_checkpoint
 from tfmplayground.models.integrated_latent_filter import load_integrated_checkpoint
+from tfmplayground.models.slot_regime import load_checkpoint_for_inference
 from tfmplayground.utils import get_default_device, set_randomness_seed
 
 
@@ -263,7 +264,8 @@ def run(config: SmallTabArenaConfig) -> Path:
         name, path = entry.split("=", 1)
         if name == "vanilla" or name in backbone_models:
             raise ValueError(f"Duplicate or reserved standalone checkpoint name: {name!r}.")
-        backbone_models[name] = init_model_from_state_dict_file(path)
+        # A slot checkpoint arrives wrapped so predict_vanilla can call it unchanged.
+        backbone_models[name] = load_checkpoint_for_inference(path)
     integrated = {}
     for entry in filter(None, config.integrated_checkpoints.split(",")):
         name, path = entry.split("=", 1)

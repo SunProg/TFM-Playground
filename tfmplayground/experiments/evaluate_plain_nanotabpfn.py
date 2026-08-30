@@ -23,13 +23,8 @@ from tfmplayground.experiments.continuous_episodes import (
     sample_scm_multiregime_episode,
 )
 from tfmplayground.experiments.pretrain_plain_nanotabpfn import PlainPretrainingConfig, make_prior
-from tfmplayground.interface import init_model_from_state_dict_file
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
-from tfmplayground.models.slot_regime import (
-    SlotLogitsAdapter,
-    build_slot_regime_model,
-    is_slot_regime_checkpoint,
-)
+from tfmplayground.models.slot_regime import SlotLogitsAdapter, load_checkpoint_for_inference
 from tfmplayground.utils import set_randomness_seed
 
 SCM_SOURCES: tuple[str | tuple[str, str], ...] = (
@@ -153,12 +148,7 @@ def load_model(checkpoint: str | Path, device: str) -> NanoTabPFNModel | SlotLog
     log mixture probabilities.  Those are valid logits, so ``predict`` below and
     every other scorer in this module work on both without a second code path.
     """
-    state = torch.load(str(checkpoint), map_location="cpu", weights_only=False)
-    if is_slot_regime_checkpoint(state):
-        model = build_slot_regime_model(state["architecture"])
-        model.load_state_dict(state["model"])
-        return SlotLogitsAdapter(model).to(device).eval()
-    return init_model_from_state_dict_file(str(checkpoint)).to(device).eval()
+    return load_checkpoint_for_inference(checkpoint, device)
 
 
 @torch.no_grad()

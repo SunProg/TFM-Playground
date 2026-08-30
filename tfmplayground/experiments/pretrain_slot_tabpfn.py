@@ -19,6 +19,7 @@ batch retry -- is imported from that module for the same reason.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 import time
@@ -97,7 +98,17 @@ class SlotPretrainingConfig:
     num_slots: int = 2
     num_slot_iterations: int = 3
     competitive_slots: bool = True
+    #: One "epoch" for progress reporting: TabArena runs on each boundary.
     epoch_steps: int = 500
+    #: Retain a durable checkpoint this often.  Every epoch also overwrites a
+    #: single rolling `epoch-latest-checkpoint.pth` for TabArena to read, so a
+    #: 500-step TabArena cadence does not mean 100 retained 55MB files per arm.
+    checkpoint_interval: int = 10_000
+    tabarena_every_epoch: bool = False
+    tabarena_folds: int = 5
+    tabarena_repeats: int = 10
+    tabarena_subsample: int = 2_048
+    tabarena_cache_directory: str | None = None
     tensorboard: bool = True
 
     @property
@@ -304,6 +315,47 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
     return metrics
 
 
+def evaluate_tabarena_epoch(
+    checkpoint: Path, output: Path, config: SlotPretrainingConfig, epoch: int
+) -> dict[str, float]:
+    """Progress-only TabArena-small evaluation, without disturbing training state.
+
+    Mirrors ``pretrain_plain_nanotabpfn.evaluate_tabarena_epoch`` so the curve is
+    directly comparable with the vanilla runs.  The checkpoint is read back from
+    disk by ``evaluate_tabarena_small``, which routes slot checkpoints through
+    ``SlotLogitsAdapter``, so the slot mixture is scored on real tables exactly
+    as a plain backbone would be.
+    """
+    from tfmplayground.experiments.evaluate_tabarena_small import SmallTabArenaConfig, run
+
+    destination = output / "tabarena" / f"epoch-{epoch:03d}"
+    with _preserved_rng_state():
+        run(
+            SmallTabArenaConfig(
+                standalone_checkpoints=f"current={checkpoint}",
+                include_vanilla=False,
+                output_dir=str(destination),
+                device=config.device,
+                cache_directory=config.tabarena_cache_directory,
+                subsample=config.tabarena_subsample,
+                folds=config.tabarena_folds,
+                repeats=config.tabarena_repeats,
+                include_sklearn=False,
+                include_tabpfn=False,
+                label_source="real",
+                contamination=0.0,
+                seed=config.seed,
+            )
+        )
+    with (destination / "overall.csv").open(newline="") as source:
+        rows = list(csv.DictReader(source))
+    current = next(row for row in rows if row["model"] == "current")
+    return {
+        "tabarena_mean_roc_auc": float(current["mean_roc_auc"]),
+        "tabarena_mean_accuracy": float(current["mean_accuracy"]),
+    }
+
+
 def build_model(config: SlotPretrainingConfig) -> NanoTabPFNSlotRegimeModel:
     backbone = NanoTabPFNModel(**config.architecture())
     return NanoTabPFNSlotRegimeModel(
@@ -402,6 +454,20 @@ def run_pretraining(
             validation = None
             if step % config.validation_interval == 0 or step == config.max_steps:
                 validation = validate(model, config)
+
+            tabarena = None
+            if config.epoch_steps and step % config.epoch_steps == 0:
+                epoch = step // config.epoch_steps
+                snapshot = _checkpoint(model, optimizer, scheduler, config, step, validation, episode_rng)
+                # A single rolling file every epoch, so a 500-step TabArena
+                # cadence costs one checkpoint of disk rather than one per epoch.
+                rolling_path = output / "epoch-latest-checkpoint.pth"
+                torch.save(snapshot, rolling_path)
+                if config.checkpoint_interval and step % config.checkpoint_interval == 0:
+                    torch.save(snapshot, output / f"step-{step:06d}-checkpoint.pth")
+                if config.tabarena_every_epoch:
+                    tabarena = evaluate_tabarena_epoch(rolling_path, output, config, epoch)
+
             row: dict[str, Any] = {
                 "step": step,
                 "loss": loss_total,
@@ -409,19 +475,19 @@ def run_pretraining(
                 "learning_rate": float(scheduler.get_last_lr()[0]),
                 "multiregime_probability": multiregime_probability(config, step),
                 "elapsed_seconds": time.perf_counter() - started_at,
+                **(tabarena or {}),
             }
             if validation is not None:
                 row.update({f"validation_{key}": value for key, value in validation.items()})
                 for key, value in validation.items():
                     writer.add_scalar(f"validation/{key}", value, step)
+            if tabarena is not None:
+                writer.add_scalar("tabarena/mean_roc_auc", tabarena["tabarena_mean_roc_auc"], step)
+                writer.add_scalar("tabarena/mean_accuracy", tabarena["tabarena_mean_accuracy"], step)
             writer.add_scalar("train/loss", loss_total, step)
             history.write(json.dumps(row, sort_keys=True) + "\n")
             history.flush()
             print(json.dumps(row, sort_keys=True), flush=True)
-
-            if config.epoch_steps and step % config.epoch_steps == 0:
-                epoch_path = output / f"epoch-{step // config.epoch_steps:03d}-checkpoint.pth"
-                torch.save(_checkpoint(model, optimizer, scheduler, config, step, validation, episode_rng), epoch_path)
 
     final_validation = validate(model, config)
     final_path = output / "final_checkpoint.pth"
@@ -445,8 +511,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
     parser.add_argument("--prior-type", default=defaults.prior_type)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
+    parser.add_argument("--tabarena-every-epoch", dest="tabarena_every_epoch", action="store_true")
+    parser.add_argument("--tabarena-cache-directory", default=defaults.tabarena_cache_directory)
     parser.add_argument("--no-competitive-slots", dest="competitive_slots", action="store_false")
-    parser.set_defaults(tensorboard=defaults.tensorboard, competitive_slots=defaults.competitive_slots)
+    parser.set_defaults(
+        tensorboard=defaults.tensorboard,
+        competitive_slots=defaults.competitive_slots,
+        tabarena_every_epoch=defaults.tabarena_every_epoch,
+    )
     integer_fields = (
         "seed",
         "max_steps",
@@ -468,6 +540,10 @@ def build_parser() -> argparse.ArgumentParser:
         "num_slots",
         "num_slot_iterations",
         "epoch_steps",
+        "checkpoint_interval",
+        "tabarena_folds",
+        "tabarena_repeats",
+        "tabarena_subsample",
     )
     float_fields = (
         "learning_rate",

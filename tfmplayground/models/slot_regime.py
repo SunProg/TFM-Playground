@@ -331,6 +331,25 @@ def load_slot_regime_checkpoint(
     return model, checkpoint
 
 
+def load_checkpoint_for_inference(path: str | Path, device: str | torch.device = "cpu"):
+    """Load either checkpoint kind behind the plain ``NanoTabPFNModel`` signature.
+
+    A slot checkpoint comes back wrapped in :class:`SlotLogitsAdapter`, which
+    emits log mixture probabilities -- valid logits, so callers that do
+    ``model(...)[..., :2].softmax(-1)`` keep working untouched.  This is what
+    lets the TabArena and locked-episode evaluators score slot runs without
+    growing a second prediction path.
+    """
+    from tfmplayground.interface import init_model_from_state_dict_file  # local: avoids an import cycle
+
+    state = torch.load(str(path), map_location="cpu", weights_only=False)
+    if is_slot_regime_checkpoint(state):
+        model = build_slot_regime_model(state["architecture"])
+        model.load_state_dict(state["model"])
+        return SlotLogitsAdapter(model).to(device).eval()
+    return init_model_from_state_dict_file(str(path)).to(device).eval()
+
+
 def is_slot_regime_checkpoint(checkpoint: dict[str, Any]) -> bool:
     """Whether a loaded checkpoint holds a slot regime model.
 
@@ -348,6 +367,7 @@ __all__ = [
     "SlotRegimePrediction",
     "build_slot_regime_model",
     "is_slot_regime_checkpoint",
+    "load_checkpoint_for_inference",
     "load_slot_regime_checkpoint",
     "save_slot_regime_checkpoint",
     "slot_regime_checkpoint",

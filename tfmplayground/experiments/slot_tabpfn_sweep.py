@@ -47,6 +47,16 @@ SHARED_FLAGS: tuple[str, ...] = (
     "--prior-type mix_scm",
     "--num-slots 2",
     "--num-slot-iterations 3",
+    # TabArena progress curve every epoch (500 steps), as the plain script
+    # supports.  Folds/repeats are cut from the 5x10 final-evaluation
+    # setting because this runs 100 times inside the training loop.
+    "--epoch-steps 500",
+    "--tabarena-every-epoch",
+    "--tabarena-folds 2",
+    "--tabarena-repeats 2",
+    # Only 5 durable checkpoints per arm; every epoch overwrites one rolling
+    # file instead, which is what filled the volume on job 36848044.
+    "--checkpoint-interval 10000",
 )
 
 
