@@ -71,12 +71,24 @@ SHARED_FLAGS: tuple[str, ...] = (
 
 
 def screening_configurations() -> list[dict[str, Any]]:
-    """Every screened configuration, in a fixed order (slot count outermost)."""
-    return [
-        {"prior_mode": prior_mode, "num_slots": num_slots}
+    """Every screened configuration, in a fixed order.
+
+    Slot count outermost, then the vanilla controls appended last, so that
+    extending the grid never re-maps an index an in-flight array is using.
+    """
+    grid = [
+        {"prior_mode": prior_mode, "num_slots": num_slots, "model_kind": "slot"}
         for num_slots in SLOT_COUNTS
         for prior_mode in PRIOR_MODES
     ]
+    # A plain nanoTabPFN per prior mode, trained in the identical harness.
+    # Without it there is no way to tell whether the slot machinery changes
+    # anything at all -- which is the question the K sweep left open.
+    grid += [
+        {"prior_mode": prior_mode, "num_slots": 2, "model_kind": "vanilla"}
+        for prior_mode in PRIOR_MODES
+    ]
+    return grid
 
 
 def configuration_label(configuration: dict[str, Any]) -> str:
@@ -86,6 +98,8 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     running under that mapping are unaffected by the grid being extended.
     """
     prior_mode, num_slots = configuration["prior_mode"], configuration["num_slots"]
+    if configuration.get("model_kind", "slot") == "vanilla":
+        return f"{prior_mode}-vanilla"
     return str(prior_mode) if num_slots == 2 else f"{prior_mode}-k{num_slots}"
 
 
@@ -98,6 +112,7 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
     flags = [
         f"--prior-mode {configuration['prior_mode']}",
         f"--num-slots {configuration['num_slots']}",
+        f"--model-kind {configuration.get('model_kind', 'slot')}",
         f"--multiregime-share {MULTIREGIME_SHARE:g}",
         f"--max-steps {SCREENING_STEPS}",
         f"--seed {seed if seed is not None else SCREENING_SEED}",
@@ -119,6 +134,7 @@ def _read_run(directory: Path) -> dict[str, Any] | None:
         "run": directory.name,
         "prior_mode": config.get("prior_mode"),
         "num_slots": config.get("num_slots"),
+        "model_kind": config.get("model_kind", "slot"),
         "seed": config.get("seed"),
         "multiregime_cross_entropy": selection.get("multiregime_cross_entropy"),
         "query_cross_entropy": selection.get("query_cross_entropy"),

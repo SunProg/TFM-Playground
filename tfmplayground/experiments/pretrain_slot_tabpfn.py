@@ -29,6 +29,7 @@ from typing import Any, Literal
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 
 from tfmplayground.experiments.dump_multiregime_episodes import MultiregimeDumpLoader
@@ -50,6 +51,7 @@ from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_attention import slot_assignment_entropy
 from tfmplayground.models.slot_regime import (
     NanoTabPFNSlotRegimeModel,
+    SlotRegimePrediction,
     slot_regime_checkpoint,
     slot_regime_loss,
 )
@@ -100,6 +102,11 @@ class SlotPretrainingConfig:
     num_attention_heads: int = 6
     mlp_hidden_size: int = 768
     num_layers: int = 6
+    #: "slot" is the mixture-over-slots model; "vanilla" is a plain
+    #: NanoTabPFNModel trained in this identical harness -- same dump, same
+    #: validation cadence, same TabArena settings -- so the architecture is
+    #: the only variable when the two are compared.
+    model_kind: Literal["slot", "vanilla"] = "slot"
     num_slots: int = 2
     num_slot_iterations: int = 3
     competitive_slots: bool = True
@@ -137,6 +144,8 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         raise ValueError("multiregime_share must lie in [0, 1].")
     if config.max_steps < 1:
         raise ValueError("max_steps must be positive.")
+    if config.model_kind not in ("slot", "vanilla"):
+        raise ValueError(f"model_kind must be 'slot' or 'vanilla', got {config.model_kind!r}.")
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
     if config.require_cuda and not torch.cuda.is_available():
@@ -179,19 +188,26 @@ def training_batch(
     return multiregime_batch(config, episode_rng)
 
 
-def slot_batch_loss(model: NanoTabPFNSlotRegimeModel, batch) -> torch.Tensor:
-    """Mixture NLL on query labels, for either batch shape.
+def slot_batch_loss(model, batch) -> torch.Tensor:
+    """Query-label loss, for either batch shape and either model.
 
     Dict batches come from the TabICL prior and carry their split index;
-    ``ContinuousEpisode`` batches come from the multiregime sampler.
+    ``ContinuousEpisode`` batches come from the multiregime sampler.  For the
+    slot model this is the mixture NLL; for the vanilla control it is the plain
+    cross entropy `pretrain_plain_nanotabpfn.query_loss` uses, so the two differ
+    only in the model, not in how they are scored.
     """
-    if not isinstance(batch, dict):
-        prediction = model(batch.support_x, batch.support_y, batch.query_x)
-        return slot_regime_loss(prediction, batch.query_y)
-    split = int(batch["train_test_split_index"])
-    x, y = batch["x"], batch["y"]
-    prediction = model(x[:, :split], y[:, :split], x[:, split:])
-    return slot_regime_loss(prediction, y[:, split:])
+    if isinstance(batch, dict):
+        split = int(batch["train_test_split_index"])
+        x, y = batch["x"], batch["y"]
+        support_x, support_y, query_x, target = x[:, :split], y[:, :split], x[:, split:], y[:, split:]
+    else:
+        support_x, support_y, query_x, target = batch.support_x, batch.support_y, batch.query_x, batch.query_y
+    output = model(support_x, support_y, query_x)
+    if isinstance(output, SlotRegimePrediction):
+        return slot_regime_loss(output, target)
+    logits = output[..., :2]
+    return F.cross_entropy(logits.reshape(-1, 2), target.reshape(-1).long())
 
 
 def gate_regime_auc(prediction, episode) -> float | None:
@@ -300,11 +316,15 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         binding: dict[str, list[float]] = {}
         for _ in range(config.validation_episodes):
             episode = multiregime_batch(config, episode_rng)
-            prediction = model(episode.support_x, episode.support_y, episode.query_x)
-            loss = slot_regime_loss(prediction, episode.query_y)
+            loss = slot_batch_loss(model, episode)
             if not torch.isfinite(loss):
                 continue
             multiregime_losses.append(float(loss))
+            if config.model_kind != "slot":
+                # The vanilla control has no slots, so the binding diagnostics
+                # simply do not apply to it; only the losses are comparable.
+                continue
+            prediction = model(episode.support_x, episode.support_y, episode.query_x)
             gate_entropies.append(float(prediction.gate_entropy().mean()))
             auc = gate_regime_auc(prediction, episode)
             if auc is not None:
@@ -426,8 +446,11 @@ def summarize_samples(name: str, values: list[float]) -> dict[str, float]:
     return summary
 
 
-def build_model(config: SlotPretrainingConfig) -> NanoTabPFNSlotRegimeModel:
+def build_model(config: SlotPretrainingConfig):
+    """The slot mixture model, or the plain backbone it is measured against."""
     backbone = NanoTabPFNModel(**config.architecture())
+    if config.model_kind == "vanilla":
+        return backbone.to(config.device)
     return NanoTabPFNSlotRegimeModel(
         backbone,
         num_slots=config.num_slots,
@@ -446,10 +469,20 @@ def _checkpoint(
     validation: dict[str, float] | None,
     episode_rng: np.random.Generator,
 ) -> dict[str, Any]:
-    checkpoint = slot_regime_checkpoint(model, training_config=asdict(config))
+    if config.model_kind == "vanilla":
+        # The plain inference format, so init_model_from_state_dict_file and
+        # every existing evaluator read this control exactly as they read the
+        # published vanilla runs.
+        checkpoint = {
+            "architecture": config.architecture(),
+            "model": model.state_dict(),
+            "training_config": asdict(config),
+        }
+    else:
+        checkpoint = slot_regime_checkpoint(model, training_config=asdict(config))
     # Keep the prior composition visible in run metadata, as the vanilla script
     # does; `is_slot_regime_checkpoint` matches on architecture, not this string.
-    checkpoint["model_type"] = f"slot_tabpfn_{config.prior_mode}_scm_pretraining"
+    checkpoint["model_type"] = f"{config.model_kind}_tabpfn_{config.prior_mode}_scm_pretraining"
     checkpoint.update(
         {
             "optimizer": optimizer.state_dict(),
@@ -587,6 +620,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default=defaults.device)
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
+    parser.add_argument("--model-kind", choices=("slot", "vanilla"), default=defaults.model_kind)
     parser.add_argument("--prior-type", default=defaults.prior_type)
     parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
