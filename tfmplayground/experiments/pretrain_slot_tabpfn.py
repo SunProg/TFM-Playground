@@ -314,23 +314,31 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             ).items():
                 binding.setdefault(key, []).append(value)
     model.train()
-    metrics = {
-        "query_cross_entropy": float(np.mean(ordinary_losses)),
-        "validation_batches": len(ordinary_losses),
-        "multiregime_cross_entropy": float(np.mean(multiregime_losses)) if multiregime_losses else float("nan"),
-        "gate_entropy": float(np.mean(gate_entropies)) if gate_entropies else float("nan"),
+    metrics: dict[str, float] = {"validation_batches": len(ordinary_losses)}
+    # Every metric carries its own dispersion: these are means over a handful of
+    # episodes, and without an interval there is no way to tell a real movement
+    # from sampling noise.
+    samples = {
+        "query_cross_entropy": ordinary_losses,
+        "multiregime_cross_entropy": multiregime_losses,
+        "gate_entropy": gate_entropies,
+        # The binding question: did a slot actually take the contaminated rows?
+        # `gate_*` scores the query side, `support_*` the labelled context,
+        # which is where the slots actually compete.
+        "gate_regime_auc": gate_aucs,
+        **{
+            key: binding.get(key, [])
+            for key in (
+                "support_binding_auc",
+                "support_binding_purity",
+                "support_regime_base_rate",
+                "support_attention_entropy",
+            )
+        },
     }
-    # The binding question: did a slot actually take the contaminated rows?
-    # `gate_*` scores the query side, `support_*` the labelled context, which is
-    # where the slots actually compete.
-    metrics["gate_regime_auc"] = float(np.mean(gate_aucs)) if gate_aucs else float("nan")
-    for key in (
-        "support_binding_auc",
-        "support_binding_purity",
-        "support_regime_base_rate",
-        "support_attention_entropy",
-    ):
-        metrics[key] = float(np.mean(binding[key])) if binding.get(key) else float("nan")
+    for name, values in samples.items():
+        summary = summarize_samples(name, values)
+        metrics.update(summary or {name: float("nan")})
     return metrics
 
 
@@ -369,10 +377,53 @@ def evaluate_tabarena_epoch(
     with (destination / "overall.csv").open(newline="") as source:
         rows = list(csv.DictReader(source))
     current = next(row for row in rows if row["model"] == "current")
-    return {
+    metrics = {
         "tabarena_mean_roc_auc": float(current["mean_roc_auc"]),
         "tabarena_mean_accuracy": float(current["mean_accuracy"]),
     }
+    # `overall.csv` holds only the means.  The per-fold rows are the sample the
+    # interval needs, and at 5 folds x 10 repeats across 5 datasets there are
+    # 250 of them, so this dispersion is far better resolved than the
+    # per-episode validation ones.
+    fold_path = destination / "fold_metrics.csv"
+    if fold_path.is_file():
+        with fold_path.open(newline="") as source:
+            folds = [row for row in csv.DictReader(source) if row["model"] == "current"]
+        for column, name in (("roc_auc", "tabarena_roc_auc"), ("accuracy", "tabarena_accuracy")):
+            values = [float(row[column]) for row in folds if row.get(column) not in (None, "")]
+            metrics.update(summarize_samples(name, values))
+    return metrics
+
+
+def summarize_samples(name: str, values: list[float]) -> dict[str, float]:
+    """Mean plus dispersion for one metric's per-episode (or per-fold) samples.
+
+    Every validation number here is an average over a handful of episodes, so a
+    bare mean hides whether a movement is real.  This reports the sample
+    standard deviation, the standard error and a 95% normal-approximation
+    interval, the convention `hypothesis_collapse_results_interpretation.md`
+    already documents for this repository's summaries.
+
+    That document's caveat applies unchanged: the interval is an unbounded
+    normal approximation over a small sample, so an endpoint can fall outside a
+    metric's natural range -- below zero, or above one for an AUC.  That is a
+    presentation artifact, not a claim the metric can take such a value.
+    """
+    if not values:
+        return {}
+    array = np.asarray(values, dtype=float)
+    count = int(array.size)
+    mean = float(array.mean())
+    summary = {name: mean, f"{name}_n": count}
+    if count < 2:
+        return summary
+    deviation = float(array.std(ddof=1))
+    error = deviation / math.sqrt(count)
+    summary[f"{name}_std"] = deviation
+    summary[f"{name}_stderr"] = error
+    summary[f"{name}_ci_low"] = mean - 1.96 * error
+    summary[f"{name}_ci_high"] = mean + 1.96 * error
+    return summary
 
 
 def build_model(config: SlotPretrainingConfig) -> NanoTabPFNSlotRegimeModel:

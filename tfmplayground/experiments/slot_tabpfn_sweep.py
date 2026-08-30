@@ -22,7 +22,8 @@ PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
 #: Constant multiregime share for the ``mixed`` arm: 70% single + 30% multi.
 MULTIREGIME_SHARE = 0.30
 
-SCREENING_STEPS = 50_000
+#: The trainer's own default budget.  20 epochs of 500 steps.
+SCREENING_STEPS = 10_000
 SCREENING_SEED = 2402
 #: Seeds for a three-seed rerun of whichever arm wins the screening pass.
 FINAL_SEEDS = (2402, 2403, 2404)
@@ -36,7 +37,9 @@ SHARED_FLAGS: tuple[str, ...] = (
     "--warmup-steps 2000",
     "--weight-decay 0.01",
     "--gradient-clip 1.0",
-    "--validation-interval 5000",
+    # Validate on every epoch boundary, alongside TabArena, so the synthetic
+    # and real-table curves are sampled at the same 20 points.
+    "--validation-interval 500",
     "--validation-batches 16",
     "--validation-episodes 8",
     "--support-size 128",

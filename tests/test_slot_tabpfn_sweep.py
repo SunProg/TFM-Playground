@@ -24,6 +24,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
     PRIOR_MODES,
     SlotPretrainingConfig,
     multiregime_probability,
+    summarize_samples,
     support_binding_scores,
     validate_config,
 )
@@ -276,6 +277,33 @@ class MultiregimeDumpTests(unittest.TestCase):
     def test_invalid_shard_configuration_raises(self):
         with self.assertRaises(ValueError):
             dump_multiregime_episodes(DumpConfig(output="", episodes=1, shard_index=3, num_shards=3))
+
+
+class SummarySampleTests(unittest.TestCase):
+    """Every logged metric carries dispersion, not just a mean."""
+
+    def test_reports_mean_spread_and_interval(self):
+        summary = summarize_samples("metric", [1.0, 2.0, 3.0, 4.0])
+        self.assertAlmostEqual(summary["metric"], 2.5)
+        self.assertEqual(summary["metric_n"], 4)
+        self.assertAlmostEqual(summary["metric_std"], 1.2909944, places=6)
+        self.assertAlmostEqual(summary["metric_stderr"], 0.6454972, places=6)
+        # 95% normal approximation, the convention this repo's summaries use.
+        self.assertAlmostEqual(summary["metric_ci_low"], 2.5 - 1.96 * 0.6454972, places=6)
+        self.assertAlmostEqual(summary["metric_ci_high"], 2.5 + 1.96 * 0.6454972, places=6)
+
+    def test_single_sample_has_no_interval(self):
+        summary = summarize_samples("metric", [0.7])
+        self.assertEqual(summary, {"metric": 0.7, "metric_n": 1})
+
+    def test_zero_variance_collapses_the_interval(self):
+        """Purity pinned to the base rate is a real signal, not missing data."""
+        summary = summarize_samples("metric", [0.6875] * 5)
+        self.assertAlmostEqual(summary["metric_ci_low"], 0.6875)
+        self.assertAlmostEqual(summary["metric_ci_high"], 0.6875)
+
+    def test_empty_samples_yield_nothing(self):
+        self.assertEqual(summarize_samples("metric", []), {})
 
 
 if __name__ == "__main__":
