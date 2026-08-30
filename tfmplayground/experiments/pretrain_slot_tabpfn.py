@@ -231,7 +231,28 @@ def gate_regime_auc(prediction, episode) -> float | None:
     return max(auc, 1.0 - auc)
 
 
-def support_binding_scores(support_attention: torch.Tensor, support_regime_source) -> dict[str, float]:
+def identifiable_support_rows(candidate_support_positive) -> torch.Tensor | None:
+    """Rows where the two label functions actually disagree, ``(batch, support)``.
+
+    Both functions are evaluated on the same features, so a row relabelled to
+    the value the base function would have produced anyway is tagged
+    contaminated while being observationally identical to a clean row.  Half
+    of all contaminated rows are in that position (measured: 0.500 over 19,200
+    rows), which caps a perfect detector at AUC 0.75 rather than 1.0.  Scoring
+    only the identifiable rows restores a ceiling of 1.0 and stops the metric
+    reporting an unreachable target.
+    """
+    if candidate_support_positive is None:
+        return None
+    candidates = candidate_support_positive
+    if candidates.shape[1] != 2:
+        return None
+    return (candidates[:, 0] > 0.5) != (candidates[:, 1] > 0.5)
+
+
+def support_binding_scores(
+    support_attention: torch.Tensor, support_regime_source, identifiable=None
+) -> dict[str, float]:
     """Did the slot competition actually partition the *context* by regime?
 
     This is the mechanism question, distinct from predictive accuracy.  Slot
@@ -265,23 +286,34 @@ def support_binding_scores(support_attention: torch.Tensor, support_regime_sourc
     if labels.min() == labels.max():
         return {}
     attention = support_attention.detach().reshape(-1, support_attention.shape[-1]).cpu().numpy()
+    # Drop contaminated rows the two label functions agreed on: they carry the
+    # tag but nothing observable distinguishes them, so counting them as misses
+    # understates binding against a ceiling no detector can reach.
+    keep = np.ones(labels.shape, dtype=bool)
+    if identifiable is not None:
+        distinct = identifiable.reshape(-1).detach().cpu().numpy().astype(bool)
+        keep = distinct | (labels == 0)
+        if keep.sum() < 2 or len(set(labels[keep])) < 2:
+            return {}
+    scored_labels, scored_attention = labels[keep], attention[keep]
 
     # Best-separating slot, up to the flip: matching in the metric, never the loss.
-    aucs = [float(roc_auc_score(labels, attention[:, slot])) for slot in range(attention.shape[1])]
+    aucs = [float(roc_auc_score(scored_labels, scored_attention[:, slot])) for slot in range(attention.shape[1])]
     auc = max(max(value, 1.0 - value) for value in aucs)
 
-    assignment = attention.argmax(axis=1)
+    assignment = scored_attention.argmax(axis=1)
     correct = 0
-    for slot in range(attention.shape[1]):
-        members = labels[assignment == slot]
+    for slot in range(scored_attention.shape[1]):
+        members = scored_labels[assignment == slot]
         if members.size:
             correct += int(np.bincount(members, minlength=2).max())
-    base_rate = float(np.bincount(labels, minlength=2).max() / labels.size)
+    base_rate = float(np.bincount(scored_labels, minlength=2).max() / scored_labels.size)
 
     entropy = float(slot_assignment_entropy(support_attention.detach()).mean())
     return {
         "support_binding_auc": auc,
-        "support_binding_purity": float(correct / labels.size),
+        "support_binding_purity": float(correct / scored_labels.size),
+        "support_identifiable_fraction": float(keep.mean()),
         "support_regime_base_rate": base_rate,
         "support_attention_entropy": entropy,
     }
@@ -330,7 +362,9 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             if auc is not None:
                 gate_aucs.append(auc)
             for key, value in support_binding_scores(
-                prediction.support_attention, episode.support_regime_source
+                prediction.support_attention,
+                episode.support_regime_source,
+                identifiable_support_rows(episode.candidate_support_positive),
             ).items():
                 binding.setdefault(key, []).append(value)
     model.train()

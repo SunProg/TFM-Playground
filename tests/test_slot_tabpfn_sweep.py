@@ -23,6 +23,7 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
 from tfmplayground.experiments.pretrain_slot_tabpfn import (
     PRIOR_MODES,
     SlotPretrainingConfig,
+    identifiable_support_rows,
     multiregime_probability,
     summarize_samples,
     support_binding_scores,
@@ -325,6 +326,38 @@ class SummarySampleTests(unittest.TestCase):
 
     def test_empty_samples_yield_nothing(self):
         self.assertEqual(summarize_samples("metric", []), {})
+
+
+class IdentifiabilityTests(unittest.TestCase):
+    """Contaminated rows the two label functions agreed on cannot be detected."""
+
+    def test_mask_marks_only_disagreeing_rows(self):
+        candidates = torch.tensor([[[0.9, 0.8, 0.2, 0.1], [0.9, 0.2, 0.8, 0.1]]])
+        mask = identifiable_support_rows(candidates)
+        self.assertEqual(mask.reshape(-1).tolist(), [False, True, True, False])
+
+    def test_missing_or_wrong_shaped_candidates_disable_the_mask(self):
+        self.assertIsNone(identifiable_support_rows(None))
+        self.assertIsNone(identifiable_support_rows(torch.zeros(1, 3, 4)))
+
+    def test_unidentifiable_rows_are_excluded_from_scoring(self):
+        # Rows 0,1 clean; rows 2,3 contaminated but only row 2 is identifiable.
+        attention = torch.tensor([[[0.9, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.1]]])
+        source = torch.tensor([[0, 0, 1, 1]])
+        candidates = torch.tensor([[[0.9, 0.9, 0.9, 0.9], [0.9, 0.9, 0.1, 0.9]]])
+        scored = support_binding_scores(attention, source, identifiable_support_rows(candidates))
+        # Row 3 dropped, so the remaining three separate perfectly.
+        self.assertAlmostEqual(scored["support_binding_auc"], 1.0, places=6)
+        self.assertAlmostEqual(scored["support_binding_purity"], 1.0, places=6)
+        self.assertAlmostEqual(scored["support_identifiable_fraction"], 0.75, places=6)
+
+    def test_without_the_mask_the_same_case_scores_lower(self):
+        """The unmasked metric charges for a row nothing could have detected."""
+        attention = torch.tensor([[[0.9, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.1]]])
+        source = torch.tensor([[0, 0, 1, 1]])
+        unmasked = support_binding_scores(attention, source)
+        self.assertLess(unmasked["support_binding_auc"], 1.0)
+        self.assertAlmostEqual(unmasked["support_identifiable_fraction"], 1.0, places=6)
 
 
 if __name__ == "__main__":
