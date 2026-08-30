@@ -86,9 +86,13 @@ def screening_configurations() -> list[dict[str, Any]]:
     # anything at all -- which is the question the K sweep left open.
     grid += [{"prior_mode": prior_mode, "num_slots": 2, "model_kind": "vanilla"} for prior_mode in PRIOR_MODES]
     # Slots inside every transformer layer rather than on top of the finished
-    # representation.  Appended last, so extending the grid never re-maps an
-    # index an in-flight array is using.
-    grid += [{"prior_mode": prior_mode, "num_slots": 2, "model_kind": "slot_backbone"} for prior_mode in PRIOR_MODES]
+    # representation.  Slot count outermost again, so the K=2 block keeps the
+    # indices an in-flight array is already using.
+    grid += [
+        {"prior_mode": prior_mode, "num_slots": num_slots, "model_kind": "slot_backbone"}
+        for num_slots in SLOT_COUNTS
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 
@@ -100,8 +104,11 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     """
     prior_mode, num_slots = configuration["prior_mode"], configuration["num_slots"]
     kind = configuration.get("model_kind", "slot")
-    if kind in ("vanilla", "slot_backbone"):
+    if kind == "vanilla":
         return f"{prior_mode}-{kind}"
+    if kind == "slot_backbone":
+        # K=2 keeps the bare label the already-running block was submitted with.
+        return f"{prior_mode}-{kind}" if num_slots == 2 else f"{prior_mode}-{kind}-k{num_slots}"
     return str(prior_mode) if num_slots == 2 else f"{prior_mode}-k{num_slots}"
 
 

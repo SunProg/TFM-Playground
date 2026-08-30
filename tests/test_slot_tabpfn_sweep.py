@@ -97,29 +97,40 @@ class CurriculumTests(unittest.TestCase):
 
 
 class SweepTests(unittest.TestCase):
-    def test_grid_is_slot_count_outermost_with_unique_labels(self):
+    def test_grid_layout_is_append_only_and_labels_are_unique(self):
+        """Extending the grid must never re-map an index a live array is using.
+
+        Each block is appended after the last, so the indices submitted for an
+        earlier block keep meaning the same thing.  These are the exact
+        index/label pairs jobs 36853727, 36854390, 36858884 and 36861990 were
+        submitted against.
+        """
         configurations = screening_configurations()
-        slot_cells = len(PRIOR_MODES) * len(SLOT_COUNTS)
-        # Slot grid first, then one control per prior mode for each extra model
-        # kind, appended in a fixed order so extending never re-maps an index.
-        extra_kinds = ("vanilla", "slot_backbone")
-        self.assertEqual(len(configurations), slot_cells + len(PRIOR_MODES) * len(extra_kinds))
-        self.assertTrue(all(c["model_kind"] == "slot" for c in configurations[:slot_cells]))
-        for offset, kind in enumerate(extra_kinds):
-            start = slot_cells + offset * len(PRIOR_MODES)
-            block = configurations[start : start + len(PRIOR_MODES)]
-            self.assertTrue(all(c["model_kind"] == kind for c in block), kind)
-            self.assertEqual(
-                [configuration_label(c) for c in block],
-                [f"{prior_mode}-{kind}" for prior_mode in PRIOR_MODES],
-            )
-        # Slot count outermost, so the original K=2 arms keep indices 0..3 and an
-        # in-flight array is not re-mapped by extending the grid.
-        self.assertEqual([c["prior_mode"] for c in configurations[:4]], list(PRIOR_MODES))
-        self.assertTrue(all(c["num_slots"] == 2 for c in configurations[:4]))
-        self.assertEqual([configuration_label(c) for c in configurations[:4]], list(PRIOR_MODES))
         labels = [configuration_label(c) for c in configurations]
         self.assertEqual(len(set(labels)), len(labels))
+
+        slot_cells = len(PRIOR_MODES) * len(SLOT_COUNTS)
+        self.assertTrue(all(c["model_kind"] == "slot" for c in configurations[:slot_cells]))
+        # The K=2 slot arms keep the bare prior-mode labels they were run under.
+        self.assertEqual(labels[: len(PRIOR_MODES)], list(PRIOR_MODES))
+
+        vanilla = configurations[slot_cells : slot_cells + len(PRIOR_MODES)]
+        self.assertTrue(all(c["model_kind"] == "vanilla" for c in vanilla))
+        self.assertEqual(
+            labels[slot_cells : slot_cells + len(PRIOR_MODES)],
+            [f"{prior_mode}-vanilla" for prior_mode in PRIOR_MODES],
+        )
+
+        backbone_start = slot_cells + len(PRIOR_MODES)
+        backbone = configurations[backbone_start:]
+        self.assertEqual(len(backbone), len(PRIOR_MODES) * len(SLOT_COUNTS))
+        self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in backbone))
+        # Its K=2 block likewise keeps the labels it was submitted under.
+        self.assertEqual(
+            labels[backbone_start : backbone_start + len(PRIOR_MODES)],
+            [f"{prior_mode}-slot_backbone" for prior_mode in PRIOR_MODES],
+        )
+        self.assertTrue(all(c["num_slots"] == 2 for c in backbone[: len(PRIOR_MODES)]))
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
