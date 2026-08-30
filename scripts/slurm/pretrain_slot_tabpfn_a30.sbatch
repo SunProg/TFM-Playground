@@ -7,15 +7,22 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-3
+#SBATCH --array=0-11
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
-# Four slot-TabPFN pretraining arms, one per prior composition:
-#   0 plain        single-regime only
-#   1 multiregime  multiregime only
-#   2 mixed        70% single + 30% multiregime
-#   3 curriculum   single first, then ramp the multiregime share to 50%
+# The slot-TabPFN screening grid: 4 prior compositions x 3 slot counts.
+#
+#            plain   multiregime   mixed(70/30)   curriculum
+#   K=2        0          1            2              3
+#   K=3        4          5            6              7
+#   K=4        8          9           10             11
+#
+# Slot count is the outer axis, so indices 0-3 are always the K=2 arms and an
+# in-flight array keeps its index-to-arm mapping when the grid is extended.
+# Run a subset with `sbatch --array=<range>`, which overrides the directive
+# above; the log below prints the array count against the grid size so a partial
+# submission is visible rather than silently skipping cells.
 #
 # Every other training flag is identical across the arms and matches
 # pretrain_plain_nanotabpfn_a30.sbatch, so the training prior is the only
@@ -50,6 +57,12 @@ readonly TRIAL_LABEL TRIAL_FLAGS
 readonly STUDY_DIR="${PROJECT_DIR}/runs/slot_tabpfn/${SLURM_ARRAY_JOB_ID}"
 readonly RUN_DIR="${STUDY_DIR}/${TRIAL_LABEL}"
 
+GRID_SIZE="$("${PYTHON_BIN}" -c 'from tfmplayground.experiments.slot_tabpfn_sweep import screening_configurations as c; print(len(c()))')"
+readonly GRID_SIZE
+echo "grid_size=${GRID_SIZE} array_task_count=${SLURM_ARRAY_TASK_COUNT}"
+if [[ "${SLURM_ARRAY_TASK_COUNT}" -ne "${GRID_SIZE}" ]]; then
+    echo "NOTE: running ${SLURM_ARRAY_TASK_COUNT} of ${GRID_SIZE} grid cells (subset submission)"
+fi
 echo "array_job_id=${SLURM_ARRAY_JOB_ID}"
 echo "array_task_id=${SLURM_ARRAY_TASK_ID}"
 echo "job_id=${SLURM_JOB_ID}"
