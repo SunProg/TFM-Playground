@@ -19,6 +19,13 @@ from typing import Any
 #: One arm per prior composition, in a fixed documented order.
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
 
+#: Slot counts screened.  K=2 matches the prior's two label functions exactly;
+#: K=3 and K=4 over-provision, which is how slot attention is normally used --
+#: spare slots may sit empty rather than forcing a homogeneous context to split.
+#: Ordered outermost so indices 0-3 remain the original K=2 arms and an
+#: in-flight array keeps its index-to-arm mapping.
+SLOT_COUNTS = (2, 3, 4)
+
 #: Constant multiregime share for the ``mixed`` arm: 70% single + 30% multi.
 MULTIREGIME_SHARE = 0.30
 
@@ -48,7 +55,6 @@ SHARED_FLAGS: tuple[str, ...] = (
     "--max-features 12",
     "--max-classes 2",
     "--prior-type mix_scm",
-    "--num-slots 2",
     "--num-slot-iterations 3",
     # TabArena progress curve every epoch (500 steps), as the plain script
     # supports.  Full 5x10 fidelity costs ~68 s per evaluation, ~1.9 h over
@@ -65,12 +71,22 @@ SHARED_FLAGS: tuple[str, ...] = (
 
 
 def screening_configurations() -> list[dict[str, Any]]:
-    """Every screened configuration, in a fixed order."""
-    return [{"prior_mode": prior_mode} for prior_mode in PRIOR_MODES]
+    """Every screened configuration, in a fixed order (slot count outermost)."""
+    return [
+        {"prior_mode": prior_mode, "num_slots": num_slots}
+        for num_slots in SLOT_COUNTS
+        for prior_mode in PRIOR_MODES
+    ]
 
 
 def configuration_label(configuration: dict[str, Any]) -> str:
-    return str(configuration["prior_mode"])
+    """Run directory name.
+
+    K=2 keeps the bare prior-mode label it already had, so the arms already
+    running under that mapping are unaffected by the grid being extended.
+    """
+    prior_mode, num_slots = configuration["prior_mode"], configuration["num_slots"]
+    return str(prior_mode) if num_slots == 2 else f"{prior_mode}-k{num_slots}"
 
 
 def configuration_flags(index: int, *, final: bool = False, seed: int | None = None) -> str:
@@ -81,6 +97,7 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
     configuration = configurations[index]
     flags = [
         f"--prior-mode {configuration['prior_mode']}",
+        f"--num-slots {configuration['num_slots']}",
         f"--multiregime-share {MULTIREGIME_SHARE:g}",
         f"--max-steps {SCREENING_STEPS}",
         f"--seed {seed if seed is not None else SCREENING_SEED}",
@@ -101,6 +118,7 @@ def _read_run(directory: Path) -> dict[str, Any] | None:
     return {
         "run": directory.name,
         "prior_mode": config.get("prior_mode"),
+        "num_slots": config.get("num_slots"),
         "seed": config.get("seed"),
         "multiregime_cross_entropy": selection.get("multiregime_cross_entropy"),
         "query_cross_entropy": selection.get("query_cross_entropy"),

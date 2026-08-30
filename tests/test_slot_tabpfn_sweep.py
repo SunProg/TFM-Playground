@@ -31,6 +31,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
 from tfmplayground.experiments.slot_tabpfn_sweep import (
     MULTIREGIME_SHARE,
     SCREENING_STEPS,
+    SLOT_COUNTS,
     configuration_flags,
     configuration_label,
     screening_configurations,
@@ -95,30 +96,37 @@ class CurriculumTests(unittest.TestCase):
 
 
 class SweepTests(unittest.TestCase):
-    def test_one_configuration_per_prior_mode_in_order(self):
+    def test_grid_is_slot_count_outermost_with_unique_labels(self):
         configurations = screening_configurations()
-        self.assertEqual([c["prior_mode"] for c in configurations], list(PRIOR_MODES))
+        self.assertEqual(len(configurations), len(PRIOR_MODES) * len(SLOT_COUNTS))
+        # Slot count outermost, so the original K=2 arms keep indices 0..3 and an
+        # in-flight array is not re-mapped by extending the grid.
+        self.assertEqual([c["prior_mode"] for c in configurations[:4]], list(PRIOR_MODES))
+        self.assertTrue(all(c["num_slots"] == 2 for c in configurations[:4]))
+        self.assertEqual([configuration_label(c) for c in configurations[:4]], list(PRIOR_MODES))
         labels = [configuration_label(c) for c in configurations]
         self.assertEqual(len(set(labels)), len(labels))
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
-        flag_sets = [configuration_flags(index) for index in range(len(PRIOR_MODES))]
-        for prior_mode, flags in zip(PRIOR_MODES, flag_sets, strict=True):
-            self.assertIn(f"--prior-mode {prior_mode}", flags)
+        configurations = screening_configurations()
+        flag_sets = [configuration_flags(index) for index in range(len(configurations))]
+        for configuration, flags in zip(configurations, flag_sets, strict=True):
+            self.assertIn(f"--prior-mode {configuration['prior_mode']}", flags)
+            self.assertIn(f"--num-slots {configuration['num_slots']}", flags)
             self.assertIn(f"--max-steps {SCREENING_STEPS}", flags)
             self.assertIn(f"--multiregime-share {MULTIREGIME_SHARE:g}", flags)
-        # Only the prior mode differs between arms: strip it and every arm's
-        # remaining flags must be byte identical, so the sweep really isolates
-        # the prior composition.
-        without_mode = {
-            flags.replace(f"--prior-mode {prior_mode} ", "")
-            for prior_mode, flags in zip(PRIOR_MODES, flag_sets, strict=True)
+        # Prior mode and slot count are the only two axes: strip both and every
+        # cell's remaining flags must be byte identical, so the grid really
+        # isolates them and nothing else drifts between cells.
+        stripped = {
+            flags.replace(f"--prior-mode {c['prior_mode']} ", "").replace(f"--num-slots {c['num_slots']} ", "")
+            for c, flags in zip(configurations, flag_sets, strict=True)
         }
-        self.assertEqual(len(without_mode), 1)
+        self.assertEqual(len(stripped), 1)
 
     def test_seed_override_and_index_bounds(self):
         self.assertIn("--seed 99", configuration_flags(0, seed=99))
-        for index in (-1, len(PRIOR_MODES)):
+        for index in (-1, len(screening_configurations())):
             with self.assertRaises(IndexError):
                 configuration_flags(index)
 
@@ -132,7 +140,7 @@ class SweepTests(unittest.TestCase):
             ):
                 run = root / name
                 run.mkdir()
-                (run / "config.json").write_text(json.dumps({"prior_mode": prior_mode, "seed": 2402}))
+                (run / "config.json").write_text(json.dumps({"prior_mode": prior_mode, "num_slots": 2, "seed": 2402}))
                 (run / "selection.json").write_text(
                     json.dumps(
                         {
