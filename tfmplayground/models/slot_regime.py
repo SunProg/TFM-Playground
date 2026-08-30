@@ -111,22 +111,33 @@ class SlotRegimePrediction:
 
 
 class _SlotDecoder(nn.Module):
-    """Decode one query row against one slot, from their joint features."""
+    """Decode one query row against one slot: class logits plus a mask logit.
+
+    The extra channel is the tabular alpha mask.  In the vision model the
+    spatial broadcast decoder emits RGB *and* alpha from one pathway, so what a
+    slot predicts and where it applies are tied together and composited by a
+    softmax over slots.  Emitting the mask as an extra output channel here keeps
+    that property: the routing cannot drift away from the decoder's competence,
+    because both come from the same weights.
+    """
 
     def __init__(self, embedding_size: int, hidden_size: int, num_classes: int):
         super().__init__()
+        self.num_classes = num_classes
         self.body = nn.Sequential(
             nn.Linear(embedding_size * 3, hidden_size),
             nn.GELU(),
-            nn.Linear(hidden_size, num_classes),
+            nn.Linear(hidden_size, num_classes + 1),
         )
 
-    def forward(self, rows: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
+    def forward(self, rows: torch.Tensor, slots: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return ``(class logits, mask logits)`` of shapes ``(B,Q,K,C)`` and ``(B,Q,K)``."""
         row_count, slot_count = rows.shape[1], slots.shape[1]
         expanded_rows = rows[:, :, None].expand(-1, -1, slot_count, -1)
         expanded_slots = slots[:, None].expand(-1, row_count, -1, -1)
         features = torch.cat((expanded_rows, expanded_slots, expanded_rows * expanded_slots), dim=-1)
-        return self.body(features)
+        decoded = self.body(features)
+        return decoded[..., : self.num_classes], decoded[..., self.num_classes]
 
 
 class NanoTabPFNSlotRegimeModel(SlotBindingMixin, nn.Module):
@@ -168,11 +179,9 @@ class NanoTabPFNSlotRegimeModel(SlotBindingMixin, nn.Module):
             num_slot_iterations=num_slot_iterations,
             competitive_slots=competitive_slots,
         )
-        # The alpha-mask analogue.  Query rows carry no label, so they cannot
-        # compete for slots the way support rows do; they are routed by their
-        # own affinity to each slot instead.
-        self.query_projection = nn.Linear(embedding_size, embedding_size, bias=False)
-        self.slot_projection = nn.Linear(embedding_size, embedding_size, bias=False)
+        # Query rows carry no label, so they cannot compete for slots the way
+        # support rows do.  They are routed by the decoder's own mask channel,
+        # which is the tabular reading of the vision decoder's alpha output.
         self.slot_decoder = _SlotDecoder(embedding_size, hidden_size, max_classes)
 
     def freeze_backbone(self) -> None:
@@ -219,16 +228,10 @@ class NanoTabPFNSlotRegimeModel(SlotBindingMixin, nn.Module):
         support_states, query_states = states[:, :split], states[:, split:]
 
         slots, support_attention = self.make_slots(support_states, generator=generator)
-        gate_logits = (
-            torch.einsum(
-                "bqe,bke->bqk",
-                self.query_projection(query_states),
-                self.slot_projection(slots),
-            )
-            * self.backbone.embedding_size**-0.5
-        )
-        log_gate = F.log_softmax(gate_logits, dim=-1)
-        slot_logits = self.slot_decoder(query_states, slots)[..., : self.max_classes]
+        slot_logits, mask_logits = self.slot_decoder(query_states, slots)
+        # Softmax over slots, exactly as the vision decoder normalizes its alpha
+        # masks across slots before compositing.
+        log_gate = F.log_softmax(mask_logits, dim=-1)
         return SlotRegimePrediction(
             slot_logits=slot_logits,
             log_gate=log_gate,

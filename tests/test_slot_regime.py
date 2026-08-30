@@ -106,7 +106,9 @@ class SlotRegimeModelTests(unittest.TestCase):
         for name in ("slots_mu", "slots_log_sigma"):
             self.assertIsNotNone(getattr(model.slot_binding, name).grad, name)
         self.assertIsNotNone(model.slot_binding.gru.weight_ih.grad)
-        self.assertIsNotNone(model.query_projection.weight.grad)
+        # The mask channel shares the decoder's weights, so a gradient on the
+        # decoder is a gradient on the routing too.
+        self.assertIsNotNone(model.slot_decoder.body[0].weight.grad)
 
     def test_loss_rejects_mismatched_targets(self):
         prediction = self.model(self.support_x, self.support_y, self.query_x)
