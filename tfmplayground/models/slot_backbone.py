@@ -13,12 +13,21 @@ genuinely different features before any competition happens.  The tabular
 analogue of "before the mixing" is inside the block, not after the stack.
 
 So the slots here live in every transformer layer.  After each layer's datapoint
-attention they read the support rows, compete for them, and write back into the
-row states through a ``tanh`` gate initialized at zero -- so an untrained model
-is exactly the pretrained backbone, and the slots earn their influence.  Being
-in the loop, they shape the representation rather than only reading the finished
-one, and can carry a regime distinction forward that full row-attention would
-otherwise average away.
+attention they read the support rows, compete for them, and a learned share of
+every row state is reconstructed from them.  Being in the loop, they shape the
+representation rather than only reading the finished one, and can carry a regime
+distinction forward that full row-attention would otherwise average away.
+
+The share starts at one half, and that matters.  The first version of this layer
+used a ``tanh`` gate initialized at zero, copying the adapter convention
+elsewhere in the package, so an untrained layer was exactly the pretrained one.
+That is right for an adapter bolted onto pretrained weights and wrong here:
+these models train from scratch, so there is no behaviour to preserve, and a
+zero-initialized additive residual is a side-path the optimizer can ignore at no
+cost.  It did exactly that -- after 10,000 steps the gates had moved about 1e-4
+from zero and the arm reproduced plain nanoTabPFN to four decimal places on
+every metric.  Blending instead of adding means silencing the slots is now work
+the optimizer has to choose to do.
 """
 
 from __future__ import annotations
@@ -62,9 +71,20 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         )
         self.write_back = nn.MultiheadAttention(embedding_size, nhead, batch_first=True)
         self.write_norm = nn.LayerNorm(embedding_size)
-        # Zero gate: the layer starts as the exact pretrained layer, and any slot
-        # influence has to be learned rather than imposed.
-        self.row_gate = nn.Parameter(torch.zeros(()))
+        # A convex blend, not an additive residual behind a zero gate.
+        #
+        # The first version gated the slot path with tanh(row_gate) initialized
+        # at zero, so the layer began as the exact pretrained layer.  That is
+        # right for an adapter bolted onto pretrained weights, and wrong here:
+        # training is from scratch, so there is no behaviour to preserve, and a
+        # zero-initialized additive residual is a side-path the optimizer can
+        # ignore for free.  It did -- after 10,000 steps the gates had moved
+        # ~1e-4 and the model reproduced vanilla to four decimals.
+        #
+        # sigmoid(slot_mix) starts at 0.5, so half of every row state comes
+        # through the slots from step one.  Suppressing them is now something
+        # the optimizer has to actively do, rather than the default.
+        self.slot_mix = nn.Parameter(torch.zeros(()))
         self._split: int | None = None
         self.last_support_attention: torch.Tensor | None = None
 
@@ -88,7 +108,7 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         missing, unexpected = adapted.load_state_dict(layer.state_dict(), strict=False)
         if unexpected:
             raise ValueError(f"Unexpected pretrained parameters for a slot layer: {sorted(unexpected)}")
-        if any(not name.startswith(("slot_attention", "write_back", "write_norm", "row_gate")) for name in missing):
+        if any(not name.startswith(("slot_attention", "write_back", "write_norm", "slot_mix")) for name in missing):
             raise ValueError("The slot layer did not receive every pretrained parameter.")
         return adapted
 
@@ -114,8 +134,9 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
             return src
         slots, attention = self.slot_attention(support)
         self.last_support_attention = attention.detach()
-        delta = self.write_back(target, slots, slots, need_weights=False)[0]
-        updated = target + self.row_gate.tanh() * self.write_norm(delta)
+        reconstruction = self.write_norm(self.write_back(target, slots, slots, need_weights=False)[0])
+        mix = torch.sigmoid(self.slot_mix)
+        updated = (1.0 - mix) * target + mix * reconstruction
         return torch.cat((src[:, :, :-1, :], updated[:, :, None, :]), dim=2)
 
 
@@ -145,7 +166,7 @@ def slot_layer_parameters(backbone: NanoTabPFNModel):
         if isinstance(layer, SlotTransformerEncoderLayer):
             for module in (layer.slot_attention, layer.write_back, layer.write_norm):
                 yield from module.parameters()
-            yield layer.row_gate
+            yield layer.slot_mix
 
 
 def collect_support_attention(backbone: NanoTabPFNModel) -> torch.Tensor | None:

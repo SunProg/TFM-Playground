@@ -38,19 +38,31 @@ class SlotBackboneTests(unittest.TestCase):
         self.assertTrue(all(isinstance(b, SlotTransformerEncoderLayer) for b in self.slotted.transformer_blocks))
         self.assertEqual(len(self.slotted.transformer_blocks), len(self.plain.transformer_blocks))
 
-    def test_zero_gate_is_exactly_the_pretrained_backbone(self):
-        """Slots must earn their influence: an untrained layer changes nothing."""
-        expected = self.plain(self.support_x, self.support_y, self.query_x)
-        actual = self.slotted(self.support_x, self.support_y, self.query_x)
-        torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+    def test_slots_contribute_from_initialization(self):
+        """The slot path must not be free to ignore.
 
-    def test_opening_the_gate_changes_the_output(self):
-        with torch.no_grad():
-            for layer in self.slotted.transformer_blocks:
-                layer.row_gate.fill_(1.0)
+        An earlier version gated it additively from zero, so an untrained layer
+        was bit-exact with the plain backbone.  The optimizer then simply never
+        opened it: after 10,000 steps the gates had moved ~1e-4 and the arm
+        reproduced vanilla to four decimals.  Half of each row state now comes
+        through the slots at initialization, so the output must differ.
+        """
         expected = self.plain(self.support_x, self.support_y, self.query_x)
         actual = self.slotted(self.support_x, self.support_y, self.query_x)
         self.assertFalse(torch.allclose(actual, expected))
+
+    def test_mix_starts_at_one_half(self):
+        for layer in self.slotted.transformer_blocks:
+            self.assertAlmostEqual(float(torch.sigmoid(layer.slot_mix)), 0.5, places=6)
+
+    def test_driving_the_mix_to_zero_recovers_the_plain_backbone(self):
+        """Silencing the slots is possible, but the optimizer has to choose it."""
+        with torch.no_grad():
+            for layer in self.slotted.transformer_blocks:
+                layer.slot_mix.fill_(-40.0)  # sigmoid -> 0
+        expected = self.plain(self.support_x, self.support_y, self.query_x)
+        actual = self.slotted(self.support_x, self.support_y, self.query_x)
+        torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
 
     def test_support_attention_is_a_per_row_distribution_over_slots(self):
         self.slotted(self.support_x, self.support_y, self.query_x)
@@ -62,7 +74,7 @@ class SlotBackboneTests(unittest.TestCase):
         model = install_slot_layers(backbone(), num_slots=SLOTS)
         model(self.support_x, self.support_y, self.query_x).square().mean().backward()
         for layer in model.transformer_blocks:
-            self.assertIsNotNone(layer.row_gate.grad)
+            self.assertIsNotNone(layer.slot_mix.grad)
             self.assertIsNotNone(layer.slot_attention.slots_mu.grad)
             self.assertIsNotNone(layer.write_back.in_proj_weight.grad)
 
