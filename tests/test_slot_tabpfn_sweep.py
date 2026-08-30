@@ -30,6 +30,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
     validate_config,
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
+    EXTENDED_SLOT_COUNTS,
     MULTIREGIME_SHARE,
     SCREENING_STEPS,
     SLOT_COUNTS,
@@ -123,7 +124,13 @@ class SweepTests(unittest.TestCase):
 
         backbone_start = slot_cells + len(PRIOR_MODES)
         backbone = configurations[backbone_start:]
-        self.assertEqual(len(backbone), len(PRIOR_MODES) * len(SLOT_COUNTS))
+        all_counts = SLOT_COUNTS + EXTENDED_SLOT_COUNTS
+        self.assertEqual(len(backbone), len(PRIOR_MODES) * len(all_counts))
+        # Its slot counts appear in order, each as a contiguous block of priors.
+        self.assertEqual(
+            [c["num_slots"] for c in backbone],
+            [k for k in all_counts for _ in PRIOR_MODES],
+        )
         self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in backbone))
         # Its K=2 block likewise keeps the labels it was submitted under.
         self.assertEqual(

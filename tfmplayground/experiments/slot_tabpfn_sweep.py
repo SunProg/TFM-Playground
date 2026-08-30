@@ -26,6 +26,13 @@ PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
 #: in-flight array keeps its index-to-arm mapping.
 SLOT_COUNTS = (2, 3, 4)
 
+#: Further slot counts for the in-backbone variant only.  Kept as a separate
+#: constant rather than extending SLOT_COUNTS, because that constant also
+#: sizes the head block: widening it would renumber every index after the
+#: head cells, and an array's pending tasks resolve their flags at launch,
+#: so a live job would silently start running a different arm.
+EXTENDED_SLOT_COUNTS = (5, 6, 7, 8)
+
 #: Constant multiregime share for the ``mixed`` arm: 70% single + 30% multi.
 MULTIREGIME_SHARE = 0.30
 
@@ -91,6 +98,12 @@ def screening_configurations() -> list[dict[str, Any]]:
     grid += [
         {"prior_mode": prior_mode, "num_slots": num_slots, "model_kind": "slot_backbone"}
         for num_slots in SLOT_COUNTS
+        for prior_mode in PRIOR_MODES
+    ]
+    # Over-provisioned slot counts, appended after everything already submitted.
+    grid += [
+        {"prior_mode": prior_mode, "num_slots": num_slots, "model_kind": "slot_backbone"}
+        for num_slots in EXTENDED_SLOT_COUNTS
         for prior_mode in PRIOR_MODES
     ]
     return grid
