@@ -98,7 +98,15 @@ class CurriculumTests(unittest.TestCase):
 class SweepTests(unittest.TestCase):
     def test_grid_is_slot_count_outermost_with_unique_labels(self):
         configurations = screening_configurations()
-        self.assertEqual(len(configurations), len(PRIOR_MODES) * len(SLOT_COUNTS))
+        slot_cells = len(PRIOR_MODES) * len(SLOT_COUNTS)
+        # Slot grid, then one vanilla control per prior mode appended last.
+        self.assertEqual(len(configurations), slot_cells + len(PRIOR_MODES))
+        self.assertTrue(all(c["model_kind"] == "slot" for c in configurations[:slot_cells]))
+        self.assertTrue(all(c["model_kind"] == "vanilla" for c in configurations[slot_cells:]))
+        self.assertEqual(
+            [configuration_label(c) for c in configurations[slot_cells:]],
+            [f"{prior_mode}-vanilla" for prior_mode in PRIOR_MODES],
+        )
         # Slot count outermost, so the original K=2 arms keep indices 0..3 and an
         # in-flight array is not re-mapped by extending the grid.
         self.assertEqual([c["prior_mode"] for c in configurations[:4]], list(PRIOR_MODES))
@@ -113,13 +121,16 @@ class SweepTests(unittest.TestCase):
         for configuration, flags in zip(configurations, flag_sets, strict=True):
             self.assertIn(f"--prior-mode {configuration['prior_mode']}", flags)
             self.assertIn(f"--num-slots {configuration['num_slots']}", flags)
+            self.assertIn(f"--model-kind {configuration['model_kind']}", flags)
             self.assertIn(f"--max-steps {SCREENING_STEPS}", flags)
             self.assertIn(f"--multiregime-share {MULTIREGIME_SHARE:g}", flags)
-        # Prior mode and slot count are the only two axes: strip both and every
-        # cell's remaining flags must be byte identical, so the grid really
-        # isolates them and nothing else drifts between cells.
+        # Prior mode, slot count and model kind are the only axes: strip all
+        # three and every cell's remaining flags must be byte identical, so the
+        # grid really isolates them and nothing else drifts between cells.
         stripped = {
-            flags.replace(f"--prior-mode {c['prior_mode']} ", "").replace(f"--num-slots {c['num_slots']} ", "")
+            flags.replace(f"--prior-mode {c['prior_mode']} ", "")
+            .replace(f"--num-slots {c['num_slots']} ", "")
+            .replace(f"--model-kind {c['model_kind']} ", "")
             for c, flags in zip(configurations, flag_sets, strict=True)
         }
         self.assertEqual(len(stripped), 1)
@@ -140,7 +151,9 @@ class SweepTests(unittest.TestCase):
             ):
                 run = root / name
                 run.mkdir()
-                (run / "config.json").write_text(json.dumps({"prior_mode": prior_mode, "num_slots": 2, "seed": 2402}))
+                (run / "config.json").write_text(
+                    json.dumps({"prior_mode": prior_mode, "num_slots": 2, "model_kind": "slot", "seed": 2402})
+                )
                 (run / "selection.json").write_text(
                     json.dumps(
                         {
