@@ -49,6 +49,7 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
 )
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_attention import slot_assignment_entropy
+from tfmplayground.models.slot_backbone import collect_support_attention, install_slot_layers
 from tfmplayground.models.slot_regime import (
     NanoTabPFNSlotRegimeModel,
     SlotRegimePrediction,
@@ -58,6 +59,7 @@ from tfmplayground.models.slot_regime import (
 from tfmplayground.utils import set_randomness_seed
 
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
+MODEL_KINDS = ("slot", "vanilla", "slot_backbone")
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,9 @@ class SlotPretrainingConfig:
     #: NanoTabPFNModel trained in this identical harness -- same dump, same
     #: validation cadence, same TabArena settings -- so the architecture is
     #: the only variable when the two are compared.
-    model_kind: Literal["slot", "vanilla"] = "slot"
+    #: "slot_backbone" puts the competition inside every transformer layer
+    #: instead of on top of the finished representation.
+    model_kind: Literal["slot", "vanilla", "slot_backbone"] = "slot"
     num_slots: int = 2
     num_slot_iterations: int = 3
     competitive_slots: bool = True
@@ -144,8 +148,8 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         raise ValueError("multiregime_share must lie in [0, 1].")
     if config.max_steps < 1:
         raise ValueError("max_steps must be positive.")
-    if config.model_kind not in ("slot", "vanilla"):
-        raise ValueError(f"model_kind must be 'slot' or 'vanilla', got {config.model_kind!r}.")
+    if config.model_kind not in MODEL_KINDS:
+        raise ValueError(f"model_kind must be one of {MODEL_KINDS}, got {config.model_kind!r}.")
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
     if config.require_cuda and not torch.cuda.is_available():
@@ -352,9 +356,22 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             if not torch.isfinite(loss):
                 continue
             multiregime_losses.append(float(loss))
-            if config.model_kind != "slot":
-                # The vanilla control has no slots, so the binding diagnostics
-                # simply do not apply to it; only the losses are comparable.
+            if config.model_kind == "vanilla":
+                # No slots, so the binding diagnostics do not apply; only the
+                # losses are comparable against the other arms.
+                continue
+            if config.model_kind == "slot_backbone":
+                # The competition happens inside the layers, so the attention is
+                # read back off the deepest layer that produced any.  This
+                # variant has no query gate.
+                attention = collect_support_attention(model)
+                if attention is not None:
+                    for key, value in support_binding_scores(
+                        attention,
+                        episode.support_regime_source,
+                        identifiable_support_rows(episode.candidate_support_positive),
+                    ).items():
+                        binding.setdefault(key, []).append(value)
                 continue
             prediction = model(episode.support_x, episode.support_y, episode.query_x)
             gate_entropies.append(float(prediction.gate_entropy().mean()))
@@ -387,6 +404,9 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
                 "support_binding_purity",
                 "support_regime_base_rate",
                 "support_attention_entropy",
+                # How many rows survived the identifiability filter, so the
+                # exclusion is visible rather than silent.
+                "support_identifiable_fraction",
             )
         },
     }
@@ -485,6 +505,13 @@ def build_model(config: SlotPretrainingConfig):
     backbone = NanoTabPFNModel(**config.architecture())
     if config.model_kind == "vanilla":
         return backbone.to(config.device)
+    if config.model_kind == "slot_backbone":
+        return install_slot_layers(
+            backbone,
+            num_slots=config.num_slots,
+            num_slot_iterations=config.num_slot_iterations,
+            competitive_slots=config.competitive_slots,
+        ).to(config.device)
     return NanoTabPFNSlotRegimeModel(
         backbone,
         num_slots=config.num_slots,
@@ -503,7 +530,21 @@ def _checkpoint(
     validation: dict[str, float] | None,
     episode_rng: np.random.Generator,
 ) -> dict[str, Any]:
-    if config.model_kind == "vanilla":
+    if config.model_kind == "slot_backbone":
+        # Slot settings must travel with the checkpoint: the layers cannot be
+        # rebuilt from the five backbone keys alone.
+        checkpoint = {
+            "architecture": {
+                **config.architecture(),
+                "model_kind": "slot_backbone",
+                "num_slots": config.num_slots,
+                "num_slot_iterations": config.num_slot_iterations,
+                "competitive_slots": config.competitive_slots,
+            },
+            "model": model.state_dict(),
+            "training_config": asdict(config),
+        }
+    elif config.model_kind == "vanilla":
         # The plain inference format, so init_model_from_state_dict_file and
         # every existing evaluator read this control exactly as they read the
         # published vanilla runs.
@@ -654,7 +695,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default=defaults.device)
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
-    parser.add_argument("--model-kind", choices=("slot", "vanilla"), default=defaults.model_kind)
+    parser.add_argument("--model-kind", choices=MODEL_KINDS, default=defaults.model_kind)
     parser.add_argument("--prior-type", default=defaults.prior_type)
     parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")

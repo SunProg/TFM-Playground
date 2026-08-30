@@ -84,10 +84,11 @@ def screening_configurations() -> list[dict[str, Any]]:
     # A plain nanoTabPFN per prior mode, trained in the identical harness.
     # Without it there is no way to tell whether the slot machinery changes
     # anything at all -- which is the question the K sweep left open.
-    grid += [
-        {"prior_mode": prior_mode, "num_slots": 2, "model_kind": "vanilla"}
-        for prior_mode in PRIOR_MODES
-    ]
+    grid += [{"prior_mode": prior_mode, "num_slots": 2, "model_kind": "vanilla"} for prior_mode in PRIOR_MODES]
+    # Slots inside every transformer layer rather than on top of the finished
+    # representation.  Appended last, so extending the grid never re-maps an
+    # index an in-flight array is using.
+    grid += [{"prior_mode": prior_mode, "num_slots": 2, "model_kind": "slot_backbone"} for prior_mode in PRIOR_MODES]
     return grid
 
 
@@ -98,8 +99,9 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     running under that mapping are unaffected by the grid being extended.
     """
     prior_mode, num_slots = configuration["prior_mode"], configuration["num_slots"]
-    if configuration.get("model_kind", "slot") == "vanilla":
-        return f"{prior_mode}-vanilla"
+    kind = configuration.get("model_kind", "slot")
+    if kind in ("vanilla", "slot_backbone"):
+        return f"{prior_mode}-{kind}"
     return str(prior_mode) if num_slots == 2 else f"{prior_mode}-k{num_slots}"
 
 

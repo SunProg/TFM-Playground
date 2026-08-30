@@ -346,6 +346,27 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
     from tfmplayground.interface import init_model_from_state_dict_file  # local: avoids an import cycle
 
     state = torch.load(str(path), map_location="cpu", weights_only=False)
+    architecture = state.get("architecture") or {}
+    if architecture.get("model_kind") == "slot_backbone":
+        # Slots live inside the transformer layers, so the layers must be
+        # installed before the state dict will match.
+        from tfmplayground.models.slot_backbone import install_slot_layers
+
+        backbone = NanoTabPFNModel(
+            num_layers=architecture["num_layers"],
+            embedding_size=architecture["embedding_size"],
+            num_attention_heads=architecture["num_attention_heads"],
+            mlp_hidden_size=architecture["mlp_hidden_size"],
+            num_outputs=architecture["num_outputs"],
+        )
+        install_slot_layers(
+            backbone,
+            num_slots=architecture["num_slots"],
+            num_slot_iterations=architecture.get("num_slot_iterations", 3),
+            competitive_slots=architecture.get("competitive_slots", True),
+        )
+        backbone.load_state_dict(state["model"])
+        return backbone.to(device).eval()
     if is_slot_regime_checkpoint(state):
         model = build_slot_regime_model(state["architecture"])
         model.load_state_dict(state["model"])
@@ -361,7 +382,11 @@ def is_slot_regime_checkpoint(checkpoint: dict[str, Any]) -> bool:
     instead of on one exact string.
     """
     architecture = checkpoint.get("architecture")
-    return isinstance(architecture, dict) and "num_slots" in architecture
+    if not isinstance(architecture, dict):
+        return False
+    # slot_backbone also carries num_slots but is a plain NanoTabPFNModel with
+    # slot layers installed, not this head.
+    return "num_slots" in architecture and architecture.get("model_kind") != "slot_backbone"
 
 
 __all__ = [
