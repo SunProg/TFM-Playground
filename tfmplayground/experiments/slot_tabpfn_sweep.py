@@ -48,12 +48,13 @@ SHARED_FLAGS: tuple[str, ...] = (
     "--num-slots 2",
     "--num-slot-iterations 3",
     # TabArena progress curve every epoch (500 steps), as the plain script
-    # supports.  Folds/repeats are cut from the 5x10 final-evaluation
-    # setting because this runs 100 times inside the training loop.
+    # supports.  Full 5x10 fidelity costs ~68 s per evaluation, ~1.9 h over
+    # the run; affordable because the episode dump removed ~11.5 h from the
+    # multiregime arm, which was the binding wall-clock constraint.
     "--epoch-steps 500",
     "--tabarena-every-epoch",
-    "--tabarena-folds 2",
-    "--tabarena-repeats 2",
+    "--tabarena-folds 5",
+    "--tabarena-repeats 10",
     # Only 5 durable checkpoints per arm; every epoch overwrites one rolling
     # file instead, which is what filled the volume on job 36848044.
     "--checkpoint-interval 10000",

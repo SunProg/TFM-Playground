@@ -8,6 +8,12 @@ import numpy as np
 import torch
 
 from tfmplayground.experiments.continuous_episodes import sample_scm_multiregime_episode
+from tfmplayground.experiments.dump_multiregime_episodes import (
+    DumpConfig,
+    MultiregimeDumpLoader,
+    _shard_episodes,
+    dump_multiregime_episodes,
+)
 from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     PlainPretrainingConfig,
 )
@@ -199,6 +205,77 @@ class SupportBindingTests(unittest.TestCase):
         # It must survive a device move alongside the query-side tag.
         moved = episode.to("cpu")
         self.assertIsNotNone(moved.support_regime_source)
+
+
+class MultiregimeDumpTests(unittest.TestCase):
+    """The dump must reproduce what on-the-fly generation would have given."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.directory = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.directory.name)
+        dump_multiregime_episodes(
+            DumpConfig(
+                output=str(cls.root / "shard-000.h5"),
+                episodes=12,
+                batch_size=4,
+                support_size=16,
+                query_count=4,
+                contamination=0.25,
+                seed=7,
+            )
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def _loader(self, **kwargs):
+        return MultiregimeDumpLoader(self.root, batch_size=4, **kwargs)
+
+    def test_episode_shapes_and_split(self):
+        episode = self._loader().sample()
+        self.assertEqual(episode.support_x.shape[:2], (4, 16))
+        self.assertEqual(episode.query_x.shape[:2], (4, 4))
+        self.assertEqual(episode.support_y.shape, (4, 16))
+        self.assertEqual(episode.query_y.shape, (4, 4))
+        self.assertEqual(episode.support_x.shape[2], episode.query_x.shape[2])
+
+    def test_regime_tags_survive_the_round_trip(self):
+        """Without these the slot-binding diagnostic cannot be computed at all."""
+        episode = self._loader().sample()
+        self.assertEqual(episode.support_regime_source.shape, episode.support_y.shape)
+        self.assertEqual(episode.query_regime_source.shape, episode.query_y.shape)
+        tags = torch.cat((episode.support_regime_source, episode.query_regime_source), dim=1)
+        self.assertEqual(sorted(set(tags.reshape(-1).tolist())), [0, 1])
+        # Contamination is the fraction of rows relabelled under the second regime.
+        self.assertAlmostEqual(float(tags.float().mean()), 0.25, places=6)
+
+    def test_candidates_and_posterior_are_preserved(self):
+        episode = self._loader().sample()
+        self.assertEqual(episode.candidate_support_positive.shape, (4, 2, 16))
+        self.assertEqual(episode.candidate_query_positive.shape, (4, 2, 4))
+        torch.testing.assert_close(episode.posterior.sum(-1), torch.ones(4), atol=1e-5, rtol=1e-5)
+
+    def test_dump_is_usable_as_a_training_batch(self):
+        episode = self._loader().sample()
+        self.assertEqual(episode.condition, "multiregime")
+        self.assertTrue(torch.isfinite(episode.support_x).all())
+        self.assertEqual(set(episode.query_y.reshape(-1).tolist()) - {0, 1}, set())
+
+    def test_exhausting_the_shard_cycles_rather_than_stopping(self):
+        loader = self._loader()
+        for _ in range(6):  # 12 episodes at batch 4 -> wraps partway through
+            self.assertEqual(loader.sample().support_x.shape[0], 4)
+
+    def test_shards_split_the_work_without_overlap(self):
+        counts = [_shard_episodes(DumpConfig(output="", episodes=10, shard_index=i, num_shards=3)) for i in range(3)]
+        self.assertEqual(sum(counts), 10)
+        self.assertEqual(counts, [4, 3, 3])
+
+    def test_invalid_shard_configuration_raises(self):
+        with self.assertRaises(ValueError):
+            dump_multiregime_episodes(DumpConfig(output="", episodes=1, shard_index=3, num_shards=3))
 
 
 if __name__ == "__main__":

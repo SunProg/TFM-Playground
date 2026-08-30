@@ -31,6 +31,7 @@ import numpy as np
 import torch
 from sklearn.metrics import roc_auc_score
 
+from tfmplayground.experiments.dump_multiregime_episodes import MultiregimeDumpLoader
 from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     _MAX_NON_FINITE_BATCH_RETRIES,
     _make_tensorboard_writer,
@@ -91,6 +92,10 @@ class SlotPretrainingConfig:
     #: share `finetune_multiregime_backbone.py` already uses.
     multiregime_share: float = 0.30
     multiregime_contamination: float = 0.3
+    #: Optional HDF5 dump (file or shard directory) to stream multiregime
+    #: episodes from instead of generating them.  Generation is the CPU
+    #: bottleneck of the multiregime arm; streaming removes it.
+    multiregime_dump: str | None = None
     embedding_size: int = 192
     num_attention_heads: int = 6
     mlp_hidden_size: int = 768
@@ -150,13 +155,27 @@ def multiregime_probability(config: SlotPretrainingConfig, step: int) -> float:
     return plain_multiregime_probability(config, step)
 
 
-def training_batch(config: SlotPretrainingConfig, prior, episode_rng: np.random.Generator, step: int):
-    """Draw one batch under the configured prior composition."""
+def training_batch(
+    config: SlotPretrainingConfig,
+    prior,
+    episode_rng: np.random.Generator,
+    step: int,
+    multiregime_source=None,
+):
+    """Draw one batch under the configured prior composition.
+
+    ``multiregime_source`` is an optional dump loader; when absent the
+    episodes are generated on the fly exactly as the vanilla script does.
+    The draw against ``probability`` happens either way, so the two paths
+    consume the same RNG stream and stay comparable.
+    """
     probability = multiregime_probability(config, step)
     if probability == 0.0 or episode_rng.random() >= probability:
         if prior is None:
             raise RuntimeError("The ordinary TabICL prior is required for this batch.")
         return next(iter(prior))
+    if multiregime_source is not None:
+        return multiregime_source.sample()
     return multiregime_batch(config, episode_rng)
 
 
@@ -424,6 +443,14 @@ def run_pretraining(
         _restore_rng_state(rng_state)
 
     prior = make_prior(config, batches=1) if config.prior_mode != "multiregime" else None
+    multiregime_source = None
+    if config.multiregime_dump:
+        multiregime_source = MultiregimeDumpLoader(
+            config.multiregime_dump,
+            batch_size=config.micro_batch_size,
+            device=config.device,
+            seed=config.seed,
+        )
     episode_rng = np.random.default_rng(config.seed + 1)
     if state is not None:
         episode_rng.bit_generator.state = state["episode_rng_state"]
@@ -437,7 +464,7 @@ def run_pretraining(
             loss_total = 0.0
             for _ in range(config.accumulate_gradients):
                 for _attempt in range(_MAX_NON_FINITE_BATCH_RETRIES):
-                    batch = training_batch(config, prior, episode_rng, step)
+                    batch = training_batch(config, prior, episode_rng, step, multiregime_source)
                     loss = slot_batch_loss(model, batch)
                     if torch.isfinite(loss):
                         break
@@ -510,6 +537,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
     parser.add_argument("--prior-type", default=defaults.prior_type)
+    parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
     parser.add_argument("--tabarena-every-epoch", dest="tabarena_every_epoch", action="store_true")
     parser.add_argument("--tabarena-cache-directory", default=defaults.tabarena_cache_directory)
