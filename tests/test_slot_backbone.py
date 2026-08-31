@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
 import torch
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel, TransformerEncoderLayer
@@ -267,6 +268,51 @@ class MixtureReadoutTests(unittest.TestCase):
         torch.testing.assert_close(
             shuffled.marginal_log_probabilities(), p.marginal_log_probabilities(), atol=1e-6, rtol=1e-6
         )
+
+    def test_both_calling_conventions_agree(self):
+        """Training calls `model(support_x, support_y, query_x)`; the TabArena
+        predictor calls `model((x, y), train_test_split_index=...)`.  Supporting
+        only the first is what killed the first submission of this model at its
+        first epoch boundary, after the training loop had run fine for 500 steps.
+        """
+        expected = self.model(self.support_x, self.support_y, self.query_x)
+        table = torch.cat((self.support_x, self.query_x), dim=1)
+        actual = self.model(
+            (table, self.support_y), train_test_split_index=SUPPORT, num_mem_chunks=1
+        )
+        torch.testing.assert_close(
+            actual.marginal_log_probabilities(), expected.marginal_log_probabilities(), atol=1e-6, rtol=1e-6
+        )
+
+    def test_the_tabarena_predictor_accepts_it(self):
+        """The exact call path that failed: `predict_vanilla` chunks the query
+        rows and uses the concatenated-table interface.  Exercising the real
+        function rather than imitating it is the point -- the interface test
+        above would have passed against a wrapper that still mismatched here.
+        """
+        from tfmplayground.experiments.evaluate_integrated_tabarena import predict_vanilla
+
+        from tfmplayground.models.slot_regime import SlotLogitsAdapter
+
+        rng = np.random.default_rng(0)
+        probabilities = predict_vanilla(
+            SlotLogitsAdapter(self.model),
+            rng.normal(size=(SUPPORT, FEATURES)).astype(np.float32),
+            rng.integers(0, 2, SUPPORT).astype(np.float32),
+            rng.normal(size=(7, FEATURES)).astype(np.float32),
+            device="cpu",
+            query_chunk_size=4,  # smaller than the query count, so it chunks
+            num_mem_chunks=1,
+        )
+        self.assertEqual(probabilities.shape, (7,))
+        self.assertTrue(bool(((probabilities >= 0) & (probabilities <= 1)).all()))
+
+    def test_the_concatenated_interface_requires_its_split(self):
+        table = torch.cat((self.support_x, self.query_x), dim=1)
+        with self.assertRaises(TypeError):
+            self.model((table, self.support_y))
+        with self.assertRaises(TypeError):
+            self.model((table, self.support_y), train_test_split_index=SUPPORT, nonsense=1)
 
     def test_a_backbone_without_slot_layers_is_rejected(self):
         with self.assertRaises(ValueError):

@@ -374,12 +374,38 @@ class SlotBackboneMixtureModel(nn.Module):
                 return layer.num_slots
         raise ValueError("The backbone has no slot layers.")
 
-    def forward(self, support_x: torch.Tensor, support_y: torch.Tensor, query_x: torch.Tensor):
+    @staticmethod
+    def _split_arguments(args: tuple, kwargs: dict):
+        """Accept both repository calling conventions, as every head here does.
+
+        ``model(support_x, support_y, query_x)`` is what training uses;
+        ``model((x, y), train_test_split_index=..., num_mem_chunks=...)`` is what
+        the TabArena predictor uses.  Supporting only the first is what made the
+        first submission of this model die at its first epoch boundary.
+        """
+        if len(args) == 3:
+            support_x, support_y, query_x = args
+            source = (torch.cat((support_x, query_x), dim=1) if query_x is not None else support_x, support_y)
+            split = support_x.shape[1]
+        elif len(args) == 1 and isinstance(args[0], tuple):
+            source = args[0]
+            split = kwargs.pop("train_test_split_index", None)
+            if split is None:
+                raise TypeError("train_test_split_index is required for the concatenated-table interface.")
+        else:
+            raise TypeError("Expected (support_x, support_y, query_x) or ((x, y), train_test_split_index=...).")
+        num_mem_chunks = kwargs.pop("num_mem_chunks", 1)
+        if kwargs:
+            raise TypeError(f"Unexpected keyword arguments: {sorted(kwargs)}")
+        return source, int(split), num_mem_chunks
+
+    def forward(self, *args, **kwargs):
         from tfmplayground.models.slot_regime import SlotRegimePrediction  # local: avoids an import cycle
 
-        split = support_x.shape[1]
-        x = torch.cat((support_x, query_x), dim=1) if query_x is not None else support_x
-        encoded = self.backbone.encode_table((x, support_y), split)
+        (x, support_y), split, num_mem_chunks = self._split_arguments(args, kwargs)
+        encoded = self.backbone.encode_table(
+            (x, support_y.float()), train_test_split_index=split, num_mem_chunks=num_mem_chunks
+        )
         query_states = encoded[:, split:, -1, :]
         layer = deepest_slot_layer(self.backbone)
         if layer is None or layer.last_slots is None:
