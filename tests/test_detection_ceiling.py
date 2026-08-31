@@ -15,14 +15,21 @@ from tfmplayground.experiments.detection_ceiling import (
 class CeilingGridTests(unittest.TestCase):
     def test_grid_covers_both_targets_and_is_append_only(self):
         cells = ceiling_cells()
-        classification = [c for c in cells if c["target"] == "classification"]
-        regression = [c for c in cells if c["target"] == "regression"]
+        # The plain blocks: everything before the mechanism blocks were added.
+        plain = [c for c in cells if c.get("mechanism", "plain") == "plain"]
+        classification = [c for c in plain if c["target"] == "classification"]
+        regression = [c for c in plain if c["target"] == "regression"]
         self.assertEqual(
             len(classification), len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS) * len(CLASS_COUNTS)
         )
+        # Separation cells, plus the gate-and-separation block on 12 features.
         self.assertEqual(
-            len(regression), len(SEPARATIONS) * len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS)
+            len(regression),
+            len(SEPARATIONS) * len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS)
+            + len(SEPARATIONS[1:]) * len(SUPPORT_SIZES) * len(CONTAMINATIONS),
         )
+        # Every mechanism the module offers is actually exercised by the grid.
+        self.assertEqual({c.get("mechanism", "plain") for c in cells}, {"plain", "repeated", "anchors"})
         # Classification first, so adding regression cells did not renumber them.
         self.assertEqual([c["target"] for c in cells[: len(classification)]], ["classification"] * len(classification))
         self.assertEqual(len({tuple(sorted(c.items())) for c in cells}), len(cells))
@@ -32,14 +39,15 @@ class CeilingGridTests(unittest.TestCase):
         pending array task reads this grid when it starts -- so appending must
         not move them."""
         cells = ceiling_cells()
-        zero = [c for c in cells if c["target"] == "regression" and c["separation"] == 0.0]
+        regression = [(i, c) for i, c in enumerate(cells) if c["target"] == "regression"]
+        zero = [i for i, c in regression if c["separation"] == 0.0]
         self.assertEqual(len(zero), len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS))
-        # Every zero-separation regression cell precedes every separated one.
-        separated = [i for i, c in enumerate(cells) if c.get("separation", 0.0) > 0.0]
-        self.assertTrue(min(separated) > max(i for i, c in enumerate(cells) if c.get("separation", 0.0) == 0.0))
-        self.assertEqual(
-            sorted({c["separation"] for c in cells if c["target"] == "regression"}), sorted(SEPARATIONS)
-        )
+        # Every zero-separation regression cell precedes every separated one, so
+        # appending separation did not move indices 32-39.  Scoped to regression
+        # cells: classification cells carry no separation key at all.
+        separated = [i for i, c in regression if c["separation"] > 0.0]
+        self.assertGreater(min(separated), max(zero))
+        self.assertEqual(sorted({c["separation"] for _, c in regression}), sorted(SEPARATIONS))
 
     def test_separation_pushes_the_rules_apart(self):
         """The half of mixture-of-experts identifiability the prior never had:
