@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-99
+#SBATCH --array=0-103
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -30,6 +30,7 @@
 #     vanilla                 88         89           90             91
 #     slot head K=2           92         93           94             95
 #     slot_backbone K=2       96         97           98             99
+#     slot_mixture  K=2      100        101          102            103
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59

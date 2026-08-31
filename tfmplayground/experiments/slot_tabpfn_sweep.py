@@ -227,6 +227,22 @@ def screening_configurations() -> list[dict[str, Any]]:
         for model_kind in ("vanilla", "slot", "slot_backbone")
         for prior_mode in PRIOR_MODES
     ]
+    # The mixture backbone on the learnable design, appended rather than folded
+    # into the block above so the cells already running keep their indices.
+    # It is the only variant with both properties the argument needs -- the
+    # competition runs before full row attention mixes the regimes together,
+    # *and* the loss decomposes over slots -- and it was left out of the first
+    # pass by carrying the earlier blocks' three model kinds over unexamined.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 2,
+            "model_kind": "slot_backbone_mixture",
+            "max_steps": COHERENT_STEPS,
+            **LEARNABLE_DESIGN,
+        }
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 

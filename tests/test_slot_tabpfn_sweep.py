@@ -21,6 +21,7 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     multiregime_probability as plain_multiregime_probability,
 )
 from tfmplayground.experiments.pretrain_slot_tabpfn import (
+    MODEL_KINDS,
     PRIOR_MODES,
     SlotPretrainingConfig,
     identifiable_support_rows,
@@ -213,11 +214,19 @@ class SweepTests(unittest.TestCase):
         # trains on a task whose achievable detection AUC is 0.505 -- chance --
         # so a model number on it cannot be read at all.
         learnable = [c for c in configurations if c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]]
-        self.assertEqual(len(learnable), 3 * len(PRIOR_MODES))
+        self.assertEqual(len(learnable), 4 * len(PRIOR_MODES))
         self.assertEqual(
             [c["model_kind"] for c in learnable],
-            [kind for kind in ("vanilla", "slot", "slot_backbone") for _ in PRIOR_MODES],
+            [
+                kind
+                for kind in ("vanilla", "slot", "slot_backbone", "slot_backbone_mixture")
+                for _ in PRIOR_MODES
+            ],
         )
+        # Every model kind the trainer supports is exercised on the one design
+        # whose results can be read; leaving one out is how the mixture backbone
+        # was missed on the first pass.
+        self.assertEqual({c["model_kind"] for c in learnable}, set(MODEL_KINDS))
         self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in learnable))
         self.assertEqual(configurations[-len(learnable):], learnable)
 
