@@ -31,6 +31,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
     COHERENT_STEPS,
+    LEARNABLE_DESIGN,
     COMPATIBILITY_MODES_SCREENED,
     EXTENDED_SLOT_COUNTS,
     MULTIREGIME_SHARE,
@@ -193,7 +194,8 @@ class SweepTests(unittest.TestCase):
         # on one cross entropy over the finished representation, so the loss
         # never mentions slots; these decode per slot and train on the mixture
         # NLL.  Their labels always write K out, unlike the older blocks.
-        mixture = configurations[mixture_start:]
+        learnable_start = mixture_start + 2 * 2 * len(PRIOR_MODES)
+        mixture = configurations[mixture_start:learnable_start]
         self.assertEqual(
             [(c["slot_compatibility"], c["num_slots"]) for c in mixture],
             [(mode, k) for mode in ("dot", "likelihood") for k in (2, 3) for _ in PRIOR_MODES],
@@ -201,11 +203,23 @@ class SweepTests(unittest.TestCase):
         self.assertTrue(all(c["model_kind"] == "slot_backbone_mixture" for c in mixture))
         self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in mixture))
         self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in mixture))
-        for label, c in zip(labels[mixture_start:], mixture, strict=True):
+        for label, c in zip(labels[mixture_start:learnable_start], mixture, strict=True):
             self.assertIn(f"-slot_mixture-k{c['num_slots']}-", label + "-")
         self.assertTrue(
             all(c["model_kind"] != "slot_backbone_mixture" for c in configurations[:mixture_start])
         )
+
+        # The learnable-design block, appended last.  Every block before it
+        # trains on a task whose achievable detection AUC is 0.505 -- chance --
+        # so a model number on it cannot be read at all.
+        learnable = [c for c in configurations if c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]]
+        self.assertEqual(len(learnable), 3 * len(PRIOR_MODES))
+        self.assertEqual(
+            [c["model_kind"] for c in learnable],
+            [kind for kind in ("vanilla", "slot", "slot_backbone") for _ in PRIOR_MODES],
+        )
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in learnable))
+        self.assertEqual(configurations[-len(learnable):], learnable)
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
@@ -224,13 +238,29 @@ class SweepTests(unittest.TestCase):
             # flag alone.  Getting this backwards trains on one task and reports
             # the other, silently.
             self.assertEqual("--multiregime-dump none" in flags, coherence != 0.0)
+            # Per-cell overrides must come *after* SHARED_FLAGS, since argparse
+            # keeps the last occurrence and SHARED_FLAGS pins the defaults.
+            if "max_classes" in configuration:
+                shared = flags.index("--max-classes 2".split()[0])
+                self.assertGreater(
+                    flags.rindex(f"--max-classes {configuration['max_classes']}"), shared
+                )
+                # TabArena is binary and must be off for a multiclass run.
+                self.assertIn("--no-tabarena-every-epoch", flags)
         # Prior mode, slot count and model kind are the only axes *within* one
         # block: strip all three and the remaining flags must be byte identical
         # across that block, so the grid isolates them and nothing else drifts.
         # Coherence and compatibility are the axes *between* blocks, and each
         # legitimately carries its own step budget and dump override.
         def block(configuration):
-            return (configuration.get("regime_coherence", 0.0), configuration.get("slot_compatibility", "dot"))
+            # Class count joins the key: the learnable block overrides features,
+            # contamination and TabArena along with it, and those overrides are
+            # the point rather than drift.
+            return (
+                configuration.get("regime_coherence", 0.0),
+                configuration.get("slot_compatibility", "dot"),
+                configuration.get("max_classes", 2),
+            )
 
         for key in {block(c) for c in configurations}:
             stripped = {

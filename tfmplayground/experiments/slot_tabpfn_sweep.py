@@ -53,6 +53,18 @@ REGIME_COHERENCE = 2.0
 #: would buy nothing the existing cells do not already report.
 COMPATIBILITY_MODES_SCREENED = ("likelihood", "additive")
 
+#: The one design measured to be both learnable *and* still to require
+#: discovering the latent structure: `detection_ceiling` puts its achievable
+#: AUC at 0.742, against 0.505 for the design every earlier arm trained on.
+#: Three classes, four features, 15% contamination -- one label per row, regime
+#: still latent, so a model scoring well has actually inferred something.
+LEARNABLE_DESIGN = {
+    "max_classes": 3,
+    "min_features": 4,
+    "max_features": 4,
+    "multiregime_contamination": 0.15,
+}
+
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
 #: Short budget for the coherent-regime block: 10 epochs, enough to see whether
@@ -195,6 +207,21 @@ def screening_configurations() -> list[dict[str, Any]]:
         for num_slots in (2, 3)
         for prior_mode in PRIOR_MODES
     ]
+    # The learnable design.  Every block above trains on a task whose achievable
+    # detection AUC is about 0.505 -- chance -- so a model result on it could
+    # never be read: "the model failed" and "nothing can succeed" produce the
+    # same number.  These run the one measured design where that is not true.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 2,
+            "model_kind": model_kind,
+            "max_steps": COHERENT_STEPS,
+            **LEARNABLE_DESIGN,
+        }
+        for model_kind in ("vanilla", "slot", "slot_backbone")
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 
@@ -216,6 +243,12 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     compatibility = configuration.get("slot_compatibility", "dot")
     if compatibility != "dot":
         suffix += f"-{compatibility}"
+    if int(configuration.get("max_classes", 2)) != 2:
+        # A different task, not a different arm: it must not share a run
+        # directory with a cell trained on the unlearnable design.  This has to
+        # precede every early return below, or the vanilla cells collide with
+        # the vanilla arms of the original block.
+        suffix += "-learnable"
     if kind == "vanilla":
         return f"{prior_mode}-{kind}{suffix}"
     if kind == "slot_backbone_mixture":
@@ -256,6 +289,15 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
         # keeps the last occurrence, so it wins.  "none" rather than "" because
         # the flags are word-split by the shell.
         flags.append("--multiregime-dump none")
+    # Per-cell overrides come after SHARED_FLAGS so argparse's last-wins
+    # behaviour applies them; SHARED_FLAGS fixes features and class count for
+    # every earlier block and must keep doing so.
+    for name in ("max_classes", "min_features", "max_features", "multiregime_contamination"):
+        if name in configuration:
+            flags.append(f"--{name.replace('_', '-')} {configuration[name]:g}")
+    if int(configuration.get("max_classes", 2)) != 2:
+        # TabArena is a binary benchmark.
+        flags.append("--no-tabarena-every-epoch")
     if final:
         flags.append("--no-tensorboard")
     return " ".join(flags)

@@ -109,13 +109,18 @@ def make_prior(config: PlainPretrainingConfig, *, batches: int, device: str | to
 def query_loss(model: NanoTabPFNModel, batch) -> torch.Tensor:
     """Cross entropy on query labels only; support labels are model inputs."""
     if not isinstance(batch, dict):
-        logits = model(batch.support_x, batch.support_y, batch.query_x)[..., :2]
-        return F.cross_entropy(logits.reshape(-1, 2), batch.query_y.reshape(-1).long())
-    split = int(batch["train_test_split_index"])
-    x, y = batch["x"], batch["y"]
-    logits = model(x[:, :split], y[:, :split], x[:, split:])[..., :2]
-    target = y[:, split:].reshape(-1).long()
-    return F.cross_entropy(logits.reshape(-1, 2), target)
+        logits = model(batch.support_x, batch.support_y, batch.query_x)
+        target = batch.query_y
+    else:
+        split = int(batch["train_test_split_index"])
+        x, y = batch["x"], batch["y"]
+        logits = model(x[:, :split], y[:, :split], x[:, split:])
+        target = y[:, split:]
+    # The model's own output width, not a hardcoded 2: with three classes a
+    # `[..., :2]` slice would drop a class and renormalize over the rest, which
+    # trains fine and reports nonsense.
+    classes = logits.shape[-1]
+    return F.cross_entropy(logits.reshape(-1, classes), target.reshape(-1).long())
 
 
 def multiregime_batch(config: PlainPretrainingConfig, rng: np.random.Generator):
@@ -135,6 +140,7 @@ def multiregime_batch(config: PlainPretrainingConfig, rng: np.random.Generator):
         noise=0.0,
         contamination=config.multiregime_contamination,
         regime_coherence=config.regime_coherence,
+        num_classes=config.max_classes,
         device=config.device,
     )
 

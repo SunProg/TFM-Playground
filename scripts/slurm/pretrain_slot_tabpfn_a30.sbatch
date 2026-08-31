@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-11
+#SBATCH --array=0-99
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -26,6 +26,11 @@
 #                   vanilla   44         45           46             47
 #                   K=2       48         49           50             51
 #                   K=3       52         53           54             55
+#   learnable design (3 classes, 4 features, 15% contamination, 10 epochs)
+#     vanilla                 88         89           90             91
+#     slot head K=2           92         93           94             95
+#     slot_backbone K=2       96         97           98             99
+#
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59
 #                   K=3       60         61           62             63
@@ -39,6 +44,13 @@
 # cells that generate episodes rather than streaming the dump, which holds
 # coherence-0 episodes.  Their run directories carry a `-coh2` suffix so they
 # cannot resume from, or be confused with, their coherence-0 counterparts.
+#
+# 88-99 are the only cells trained on a task whose achievable detection AUC is
+# not chance.  detection_ceiling.py puts every earlier design at ~0.505, so a
+# model number on those could never be read: "the model failed" and "nothing
+# can succeed" produce the same value.  These run at 0.742 instead, with one
+# label per row and the regime still latent, so discovery is still required.
+# TabArena is off for them: it is a binary benchmark.
 #
 # 56-71 change the model rather than the task: the competition scores
 # `log p(y | x, slot)` instead of a dot product, holding the coherent task

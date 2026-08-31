@@ -246,8 +246,8 @@ def slot_batch_loss(model, batch) -> torch.Tensor:
     output = model(support_x, support_y, query_x)
     if isinstance(output, SlotRegimePrediction):
         return slot_regime_loss(output, target)
-    logits = output[..., :2]
-    return F.cross_entropy(logits.reshape(-1, 2), target.reshape(-1).long())
+    classes = output.shape[-1]
+    return F.cross_entropy(output.reshape(-1, classes), target.reshape(-1).long())
 
 
 def gate_regime_auc(prediction, episode) -> float | None:
@@ -286,6 +286,12 @@ def identifiable_support_rows(candidate_support_positive) -> torch.Tensor | None
         return None
     candidates = candidate_support_positive
     if candidates.shape[1] != 2:
+        return None
+    # `_candidate_probabilities` encodes a probability of class 1, so it means
+    # nothing above two classes -- there it returns the raw label index, which
+    # leaves the [0, 1] range.  Scoring unrestricted is correct then; silently
+    # thresholding a label index at 0.5 would not be.
+    if float(candidates.min()) < 0.0 or float(candidates.max()) > 1.0:
         return None
     return (candidates[:, 0] > 0.5) != (candidates[:, 1] > 0.5)
 
@@ -764,6 +770,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
     parser.add_argument("--tabarena-every-epoch", dest="tabarena_every_epoch", action="store_true")
+    # TabArena is binary; a multiclass run would score `logits[..., :2]` of a
+    # wider head, which is meaningless rather than merely uninformative.
+    parser.add_argument("--no-tabarena-every-epoch", dest="tabarena_every_epoch", action="store_false")
     parser.add_argument("--tabarena-cache-directory", default=defaults.tabarena_cache_directory)
     parser.add_argument("--no-competitive-slots", dest="competitive_slots", action="store_false")
     parser.set_defaults(
