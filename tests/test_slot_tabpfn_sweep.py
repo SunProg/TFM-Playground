@@ -31,6 +31,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
     COHERENT_STEPS,
+    COMPATIBILITY_MODES_SCREENED,
     EXTENDED_SLOT_COUNTS,
     MULTIREGIME_SHARE,
     REGIME_COHERENCE,
@@ -151,14 +152,41 @@ class SweepTests(unittest.TestCase):
         # label suffix is what keeps those repeats from colliding with the
         # coherence-0 runs' directories, where a resume would silently continue
         # training on the other task.
-        coherent = configurations[coherent_start:]
+        compatibility_start = coherent_start + 3 * len(PRIOR_MODES)
+        coherent = configurations[coherent_start:compatibility_start]
         self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in coherent))
         self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in coherent))
         self.assertEqual(
             [(c["model_kind"], c["num_slots"]) for c in coherent],
             [pair for pair in (("vanilla", 2), ("slot_backbone", 2), ("slot_backbone", 3)) for _ in PRIOR_MODES],
         )
-        self.assertTrue(all(label.endswith(f"-coh{REGIME_COHERENCE:g}") for label in labels[coherent_start:]))
+        self.assertTrue(
+            all(label.endswith(f"-coh{REGIME_COHERENCE:g}") for label in labels[coherent_start:compatibility_start])
+        )
+
+        # The compatibility block, appended last.  It changes what a slot's
+        # claim on a row is *scored by*, on the original coherence-0 task, and
+        # shares every other setting with the dot-product cells at 16-23 -- so
+        # the label suffix is again what stops it overwriting them.
+        compatibility = configurations[compatibility_start:]
+        self.assertEqual(
+            [(c["slot_compatibility"], c["num_slots"]) for c in compatibility],
+            [
+                (mode, k)
+                for mode in COMPATIBILITY_MODES_SCREENED
+                for k in (2, 3)
+                for _ in PRIOR_MODES
+            ],
+        )
+        self.assertTrue(all(c.get("regime_coherence", 0.0) == 0.0 for c in compatibility))
+        self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in compatibility))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in compatibility))
+        for label, c in zip(labels[compatibility_start:], compatibility, strict=True):
+            self.assertTrue(label.endswith(f"-{c['slot_compatibility']}"))
+        # Everything before it scores by dot product.
+        self.assertTrue(
+            all(c.get("slot_compatibility", "dot") == "dot" for c in configurations[:compatibility_start])
+        )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
@@ -170,6 +198,7 @@ class SweepTests(unittest.TestCase):
             self.assertIn(f"--model-kind {configuration['model_kind']}", flags)
             self.assertIn(f"--max-steps {configuration.get('max_steps', SCREENING_STEPS)}", flags)
             self.assertIn(f"--regime-coherence {coherence:g}", flags)
+            self.assertIn(f"--slot-compatibility {configuration.get('slot_compatibility', 'dot')}", flags)
             self.assertIn(f"--multiregime-share {MULTIREGIME_SHARE:g}", flags)
             # A coherent cell must not stream the dump, which holds coherence-0
             # episodes; a coherence-0 cell must leave the batch script's dump
@@ -177,19 +206,22 @@ class SweepTests(unittest.TestCase):
             # the other, silently.
             self.assertEqual("--multiregime-dump none" in flags, coherence != 0.0)
         # Prior mode, slot count and model kind are the only axes *within* one
-        # coherence level: strip all three and the remaining flags must be byte
-        # identical across that level, so the grid isolates them and nothing
-        # else drifts.  Coherence is a fourth axis between blocks, and it
-        # carries its own step budget and dump override by design.
-        for coherence in {c.get("regime_coherence", 0.0) for c in configurations}:
+        # block: strip all three and the remaining flags must be byte identical
+        # across that block, so the grid isolates them and nothing else drifts.
+        # Coherence and compatibility are the axes *between* blocks, and each
+        # legitimately carries its own step budget and dump override.
+        def block(configuration):
+            return (configuration.get("regime_coherence", 0.0), configuration.get("slot_compatibility", "dot"))
+
+        for key in {block(c) for c in configurations}:
             stripped = {
                 flags.replace(f"--prior-mode {c['prior_mode']} ", "")
                 .replace(f"--num-slots {c['num_slots']} ", "")
                 .replace(f"--model-kind {c['model_kind']} ", "")
                 for c, flags in zip(configurations, flag_sets, strict=True)
-                if c.get("regime_coherence", 0.0) == coherence
+                if block(c) == key
             }
-            self.assertEqual(len(stripped), 1)
+            self.assertEqual(len(stripped), 1, msg=f"flags drift inside block {key}")
 
     def test_seed_override_and_index_bounds(self):
         self.assertIn("--seed 99", configuration_flags(0, seed=99))

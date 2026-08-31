@@ -26,6 +26,11 @@
 #                   vanilla   44         45           46             47
 #                   K=2       48         49           50             51
 #                   K=3       52         53           54             55
+#   compatibility (coherence 0, 10 epochs) -- what a slot's claim is scored by
+#     likelihood    K=2       56         57           58             59
+#                   K=3       60         61           62             63
+#     additive      K=2       64         65           66             67
+#                   K=3       68         69           70             71
 #
 # Blocks are appended, never reordered, so an in-flight array keeps its
 # index-to-arm mapping when the grid is extended.  Indices 0-43 all run at
@@ -34,6 +39,11 @@
 # cells that generate episodes rather than streaming the dump, which holds
 # coherence-0 episodes.  Their run directories carry a `-coh2` suffix so they
 # cannot resume from, or be confused with, their coherence-0 counterparts.
+#
+# 56-71 change the model instead of the task: the competition scores
+# `log p(y | x, slot)` rather than a dot product, on the original coherence-0
+# task.  Their directories carry a `-likelihood` / `-additive` suffix for the
+# same reason.  Indices 16-23 are their matched dot-product controls.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

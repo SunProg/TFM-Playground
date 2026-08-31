@@ -4,7 +4,10 @@ import torch
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel, TransformerEncoderLayer
 from tfmplayground.models.slot_backbone import (
+    COMPATIBILITY_MODES,
+    SlotBackboneModel,
     SlotTransformerEncoderLayer,
+    bind_support_labels,
     collect_support_attention,
     install_slot_layers,
     slot_layer_parameters,
@@ -101,6 +104,103 @@ class SlotBackboneTests(unittest.TestCase):
         self.slotted(self.support_x, self.support_y, self.query_x)
         deepest = self.slotted.transformer_blocks[-1].last_support_attention
         torch.testing.assert_close(collect_support_attention(self.slotted), deepest, atol=0, rtol=0)
+
+
+class CompatibilityTests(unittest.TestCase):
+    """What a slot's claim on a support row is scored by.
+
+    The dot product asks whether a row *resembles* a slot, which is the right
+    question for pixels and the wrong one here: what marks a minority-regime row
+    is that its label disagrees with what the majority hypothesis predicts at
+    its features.  These check that the alternative scores are wired in, that
+    the default is untouched, and that a missing label is loud rather than a
+    silent fallback.
+    """
+
+    def setUp(self):
+        self.support_x, self.support_y, self.query_x = episode()
+
+    def _model(self, compatibility: str):
+        return install_slot_layers(backbone(), num_slots=SLOTS, compatibility=compatibility).eval()
+
+    def test_default_is_unchanged(self):
+        """Every earlier run scored by dot product; retyping the model and adding
+        the compatibility switch must not have moved that path at all."""
+        torch.manual_seed(0)
+        explicit = self._model("dot")(self.support_x, self.support_y, self.query_x)
+        torch.manual_seed(0)
+        default = install_slot_layers(backbone(), num_slots=SLOTS).eval()(
+            self.support_x, self.support_y, self.query_x
+        )
+        torch.testing.assert_close(explicit, default, atol=0, rtol=0)
+
+    def test_each_mode_scores_the_rows_differently(self):
+        attentions = {}
+        for mode in COMPATIBILITY_MODES:
+            model = self._model(mode)
+            model(self.support_x, self.support_y, self.query_x)
+            attentions[mode] = collect_support_attention(model)
+            self.assertEqual(attentions[mode].shape, (BATCH, SUPPORT, SLOTS))
+            torch.testing.assert_close(
+                attentions[mode].sum(-1), torch.ones(BATCH, SUPPORT), atol=1e-5, rtol=1e-5
+            )
+        self.assertFalse(torch.allclose(attentions["dot"], attentions["likelihood"]))
+        self.assertFalse(torch.allclose(attentions["dot"], attentions["additive"]))
+
+    def test_the_label_actually_changes_the_competition(self):
+        """The point of the likelihood score: flipping a row's label must move
+        which slot claims it.  Under the dot product the label reaches the row
+        state too, but nothing forces the competition to use it."""
+        model = self._model("likelihood")
+        model(self.support_x, self.support_y, self.query_x)
+        before = collect_support_attention(model).clone()
+        flipped = self.support_y.clone()
+        flipped[:, 0] = 1.0 - flipped[:, 0]
+        model(self.support_x, flipped, self.query_x)
+        self.assertFalse(torch.allclose(before[:, 0], collect_support_attention(model)[:, 0]))
+
+    def test_labels_are_bound_automatically_by_the_model(self):
+        """Every caller reaches the layers through `encode_table`, so none of
+        them has to know some layers score differently -- and none can forget."""
+        model = self._model("likelihood")
+        self.assertIsInstance(model, SlotBackboneModel)
+        model(self.support_x, self.support_y, self.query_x)
+        for layer in model.transformer_blocks:
+            self.assertEqual(layer.support_labels.shape, (BATCH, SUPPORT))
+
+    def test_a_missing_label_raises_rather_than_falling_back(self):
+        """A silent fallback to the dot product is exactly what made twelve
+        earlier runs measure a model nobody configured."""
+        model = self._model("likelihood")
+        bind_support_labels(model, None)
+        support = torch.randn(BATCH, SUPPORT, 16)
+        with self.assertRaises(RuntimeError):
+            model.transformer_blocks[0]._log_likelihood(support, torch.randn(BATCH, SLOTS, 16))
+
+    def test_gradients_reach_the_evidence_parameters(self):
+        for mode in ("likelihood", "additive"):
+            model = install_slot_layers(backbone(), num_slots=SLOTS, compatibility=mode)
+            model(self.support_x, self.support_y, self.query_x).square().mean().backward()
+            for layer in model.transformer_blocks:
+                self.assertIsNotNone(layer.class_keys.weight.grad)
+                if mode == "additive":
+                    self.assertIsNotNone(layer.evidence_scale.grad)
+
+    def test_evidence_enters_at_unit_weight(self):
+        """Not behind a zero-initialized gate: `slot_mix` already had to be
+        rescued from exactly that, having been ignored for 10,000 steps."""
+        for layer in self._model("additive").transformer_blocks:
+            self.assertAlmostEqual(float(torch.nn.functional.softplus(layer.evidence_scale.detach())), 1.0, places=4)
+
+    def test_evidence_parameters_are_counted_as_slot_machinery(self):
+        model = self._model("additive")
+        slot_only = sum(p.numel() for p in slot_layer_parameters(model))
+        pretrained = sum(p.numel() for p in backbone().parameters())
+        self.assertEqual(sum(p.numel() for p in model.parameters()) - slot_only, pretrained)
+
+    def test_unknown_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            install_slot_layers(backbone(), num_slots=SLOTS, compatibility="cosine")
 
 
 if __name__ == "__main__":

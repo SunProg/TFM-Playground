@@ -49,7 +49,11 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
 )
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_attention import slot_assignment_entropy
-from tfmplayground.models.slot_backbone import collect_support_attention, install_slot_layers
+from tfmplayground.models.slot_backbone import (
+    COMPATIBILITY_MODES,
+    collect_support_attention,
+    install_slot_layers,
+)
 from tfmplayground.models.slot_regime import (
     NanoTabPFNSlotRegimeModel,
     SlotRegimePrediction,
@@ -121,6 +125,11 @@ class SlotPretrainingConfig:
     num_slots: int = 2
     num_slot_iterations: int = 3
     competitive_slots: bool = True
+    #: What a slot's claim on a support row is scored by, for ``slot_backbone``.
+    #: "dot" is Locatello's own compatibility; "likelihood" scores
+    #: ``log p(y | x, slot)``; "additive" keeps both.  See
+    #: ``slot_backbone.COMPATIBILITY_MODES``.
+    slot_compatibility: Literal["dot", "likelihood", "additive"] = "dot"
     #: One "epoch" for progress reporting: TabArena runs on each boundary.
     epoch_steps: int = 500
     #: Retain a durable checkpoint this often.  Every epoch also overwrites a
@@ -157,6 +166,18 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         raise ValueError("max_steps must be positive.")
     if config.model_kind not in MODEL_KINDS:
         raise ValueError(f"model_kind must be one of {MODEL_KINDS}, got {config.model_kind!r}.")
+    if config.slot_compatibility not in COMPATIBILITY_MODES:
+        raise ValueError(
+            f"slot_compatibility must be one of {COMPATIBILITY_MODES}, got {config.slot_compatibility!r}."
+        )
+    if config.slot_compatibility != "dot" and config.model_kind != "slot_backbone":
+        # The head variant builds its slots from the finished representation and
+        # has no per-layer classifier to score a likelihood with, so silently
+        # accepting the flag there would report a run nobody configured.
+        raise ValueError(
+            f"slot_compatibility={config.slot_compatibility!r} is implemented for "
+            f"model_kind='slot_backbone', not {config.model_kind!r}."
+        )
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
     if config.require_cuda and not torch.cuda.is_available():
@@ -518,6 +539,8 @@ def build_model(config: SlotPretrainingConfig):
             num_slots=config.num_slots,
             num_slot_iterations=config.num_slot_iterations,
             competitive_slots=config.competitive_slots,
+            compatibility=config.slot_compatibility,
+            max_classes=config.max_classes,
         ).to(config.device)
     return NanoTabPFNSlotRegimeModel(
         backbone,
@@ -547,6 +570,8 @@ def _checkpoint(
                 "num_slots": config.num_slots,
                 "num_slot_iterations": config.num_slot_iterations,
                 "competitive_slots": config.competitive_slots,
+                "slot_compatibility": config.slot_compatibility,
+                "max_classes": config.max_classes,
             },
             "model": model.state_dict(),
             "training_config": asdict(config),
@@ -718,6 +743,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
     parser.add_argument("--model-kind", choices=MODEL_KINDS, default=defaults.model_kind)
+    parser.add_argument(
+        "--slot-compatibility", choices=COMPATIBILITY_MODES, default=defaults.slot_compatibility
+    )
     parser.add_argument("--prior-type", default=defaults.prior_type)
     parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")

@@ -22,6 +22,7 @@ switch, not a compatibility path.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import torch
@@ -134,6 +135,7 @@ class SlotAttention(nn.Module):
         *,
         generator: torch.Generator | None = None,
         slots: torch.Tensor | None = None,
+        compatibility: Callable[[torch.Tensor], torch.Tensor] | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Bind ``inputs`` to slots.
 
@@ -143,6 +145,25 @@ class SlotAttention(nn.Module):
             slots: Optional explicit initialization, ``(batch, num_slots,
                 slot_size)``, bypassing the Gaussian draw.  Used by the tests to
                 check permutation equivariance over the slot axis.
+            compatibility: Optional replacement for the dot-product score,
+                called with the layer-normalized slots and returning
+                ``(batch, num_inputs, num_slots)`` logits.  Everything else in
+                the loop is unchanged -- softmax over slots, weighted mean, GRU,
+                the same number of iterations -- so this swaps *what "belongs
+                together" means* and nothing else.
+
+                The default asks "does this row resemble this slot", which is
+                the right question for pixels and the wrong one here: what marks
+                a row as belonging to the minority regime is that its *label*
+                disagrees with what the majority hypothesis predicts at its
+                features, which is a residual against a hypothesis rather than a
+                similarity to a prototype.  A caller that scores
+                ``log p(y | x, slot)`` instead is still computing a dot product
+                against the slot -- with the row's label choosing the key, and a
+                log-partition term subtracted.  That subtraction is the part
+                that matters: the bare dot product lets a slot win rows by
+                growing its norm, without ever having to predict them
+                correctly, and one-slot-takes-all is reachable that way.
 
         Returns:
             ``slots`` of shape ``(batch, num_slots, slot_size)`` and the final
@@ -169,9 +190,18 @@ class SlotAttention(nn.Module):
         attention = None
         for _ in range(self.num_iterations):
             slots_previous = slots
-            q = self.project_q(self.norm_slots(slots)) * self.slot_size**-0.5
-            # (batch, num_inputs, num_slots)
-            logits = torch.matmul(k, q.transpose(-1, -2))
+            normalized_slots = self.norm_slots(slots)
+            if compatibility is None:
+                q = self.project_q(normalized_slots) * self.slot_size**-0.5
+                # (batch, num_inputs, num_slots)
+                logits = torch.matmul(k, q.transpose(-1, -2))
+            else:
+                logits = compatibility(normalized_slots)
+                if logits.shape != (inputs.shape[0], inputs.shape[1], self.num_slots):
+                    raise ValueError(
+                        "compatibility must return (batch, num_inputs, num_slots), "
+                        f"got {tuple(logits.shape)}."
+                    )
             # dim=-1 makes the slots compete for each input row; dim=-2 is the
             # ordinary cross-attention this module exists to replace.
             attention = logits.softmax(dim=-1 if self.competitive else -2)

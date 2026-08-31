@@ -364,6 +364,10 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             num_slots=architecture["num_slots"],
             num_slot_iterations=architecture.get("num_slot_iterations", 3),
             competitive_slots=architecture.get("competitive_slots", True),
+            # Absent from checkpoints written before the compatibility became
+            # configurable, and all of those scored by dot product.
+            compatibility=architecture.get("slot_compatibility", "dot"),
+            max_classes=architecture.get("max_classes", 2),
         )
         backbone.load_state_dict(state["model"])
         return backbone.to(device).eval()

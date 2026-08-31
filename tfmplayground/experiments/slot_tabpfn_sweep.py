@@ -48,6 +48,11 @@ MULTIREGIME_SHARE = 0.30
 #: to one piecewise label function that needs no mixture to fit.
 REGIME_COHERENCE = 2.0
 
+#: Compatibility functions screened in the compatibility block.  "dot" is not
+#: among them: indices 16-27 already ran it at these settings, so re-running it
+#: would buy nothing the existing cells do not already report.
+COMPATIBILITY_MODES_SCREENED = ("likelihood", "additive")
+
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
 #: Short budget for the coherent-regime block: 10 epochs, enough to see whether
@@ -140,6 +145,27 @@ def screening_configurations() -> list[dict[str, Any]]:
         for model_kind, num_slots in (("vanilla", 2), ("slot_backbone", 2), ("slot_backbone", 3))
         for prior_mode in PRIOR_MODES
     ]
+    # The compatibility block.  Everything above scores a slot's claim on a row
+    # by `<k(h_n), q(slot_k)>`, which asks whether the row *resembles* the slot.
+    # These score `log p(y_n | x_n, slot_k)` instead -- whether the slot's
+    # hypothesis *explains* the row's label -- either alone or added to the dot
+    # product.  Run at coherence 0, the original task, deliberately: if the
+    # label evidence is what was missing then it should bind on the task as it
+    # already stands, and needing the task changed too would be a much weaker
+    # result.  No vanilla control here; indices 12-15 already hold it, and 16-23
+    # hold the matching dot-product cells at these exact settings.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": num_slots,
+            "model_kind": "slot_backbone",
+            "slot_compatibility": compatibility,
+            "max_steps": COHERENT_STEPS,
+        }
+        for compatibility in COMPATIBILITY_MODES_SCREENED
+        for num_slots in (2, 3)
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 
@@ -156,6 +182,11 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     # counterpart -- resume would silently continue the wrong training.
     coherence = configuration.get("regime_coherence", 0.0)
     suffix = "" if coherence == 0.0 else f"-coh{coherence:g}"
+    # Likewise a different compatibility is a different model, sharing every
+    # other setting with the dot-product cells it must not overwrite.
+    compatibility = configuration.get("slot_compatibility", "dot")
+    if compatibility != "dot":
+        suffix += f"-{compatibility}"
     if kind == "vanilla":
         return f"{prior_mode}-{kind}{suffix}"
     if kind == "slot_backbone":
@@ -176,6 +207,7 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
         f"--prior-mode {configuration['prior_mode']}",
         f"--num-slots {configuration['num_slots']}",
         f"--model-kind {configuration.get('model_kind', 'slot')}",
+        f"--slot-compatibility {configuration.get('slot_compatibility', 'dot')}",
         f"--multiregime-share {MULTIREGIME_SHARE:g}",
         f"--regime-coherence {coherence:g}",
         f"--max-steps {configuration.get('max_steps', SCREENING_STEPS)}",
@@ -206,6 +238,7 @@ def _read_run(directory: Path) -> dict[str, Any] | None:
         "prior_mode": config.get("prior_mode"),
         "num_slots": config.get("num_slots"),
         "model_kind": config.get("model_kind", "slot"),
+        "slot_compatibility": config.get("slot_compatibility", "dot"),
         "regime_coherence": config.get("regime_coherence", 0.0),
         "seed": config.get("seed"),
         "multiregime_cross_entropy": selection.get("multiregime_cross_entropy"),
