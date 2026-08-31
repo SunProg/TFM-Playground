@@ -165,8 +165,8 @@ class SweepTests(unittest.TestCase):
         )
 
         # The compatibility block, appended last.  It changes what a slot's
-        # claim on a row is *scored by*, on the original coherence-0 task, and
-        # shares every other setting with the dot-product cells at 16-23 -- so
+        # claim on a row is *scored by*, holding the coherent task fixed, and
+        # shares every other setting with the dot-product cells at 48-55 -- so
         # the label suffix is again what stops it overwriting them.
         compatibility = configurations[compatibility_start:]
         self.assertEqual(
@@ -178,11 +178,11 @@ class SweepTests(unittest.TestCase):
                 for _ in PRIOR_MODES
             ],
         )
-        self.assertTrue(all(c.get("regime_coherence", 0.0) == 0.0 for c in compatibility))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in compatibility))
         self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in compatibility))
         self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in compatibility))
         for label, c in zip(labels[compatibility_start:], compatibility, strict=True):
-            self.assertTrue(label.endswith(f"-{c['slot_compatibility']}"))
+            self.assertTrue(label.endswith(f"-coh{REGIME_COHERENCE:g}-{c['slot_compatibility']}"))
         # Everything before it scores by dot product.
         self.assertTrue(
             all(c.get("slot_compatibility", "dot") == "dot" for c in configurations[:compatibility_start])

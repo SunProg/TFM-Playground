@@ -149,17 +149,20 @@ def screening_configurations() -> list[dict[str, Any]]:
     # by `<k(h_n), q(slot_k)>`, which asks whether the row *resembles* the slot.
     # These score `log p(y_n | x_n, slot_k)` instead -- whether the slot's
     # hypothesis *explains* the row's label -- either alone or added to the dot
-    # product.  Run at coherence 0, the original task, deliberately: if the
-    # label evidence is what was missing then it should bind on the task as it
-    # already stands, and needing the task changed too would be a much weaker
-    # result.  No vanilla control here; indices 12-15 already hold it, and 16-23
-    # hold the matching dot-product cells at these exact settings.
+    # product.
+    #
+    # Run at the same coherence as the block above, so the task is one a group
+    # is findable in at all and the only thing left varying is what the
+    # competition scores.  Cells 48-55 are then the matched dot-product control
+    # at identical settings, and the comparison across the two blocks is exactly
+    # the compatibility function.  A vanilla control rides in 44-47.
     grid += [
         {
             "prior_mode": prior_mode,
             "num_slots": num_slots,
             "model_kind": "slot_backbone",
             "slot_compatibility": compatibility,
+            "regime_coherence": REGIME_COHERENCE,
             "max_steps": COHERENT_STEPS,
         }
         for compatibility in COMPATIBILITY_MODES_SCREENED
