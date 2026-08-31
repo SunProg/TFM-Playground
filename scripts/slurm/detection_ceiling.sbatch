@@ -1,12 +1,12 @@
 #!/bin/bash -l
 #SBATCH --job-name=detection-ceiling
-#SBATCH --partition=gpu
+#SBATCH --partition=biomed_a30_gpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
-#SBATCH --time=04:00:00
+#SBATCH --time=03:00:00
 #SBATCH --array=0-79
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
@@ -30,9 +30,9 @@
 # nothing.  32-39 is its zero point.
 #
 # This work is entirely CPU-bound -- SCM generation and scikit-learn, nothing
-# on the device.  It runs on the gpu partition for queue availability and the
-# wider nodes, so the requested GPU sits idle; move it back to `cpu` if that
-# partition is free.
+# on the device -- so the requested GPU sits idle.  It runs on biomed_a30_gpu
+# regardless: that is this project's partition, and the time limit is 3h
+# because a30 rejects a 4h request.
 #
 # The index-to-cell mapping lives in detection_ceiling.py, not here; run
 # `python -m tfmplayground.experiments.detection_ceiling --list` to see it.
