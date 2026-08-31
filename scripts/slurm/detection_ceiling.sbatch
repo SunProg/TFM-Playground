@@ -1,9 +1,10 @@
 #!/bin/bash -l
 #SBATCH --job-name=detection-ceiling
-#SBATCH --partition=cpu
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
 #SBATCH --time=04:00:00
 #SBATCH --array=0-39
@@ -14,11 +15,15 @@
 #
 # The prior as originally built has a ceiling of about 0.54, so every binding
 # number this project reported was scored against a target nothing can reach.
-# This grid finds which design, if any, is worth training on -- and it is CPU
-# work, so it does not belong on a GPU partition.
+# This grid finds which design, if any, is worth training on.
 #
 #   0-31   classification, support x features x contamination x num_classes
 #   32-39  regression, same axes minus num_classes
+#
+# This work is entirely CPU-bound -- SCM generation and scikit-learn, nothing
+# on the device.  It runs on the gpu partition for queue availability and the
+# wider nodes, so the requested GPU sits idle; move it back to `cpu` if that
+# partition is free.
 #
 # The index-to-cell mapping lives in detection_ceiling.py, not here; run
 # `python -m tfmplayground.experiments.detection_ceiling --list` to see it.
