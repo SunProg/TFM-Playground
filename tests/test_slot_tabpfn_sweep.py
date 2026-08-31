@@ -168,7 +168,8 @@ class SweepTests(unittest.TestCase):
         # claim on a row is *scored by*, holding the coherent task fixed, and
         # shares every other setting with the dot-product cells at 48-55 -- so
         # the label suffix is again what stops it overwriting them.
-        compatibility = configurations[compatibility_start:]
+        mixture_start = compatibility_start + len(COMPATIBILITY_MODES_SCREENED) * 2 * len(PRIOR_MODES)
+        compatibility = configurations[compatibility_start:mixture_start]
         self.assertEqual(
             [(c["slot_compatibility"], c["num_slots"]) for c in compatibility],
             [
@@ -181,11 +182,29 @@ class SweepTests(unittest.TestCase):
         self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in compatibility))
         self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in compatibility))
         self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in compatibility))
-        for label, c in zip(labels[compatibility_start:], compatibility, strict=True):
+        for label, c in zip(labels[compatibility_start:mixture_start], compatibility, strict=True):
             self.assertTrue(label.endswith(f"-coh{REGIME_COHERENCE:g}-{c['slot_compatibility']}"))
         # Everything before it scores by dot product.
         self.assertTrue(
             all(c.get("slot_compatibility", "dot") == "dot" for c in configurations[:compatibility_start])
+        )
+
+        # The mixture-readout block, appended last.  Everything before it trains
+        # on one cross entropy over the finished representation, so the loss
+        # never mentions slots; these decode per slot and train on the mixture
+        # NLL.  Their labels always write K out, unlike the older blocks.
+        mixture = configurations[mixture_start:]
+        self.assertEqual(
+            [(c["slot_compatibility"], c["num_slots"]) for c in mixture],
+            [(mode, k) for mode in ("dot", "likelihood") for k in (2, 3) for _ in PRIOR_MODES],
+        )
+        self.assertTrue(all(c["model_kind"] == "slot_backbone_mixture" for c in mixture))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in mixture))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in mixture))
+        for label, c in zip(labels[mixture_start:], mixture, strict=True):
+            self.assertIn(f"-slot_mixture-k{c['num_slots']}-", label + "-")
+        self.assertTrue(
+            all(c["model_kind"] != "slot_backbone_mixture" for c in configurations[:mixture_start])
         )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):

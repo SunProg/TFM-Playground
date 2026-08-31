@@ -51,6 +51,7 @@ from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_attention import slot_assignment_entropy
 from tfmplayground.models.slot_backbone import (
     COMPATIBILITY_MODES,
+    SlotBackboneMixtureModel,
     collect_support_attention,
     install_slot_layers,
 )
@@ -63,7 +64,14 @@ from tfmplayground.models.slot_regime import (
 from tfmplayground.utils import set_randomness_seed
 
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
-MODEL_KINDS = ("slot", "vanilla", "slot_backbone")
+MODEL_KINDS = ("slot", "vanilla", "slot_backbone", "slot_backbone_mixture")
+#: The kinds whose slots live inside the transformer layers, so the competition
+#: runs before full row attention has mixed the regimes together.  They differ
+#: only in the readout: ``slot_backbone`` decodes the finished representation
+#: and trains on one cross entropy, so its objective never mentions slots;
+#: ``slot_backbone_mixture`` decodes one prediction per slot and trains on the
+#: mixture NLL, so it does.
+_SLOT_LAYER_KINDS = ("slot_backbone", "slot_backbone_mixture")
 
 
 @dataclass(frozen=True)
@@ -121,7 +129,7 @@ class SlotPretrainingConfig:
     #: the only variable when the two are compared.
     #: "slot_backbone" puts the competition inside every transformer layer
     #: instead of on top of the finished representation.
-    model_kind: Literal["slot", "vanilla", "slot_backbone"] = "slot"
+    model_kind: Literal["slot", "vanilla", "slot_backbone", "slot_backbone_mixture"] = "slot"
     num_slots: int = 2
     num_slot_iterations: int = 3
     competitive_slots: bool = True
@@ -170,13 +178,13 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         raise ValueError(
             f"slot_compatibility must be one of {COMPATIBILITY_MODES}, got {config.slot_compatibility!r}."
         )
-    if config.slot_compatibility != "dot" and config.model_kind != "slot_backbone":
+    if config.slot_compatibility != "dot" and config.model_kind not in _SLOT_LAYER_KINDS:
         # The head variant builds its slots from the finished representation and
         # has no per-layer classifier to score a likelihood with, so silently
         # accepting the flag there would report a run nobody configured.
         raise ValueError(
-            f"slot_compatibility={config.slot_compatibility!r} is implemented for "
-            f"model_kind='slot_backbone', not {config.model_kind!r}."
+            f"slot_compatibility={config.slot_compatibility!r} needs in-backbone slot layers "
+            f"({' or '.join(_SLOT_LAYER_KINDS)}), not model_kind={config.model_kind!r}."
         )
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
@@ -533,15 +541,18 @@ def build_model(config: SlotPretrainingConfig):
     backbone = NanoTabPFNModel(**config.architecture())
     if config.model_kind == "vanilla":
         return backbone.to(config.device)
-    if config.model_kind == "slot_backbone":
-        return install_slot_layers(
+    if config.model_kind in _SLOT_LAYER_KINDS:
+        install_slot_layers(
             backbone,
             num_slots=config.num_slots,
             num_slot_iterations=config.num_slot_iterations,
             competitive_slots=config.competitive_slots,
             compatibility=config.slot_compatibility,
             max_classes=config.max_classes,
-        ).to(config.device)
+        )
+        if config.model_kind == "slot_backbone":
+            return backbone.to(config.device)
+        return SlotBackboneMixtureModel(backbone, max_classes=config.max_classes).to(config.device)
     return NanoTabPFNSlotRegimeModel(
         backbone,
         num_slots=config.num_slots,
@@ -560,13 +571,16 @@ def _checkpoint(
     validation: dict[str, float] | None,
     episode_rng: np.random.Generator,
 ) -> dict[str, Any]:
-    if config.model_kind == "slot_backbone":
+    if config.model_kind in _SLOT_LAYER_KINDS:
         # Slot settings must travel with the checkpoint: the layers cannot be
-        # rebuilt from the five backbone keys alone.
+        # rebuilt from the five backbone keys alone.  The mixture variant adds a
+        # decoder outside the backbone, so its state dictionary is prefixed and
+        # the two kinds must not be loaded into one another -- `model_kind`
+        # records which is which.
         checkpoint = {
             "architecture": {
                 **config.architecture(),
-                "model_kind": "slot_backbone",
+                "model_kind": config.model_kind,
                 "num_slots": config.num_slots,
                 "num_slot_iterations": config.num_slot_iterations,
                 "competitive_slots": config.competitive_slots,

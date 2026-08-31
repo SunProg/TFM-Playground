@@ -1,10 +1,13 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel, TransformerEncoderLayer
 from tfmplayground.models.slot_backbone import (
     COMPATIBILITY_MODES,
+    SlotBackboneMixtureModel,
     SlotBackboneModel,
     SlotTransformerEncoderLayer,
     bind_support_labels,
@@ -12,6 +15,7 @@ from tfmplayground.models.slot_backbone import (
     install_slot_layers,
     slot_layer_parameters,
 )
+from tfmplayground.models.slot_regime import SlotRegimePrediction, slot_regime_loss
 
 BATCH, SUPPORT, QUERY, FEATURES, SLOTS = 2, 12, 5, 3, 3
 
@@ -201,6 +205,101 @@ class CompatibilityTests(unittest.TestCase):
     def test_unknown_mode_is_rejected(self):
         with self.assertRaises(ValueError):
             install_slot_layers(backbone(), num_slots=SLOTS, compatibility="cosine")
+
+
+class MixtureReadoutTests(unittest.TestCase):
+    """The objective has to mention the slots, or nothing rewards using them.
+
+    `slot_backbone` trains on one cross entropy over the finished
+    representation, so the loss cannot see which slot claimed which row and
+    one-slot-takes-all costs nothing -- measured across two studies and both
+    compatibility functions, `purity - base` was exactly zero everywhere.  This
+    readout decodes one prediction per slot and trains on the mixture NLL, so
+    the loss decomposes over slots while the competition still runs inside the
+    layers.
+    """
+
+    def setUp(self):
+        self.support_x, self.support_y, self.query_x = episode()
+        self.model = SlotBackboneMixtureModel(install_slot_layers(backbone(), num_slots=SLOTS)).eval()
+
+    def test_shapes_and_a_normalized_mixture(self):
+        p = self.model(self.support_x, self.support_y, self.query_x)
+        self.assertEqual(p.slot_logits.shape, (BATCH, QUERY, SLOTS, 2))
+        self.assertEqual(p.log_gate.shape, (BATCH, QUERY, SLOTS))
+        self.assertEqual(p.support_attention.shape, (BATCH, SUPPORT, SLOTS))
+        torch.testing.assert_close(p.gate().sum(-1), torch.ones(BATCH, QUERY), atol=1e-5, rtol=1e-5)
+        torch.testing.assert_close(
+            p.marginal_probabilities().sum(-1), torch.ones(BATCH, QUERY), atol=1e-5, rtol=1e-5
+        )
+
+    def test_the_loss_reaches_the_competition(self):
+        """The whole point: gradient from the mixture NLL must arrive at the slot
+        machinery inside the layers, not stop at a decoder bolted on top."""
+        model = SlotBackboneMixtureModel(install_slot_layers(backbone(), num_slots=SLOTS))
+        target = torch.randint(0, 2, (BATCH, QUERY))
+        slot_regime_loss(model(self.support_x, self.support_y, self.query_x), target).backward()
+        self.assertIsNotNone(model.decoder.body[0].weight.grad)
+        for layer in model.backbone.transformer_blocks:
+            self.assertIsNotNone(layer.slot_attention.slots_mu.grad)
+            self.assertIsNotNone(layer.slot_attention.gru.weight_ih.grad)
+            self.assertIsNotNone(layer.slot_mix.grad)
+
+    def test_slots_are_kept_undetached_for_that_gradient(self):
+        """`last_support_attention` is detached because it is only ever scored;
+        `last_slots` must not be, because the loss trains through it."""
+        model = SlotBackboneMixtureModel(install_slot_layers(backbone(), num_slots=SLOTS))
+        model(self.support_x, self.support_y, self.query_x)
+        for layer in model.backbone.transformer_blocks:
+            self.assertTrue(layer.last_slots.requires_grad)
+            self.assertFalse(layer.last_support_attention.requires_grad)
+
+    def test_marginal_is_invariant_to_slot_order(self):
+        """`logsumexp` over slots is a sum, so it cannot depend on their order --
+        which is why no slot-to-regime matching appears in the loss."""
+        p = self.model(self.support_x, self.support_y, self.query_x)
+        permutation = torch.tensor([1, 2, 0])
+        shuffled = SlotRegimePrediction(
+            slot_logits=p.slot_logits[:, :, permutation],
+            log_gate=p.log_gate[:, :, permutation],
+            support_attention=p.support_attention[:, :, permutation],
+        )
+        torch.testing.assert_close(
+            shuffled.marginal_log_probabilities(), p.marginal_log_probabilities(), atol=1e-6, rtol=1e-6
+        )
+
+    def test_a_backbone_without_slot_layers_is_rejected(self):
+        with self.assertRaises(ValueError):
+            SlotBackboneMixtureModel(backbone())
+
+    def test_checkpoint_round_trip_through_the_plain_signature(self):
+        """Every evaluator calls this like a NanoTabPFNModel, so it has to come
+        back wrapped and return logits of the ordinary shape."""
+        from tfmplayground.models.slot_regime import load_checkpoint_for_inference
+
+        expected = self.model(self.support_x, self.support_y, self.query_x).marginal_log_probabilities()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "checkpoint.pth"
+            torch.save(
+                {
+                    "architecture": {
+                        "embedding_size": 16,
+                        "num_attention_heads": 2,
+                        "mlp_hidden_size": 32,
+                        "num_layers": 2,
+                        "num_outputs": 3,
+                        "model_kind": "slot_backbone_mixture",
+                        "num_slots": SLOTS,
+                        "max_classes": 2,
+                    },
+                    "model": self.model.state_dict(),
+                },
+                path,
+            )
+            restored = load_checkpoint_for_inference(path)
+        actual = restored(self.support_x, self.support_y, self.query_x)
+        self.assertEqual(actual.shape, (BATCH, QUERY, 2))
+        torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
 
 
 if __name__ == "__main__":

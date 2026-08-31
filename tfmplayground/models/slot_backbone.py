@@ -123,6 +123,11 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         self._split: int | None = None
         self.support_labels: torch.Tensor | None = None
         self.last_support_attention: torch.Tensor | None = None
+        # Kept *without* detaching, unlike the attention above: a mixture head
+        # reads these to decode one prediction per slot, so gradient from the
+        # loss has to reach the competition through them.  The attention is only
+        # ever scored, never trained against, so detaching it is right.
+        self.last_slots: torch.Tensor | None = None
 
     @classmethod
     def from_pretrained(
@@ -226,6 +231,7 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
             return src
         slots, attention = self.slot_attention(support, compatibility=self._compatibility(support))
         self.last_support_attention = attention.detach()
+        self.last_slots = slots
         reconstruction = self.write_norm(self.write_back(target, slots, slots, need_weights=False)[0])
         mix = torch.sigmoid(self.slot_mix)
         updated = (1.0 - mix) * target + mix * reconstruction
@@ -317,6 +323,79 @@ def slot_layer_parameters(backbone: NanoTabPFNModel):
                 yield layer.evidence_scale
 
 
+def deepest_slot_layer(backbone: NanoTabPFNModel) -> SlotTransformerEncoderLayer | None:
+    """The last slot layer that actually ran, or ``None`` if none did."""
+    found = None
+    for layer in backbone.transformer_blocks:
+        if isinstance(layer, SlotTransformerEncoderLayer) and layer.last_slots is not None:
+            found = layer
+    return found
+
+
+class SlotBackboneMixtureModel(nn.Module):
+    """In-backbone slots read out as a per-query mixture over slots.
+
+    The gap this closes.  ``slot_backbone`` puts the competition inside every
+    layer but trains against a single cross entropy on the finished
+    representation, so the objective never mentions slots: nothing rewards using
+    two rather than one, and one-slot-takes-all costs nothing.  Measured across
+    two studies and both compatibility functions, ``purity - base`` was exactly
+    zero in every cell.  ``slot_regime.NanoTabPFNSlotRegimeModel`` does have the
+    mixture objective, but builds its slots from the *finished* representation,
+    after six layers of full row attention have already mixed the regimes
+    together -- which is why the in-backbone variant exists.
+
+    Neither had both properties.  This has both: competition before the rows are
+    mixed, and a loss that decomposes over slots.  ``logsumexp`` over ``k`` is
+    permutation invariant, so no slot-to-regime matching appears anywhere.
+
+    The slots come from the deepest layer that ran, matching what
+    ``collect_support_attention`` already scores, and the decoder is the same
+    alpha-mask one the head variant uses: class logits and a routing logit from
+    one pathway, so routing cannot drift away from decoder competence.
+    """
+
+    def __init__(self, backbone: NanoTabPFNModel, *, max_classes: int = 2, decoder_hidden_size: int | None = None):
+        super().__init__()
+        from tfmplayground.models.slot_regime import _SlotDecoder  # local: avoids an import cycle
+
+        if not any(isinstance(layer, SlotTransformerEncoderLayer) for layer in backbone.transformer_blocks):
+            raise ValueError("The backbone has no slot layers; call install_slot_layers first.")
+        self.backbone = backbone
+        self.max_classes = max_classes
+        self.decoder = _SlotDecoder(
+            backbone.embedding_size, decoder_hidden_size or backbone.mlp_hidden_size, max_classes
+        )
+
+    @property
+    def num_slots(self) -> int:
+        for layer in self.backbone.transformer_blocks:
+            if isinstance(layer, SlotTransformerEncoderLayer):
+                return layer.num_slots
+        raise ValueError("The backbone has no slot layers.")
+
+    def forward(self, support_x: torch.Tensor, support_y: torch.Tensor, query_x: torch.Tensor):
+        from tfmplayground.models.slot_regime import SlotRegimePrediction  # local: avoids an import cycle
+
+        split = support_x.shape[1]
+        x = torch.cat((support_x, query_x), dim=1) if query_x is not None else support_x
+        encoded = self.backbone.encode_table((x, support_y), split)
+        query_states = encoded[:, split:, -1, :]
+        layer = deepest_slot_layer(self.backbone)
+        if layer is None or layer.last_slots is None:
+            raise RuntimeError("No slot layer produced slots; the support set may have been empty.")
+        slot_logits, mask_logits = self.decoder(query_states, layer.last_slots)
+        return SlotRegimePrediction(
+            slot_logits=slot_logits,
+            # Softmax over slots, so each query row's weights sum to one and the
+            # mixture is a genuine per-row distribution rather than one weight
+            # per episode.  Query rows carry no label, so they cannot compete for
+            # slots the way support rows do; this is the alpha-mask analogue.
+            log_gate=nn.functional.log_softmax(mask_logits, dim=-1),
+            support_attention=collect_support_attention(self.backbone),
+        )
+
+
 def collect_support_attention(backbone: NanoTabPFNModel) -> torch.Tensor | None:
     """Per-row slot attention from the deepest slot layer that produced any.
 
@@ -333,10 +412,12 @@ def collect_support_attention(backbone: NanoTabPFNModel) -> torch.Tensor | None:
 
 __all__ = [
     "COMPATIBILITY_MODES",
+    "SlotBackboneMixtureModel",
     "SlotBackboneModel",
     "SlotTransformerEncoderLayer",
     "bind_support_labels",
     "collect_support_attention",
+    "deepest_slot_layer",
     "install_slot_layers",
     "slot_layer_parameters",
 ]

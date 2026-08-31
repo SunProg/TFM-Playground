@@ -347,10 +347,10 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
 
     state = torch.load(str(path), map_location="cpu", weights_only=False)
     architecture = state.get("architecture") or {}
-    if architecture.get("model_kind") == "slot_backbone":
+    if architecture.get("model_kind") in ("slot_backbone", "slot_backbone_mixture"):
         # Slots live inside the transformer layers, so the layers must be
         # installed before the state dict will match.
-        from tfmplayground.models.slot_backbone import install_slot_layers
+        from tfmplayground.models.slot_backbone import SlotBackboneMixtureModel, install_slot_layers
 
         backbone = NanoTabPFNModel(
             num_layers=architecture["num_layers"],
@@ -369,8 +369,14 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             compatibility=architecture.get("slot_compatibility", "dot"),
             max_classes=architecture.get("max_classes", 2),
         )
-        backbone.load_state_dict(state["model"])
-        return backbone.to(device).eval()
+        if architecture["model_kind"] == "slot_backbone":
+            backbone.load_state_dict(state["model"])
+            return backbone.to(device).eval()
+        # The mixture variant predicts through a slot decoder, so it goes back
+        # behind the plain signature the same way the head variant does.
+        mixture = SlotBackboneMixtureModel(backbone, max_classes=architecture.get("max_classes", 2))
+        mixture.load_state_dict(state["model"])
+        return SlotLogitsAdapter(mixture).to(device).eval()
     if is_slot_regime_checkpoint(state):
         model = build_slot_regime_model(state["architecture"])
         model.load_state_dict(state["model"])
@@ -388,9 +394,13 @@ def is_slot_regime_checkpoint(checkpoint: dict[str, Any]) -> bool:
     architecture = checkpoint.get("architecture")
     if not isinstance(architecture, dict):
         return False
-    # slot_backbone also carries num_slots but is a plain NanoTabPFNModel with
-    # slot layers installed, not this head.
-    return "num_slots" in architecture and architecture.get("model_kind") != "slot_backbone"
+    # The in-backbone kinds also carry num_slots but are a NanoTabPFNModel with
+    # slot layers installed, not this head, so their state dictionaries do not
+    # match it.
+    return "num_slots" in architecture and architecture.get("model_kind") not in (
+        "slot_backbone",
+        "slot_backbone_mixture",
+    )
 
 
 __all__ = [

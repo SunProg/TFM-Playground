@@ -169,6 +169,32 @@ def screening_configurations() -> list[dict[str, Any]]:
         for num_slots in (2, 3)
         for prior_mode in PRIOR_MODES
     ]
+    # The mixture-readout block.  Every cell above trains `slot_backbone` on one
+    # cross entropy over the finished representation, so the objective never
+    # mentions slots: nothing rewards using two rather than one, and
+    # one-slot-takes-all costs nothing.  That held across both compatibility
+    # functions and both coherences -- `purity - base` was exactly zero in every
+    # cell -- which is why changing what the competition *scores* could not have
+    # helped on its own.
+    #
+    # `slot_backbone_mixture` decodes one prediction per slot and trains on the
+    # mixture NLL, so the loss decomposes over slots while the competition still
+    # runs inside the layers.  Both compatibilities are carried across, because
+    # the loss and the score are separate claims and this is the first time
+    # either has been tested with an objective that can see the split.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": num_slots,
+            "model_kind": "slot_backbone_mixture",
+            "slot_compatibility": compatibility,
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+        }
+        for compatibility in ("dot", "likelihood")
+        for num_slots in (2, 3)
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 
@@ -192,6 +218,12 @@ def configuration_label(configuration: dict[str, Any]) -> str:
         suffix += f"-{compatibility}"
     if kind == "vanilla":
         return f"{prior_mode}-{kind}{suffix}"
+    if kind == "slot_backbone_mixture":
+        # A new block, so nothing constrains its names: K is always written out.
+        # The older blocks leave K=2 unmarked, which reads badly next to the
+        # `-coh2` coherence suffix -- four directories showing no slot count and
+        # one showing `-k3` invites exactly the misreading it looks like.
+        return f"{prior_mode}-slot_mixture-k{num_slots}{suffix}"
     if kind == "slot_backbone":
         # K=2 keeps the bare label the already-running block was submitted with.
         base = f"{prior_mode}-{kind}" if num_slots == 2 else f"{prior_mode}-{kind}-k{num_slots}"
