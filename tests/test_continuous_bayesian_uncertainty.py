@@ -26,6 +26,7 @@ from tfmplayground.experiments.continuous_episodes import (
     exact_candidate_posterior,
     random_label_episode,
     sample_episode,
+    _scm_candidates,
     sample_multiregime_episode,
     sample_scm_multiregime_episode,
     sample_paired_episode,
@@ -1396,3 +1397,53 @@ class BinaryOutcomeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MulticlassMultiregimeTests(unittest.TestCase):
+    """``num_classes`` has to reach the label generator, not just be accepted.
+
+    It first went in as a no-op: the SCM builders passed it to
+    ``SCMPrior(max_classes=...)``, but the labels come from ``Reg2Cls(params)``
+    and ``_sample_params`` overwrote ``params["num_classes"]`` with a literal 2.
+    Nothing raised, the episodes were valid, and every class count produced
+    byte-identical binary labels -- so a sweep over ``num_classes`` would have
+    reported "more classes does not help" from twelve identical rows.
+
+    These assert the effect rather than the plumbing, which is the only way to
+    catch that class of bug.
+    """
+
+    @staticmethod
+    def _candidates(num_classes, seed=3, draws=4):
+        rng = np.random.default_rng(seed)
+        return [
+            _scm_candidates("mlp_scm", 2, 72, 4, rng, num_classes=num_classes)[1] for _ in range(draws)
+        ]
+
+    def test_label_cardinality_follows_the_parameter(self):
+        for num_classes in (2, 3, 5):
+            observed = {len(np.unique(labels[0])) for labels in self._candidates(num_classes)}
+            self.assertTrue(
+                observed and max(observed) <= num_classes,
+                f"num_classes={num_classes} produced label counts {sorted(observed)}",
+            )
+            if num_classes > 2:
+                # The bug's signature: still binary despite asking for more.
+                self.assertGreater(max(observed), 2, f"num_classes={num_classes} stayed binary")
+
+    def test_more_classes_makes_the_two_rules_agree_less(self):
+        """Agreement is what makes a relabelled row undetectable, so this is the
+        quantity the parameter exists to move.  Two independent rules agree with
+        probability about ``1 / num_classes``."""
+        agreement = {
+            num_classes: float(np.mean([np.mean(labels[0] == labels[1]) for labels in self._candidates(num_classes)]))
+            for num_classes in (2, 3, 5)
+        }
+        self.assertGreater(agreement[2], agreement[3])
+        self.assertGreater(agreement[3], agreement[5])
+        self.assertLess(agreement[5], 0.5 * agreement[2])
+
+    def test_the_default_is_still_binary(self):
+        rng = np.random.default_rng(3)
+        _, labels = _scm_candidates("mlp_scm", 2, 72, 4, rng)
+        self.assertEqual(len(np.unique(labels[0])), 2)

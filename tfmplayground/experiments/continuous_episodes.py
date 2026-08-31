@@ -235,9 +235,18 @@ def _scm_candidates(
     features: int,
     rng: np.random.Generator,
     *,
+    num_classes: int = 2,
     max_attempts: int = 32,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Draw structured TabICL/SCM candidates on one shared feature table."""
+    """Draw structured TabICL/SCM candidates on one shared feature table.
+
+    ``num_classes`` raises the label cardinality.  Two independently drawn label
+    functions agree on a row with probability about ``1 / num_classes``, and an
+    agreeing row is exactly one that cannot be detected as relabelled -- so this
+    is the direct lever on how much of the contamination is identifiable at all.
+    It works against the other constraint: with the support split more ways,
+    each label function is harder to infer from the same number of rows.
+    """
     from tabicl.prior._dataset import SCMPrior
     from tabicl.prior._mlp_scm import MLPSCM
     from tabicl.prior._reg2cls import Reg2Cls
@@ -264,7 +273,7 @@ def _scm_candidates(
         batch_size=1,
         min_features=features,
         max_features=features,
-        max_classes=2,
+        max_classes=num_classes,
         min_seq_len=rows,
         max_seq_len=rows + 1,
         min_train_size=max(2, rows // 2),
@@ -277,7 +286,7 @@ def _scm_candidates(
     try:
         for _attempt in range(max_attempts):
             _seed_all(int(rng.integers(0, 2**31 - 1)))
-            params = _sample_params(prior, episode_config, rows, features)
+            params = _sample_params(prior, episode_config, rows, features, num_classes=num_classes)
             prior_cls = MLPSCM if params["prior_type"] == "mlp_scm" else TreeSCM
             models = []
             for _candidate in range(num_candidates):
@@ -305,14 +314,19 @@ def _scm_candidates(
             if (
                 processed_x is not None
                 and torch.isfinite(processed_x).all()
-                and all(torch.isfinite(value).all() and value.unique().numel() == 2 for value in labels)
+                and all(
+                    torch.isfinite(value).all() and 2 <= value.unique().numel() <= num_classes
+                    for value in labels
+                )
             ):
                 x_array = processed_x.reshape(-1, features).cpu().numpy().astype(np.float64)
                 y_array = torch.stack(labels).reshape(num_candidates, -1).cpu().numpy().astype(np.int64)
                 return x_array[:rows], y_array[:, :rows]
     finally:
         _set_rng_state(outer_state)
-    raise RuntimeError(f"Could not draw finite binary {family} candidates within {max_attempts} attempts.")
+    raise RuntimeError(
+        f"Could not draw finite {num_classes}-class {family} candidates within {max_attempts} attempts."
+    )
 
 
 def _scm_cross_family_candidates(
@@ -321,6 +335,7 @@ def _scm_cross_family_candidates(
     features: int,
     rng: np.random.Generator,
     *,
+    num_classes: int = 2,
     max_attempts: int = 32,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Draw one MLP-SCM and one tree-SCM label rule on an identical X table."""
@@ -357,7 +372,7 @@ def _scm_cross_family_candidates(
                     batch_size=1,
                     min_features=features,
                     max_features=features,
-                    max_classes=2,
+                    max_classes=num_classes,
                     min_seq_len=rows,
                     max_seq_len=rows + 1,
                     min_train_size=max(2, rows // 2),
@@ -367,7 +382,7 @@ def _scm_cross_family_candidates(
                     device="cpu",
                 )
                 _seed_all(int(rng.integers(0, 2**31 - 1)))
-                params = _sample_params(prior, episode_config, rows, features)
+                params = _sample_params(prior, episode_config, rows, features, num_classes=num_classes)
                 prior_cls = MLPSCM if family == "mlp_scm" else TreeSCM
                 _seed_all(int(rng.integers(0, 2**31 - 1)))
                 with torch.no_grad():
@@ -396,7 +411,7 @@ def _scm_cross_family_candidates(
                 if (
                     processed_x is not None
                     and torch.isfinite(processed_x).all()
-                    and all(value.unique().numel() == 2 for value in labels)
+                    and all(2 <= value.unique().numel() <= num_classes for value in labels)
                 ):
                     x_array = processed_x.reshape(-1, features).cpu().numpy().astype(np.float64)
                     y_array = torch.stack(labels).reshape(2, -1).cpu().numpy().astype(np.int64)
@@ -975,6 +990,7 @@ def _build_scm_multiregime_item(
     features: int,
     contamination: float,
     regime_coherence: float = 0.0,
+    num_classes: int = 2,
 ) -> dict[str, np.ndarray]:
     """Like ``_build_multiregime_item``, but the two regimes are two draws from
     the official TabICL SCM prior (``_scm_candidates``) sharing one feature
@@ -982,10 +998,10 @@ def _build_scm_multiregime_item(
     """
     rows = support_size + query_count + 16
     if isinstance(family, tuple):
-        x, labels = _scm_cross_family_candidates(family, rows, features, rng)
+        x, labels = _scm_cross_family_candidates(family, rows, features, rng, num_classes=num_classes)
         family_name = "+".join(family)
     else:
-        x, labels = _scm_candidates(family, 2, rows, features, rng)
+        x, labels = _scm_candidates(family, 2, rows, features, rng, num_classes=num_classes)
         family_name = family
     x = x.astype(np.float32)
     labels_base, labels_other = labels[0], labels[1]
@@ -1046,6 +1062,7 @@ def sample_scm_multiregime_episode(
     noise: float | None = None,
     contamination: float | None = None,
     regime_coherence: float = 0.0,
+    num_classes: int = 2,
     device: torch.device | str = "cpu",
     max_support_size: int = max(SUPPORT_SIZES),
 ) -> ContinuousEpisode:
@@ -1095,6 +1112,7 @@ def sample_scm_multiregime_episode(
             features=features,
             contamination=contamination,
             regime_coherence=regime_coherence,
+            num_classes=num_classes,
         )
         for _ in range(batch_size)
     ]
@@ -1115,6 +1133,7 @@ def sample_scm_multiregime_episode(
             "features": features,
             "contamination": contamination,
             "regime_coherence": regime_coherence,
+            "num_classes": num_classes,
             "family": family_name,
         },
         _stack(items, "query_regime_source"),

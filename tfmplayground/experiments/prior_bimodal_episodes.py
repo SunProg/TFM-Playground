@@ -48,7 +48,9 @@ def _set_rng_state(state: tuple[object, tuple, torch.Tensor]) -> None:
     torch.random.set_rng_state(state[2])
 
 
-def _sample_params(prior, config: PriorBimodalConfig, total_rows: int, features: int) -> dict:
+def _sample_params(
+    prior, config: PriorBimodalConfig, total_rows: int, features: int, *, num_classes: int = 2
+) -> dict:
     sampled = prior.hp_sampling()
     sampled = {key: value() if callable(value) else value for key, value in sampled.items()}
     prior_type = prior.get_prior()
@@ -59,7 +61,7 @@ def _sample_params(prior, config: PriorBimodalConfig, total_rows: int, features:
         "train_size": config.initial_support_count,
         "max_features": features,
         "num_features": features,
-        "num_classes": 2,
+        "num_classes": num_classes,
         "prior_type": prior_type,
         "device": config.device,
         # Make the paired feature transformation deterministic and shared.
