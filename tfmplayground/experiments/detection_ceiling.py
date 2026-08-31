@@ -49,7 +49,12 @@ from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostin
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import KFold, StratifiedKFold
 
-from tfmplayground.experiments.continuous_episodes import _scm_candidates, _seed_all
+from tfmplayground.experiments.continuous_episodes import (
+    _contaminated_positions,
+    _regime_direction,
+    _scm_candidates,
+    _seed_all,
+)
 from tfmplayground.experiments.prior_bimodal_episodes import (
     PriorBimodalConfig,
     _rng_state,
@@ -73,6 +78,20 @@ SUPPORT_SIZES = (128, 512)
 #: behaviour every earlier measurement used) and 1.0 makes the second rule the
 #: negation of the first.
 SEPARATIONS = (0.0, 0.5, 0.9)
+#: Labels per row for the Dawid-Skene mechanism.  Given the true label the
+#: annotators' responses are conditionally independent, and that assumption is
+#: what makes the confusion matrices and the label prior identifiable.  This is
+#: the one mechanism that makes an unidentifiable per-instance problem
+#: identifiable *by construction* rather than by making instances easier.
+REPEAT_COUNTS = (2, 3)
+#: Fraction of the episode's rows revealed as known-clean.  The label-noise literature's
+#: anchor-point assumption: instances known to belong to a class with
+#: probability one.  Cheapest to bolt on, weakest guarantee.
+ANCHOR_FRACTIONS = (0.10, 0.25)
+#: Gate strength for the combined cells.  Mixture-of-experts identifiability
+#: needs a covariate-dependent gate *and* separated components; every earlier
+#: measurement had at most one of the two.
+GATE_COHERENCE = 2.0
 EPISODES = 60
 SEED = 11
 
@@ -120,6 +139,53 @@ def ceiling_cells() -> list[dict[str, Any]]:
         for separation in SEPARATIONS[1:]
         for support in SUPPORT_SIZES
         for features in FEATURE_COUNTS
+        for contamination in CONTAMINATIONS
+    ]
+    # The remaining mechanisms, each on the *hardest* baseline -- two classes,
+    # twelve features -- where the ceiling is 0.505.  Anything that rescues that
+    # cell is doing real work rather than riding an easier task.
+    grid += [
+        {
+            "target": "classification",
+            "mechanism": "repeated",
+            "num_classes": 2,
+            "features": 12,
+            "contamination": contamination,
+            "support": support,
+            "repeats": repeats,
+        }
+        for repeats in REPEAT_COUNTS
+        for support in SUPPORT_SIZES
+        for contamination in CONTAMINATIONS
+    ]
+    grid += [
+        {
+            "target": "classification",
+            "mechanism": "anchors",
+            "num_classes": 2,
+            "features": 12,
+            "contamination": contamination,
+            "support": support,
+            "anchor_fraction": anchor_fraction,
+        }
+        for anchor_fraction in ANCHOR_FRACTIONS
+        for support in SUPPORT_SIZES
+        for contamination in CONTAMINATIONS
+    ]
+    # Gate and separation together, which is the mixture-of-experts construction
+    # proper.  `regime_coherence` alone moved the ceiling from 0.540 to 0.507.
+    grid += [
+        {
+            "target": "regression",
+            "num_classes": 0,
+            "features": 12,
+            "contamination": contamination,
+            "support": support,
+            "separation": separation,
+            "coherence": GATE_COHERENCE,
+        }
+        for separation in SEPARATIONS[1:]
+        for support in SUPPORT_SIZES
         for contamination in CONTAMINATIONS
     ]
     return grid
@@ -252,6 +318,7 @@ def measure(cell: dict[str, Any], episodes: int = EPISODES, seed: int = SEED) ->
     rng = np.random.default_rng(seed)
     support, features = int(cell["support"]), int(cell["features"])
     contamination, regression = float(cell["contamination"]), cell["target"] == "regression"
+    mechanism, coherence = cell.get("mechanism", "plain"), float(cell.get("coherence", 0.0))
     restricted, unrestricted, identifiable, clean_fit, separation = [], [], [], [], []
 
     for _ in range(episodes):
@@ -267,31 +334,78 @@ def measure(cell: dict[str, Any], episodes: int = EPISODES, seed: int = SEED) ->
         except RuntimeError:
             continue
         x, base, other = x[:support], rules[0][:support], rules[1][:support]
-        y = base.copy()
-        tag = np.zeros(support, dtype=int)
         count = int(round(support * contamination))
-        positions = rng.choice(support, size=count, replace=False)
-        y[positions] = other[positions]
-        tag[positions] = 1
+        # The gate: at coherence 0 this is a uniform subset, which is what every
+        # earlier measurement used.  Above 0 the relabelled rows concentrate on
+        # one side of a per-episode hyperplane.
+        direction = _regime_direction(rng, x.shape[1], coherence)
+
+        def draw():
+            """One draw of the mixture: which rows take the second rule."""
+            chosen = _contaminated_positions(rng, x, count, coherence, direction)
+            labels, flag = base.copy(), np.zeros(support, dtype=int)
+            labels[chosen] = other[chosen]
+            flag[chosen] = 1
+            return labels, flag
+
+        y, tag = draw()
         if len(set(tag)) < 2:
             continue
+        distinct = np.ones(support, dtype=bool) if regression else (base != other)
+        scored = np.ones(support, dtype=bool)
 
-        if regression:
-            # Continuous rules never collide, so every contaminated row is
-            # identifiable and the two scorings coincide.
-            distinct = np.ones(support, dtype=bool)
+        if mechanism == "repeated":
+            # Dawid-Skene.  Extra labels for the same row, each an independent
+            # draw from the same mixture -- conditionally independent given the
+            # true label, which is the assumption that buys identifiability.  A
+            # contaminated primary label disagrees with the others exactly where
+            # the two rules differ, so the votes localize it without any fit.
+            votes = [draw()[0] for _ in range(int(cell["repeats"]) - 1)]
+            score = np.mean([(vote != y).astype(float) for vote in votes], axis=0)
+            clean_fit.append(float(np.mean(score[tag == 0] < 0.5)))
+        elif mechanism == "anchors":
+            # Anchor points.  A fraction of the clean rows is revealed as clean,
+            # so the majority rule can be fitted on data with no contamination
+            # in it at all -- which is the estimation problem that caps every
+            # other mechanism.  Anchors are excluded from scoring: their status
+            # was given, not inferred.
+            clean = np.flatnonzero(tag == 0)
+            # A fraction of the *episode*, not of the clean rows: "10% of rows
+            # are known clean" is the assumption an annotator can actually make.
+            anchor_count = min(len(clean), int(round(support * float(cell["anchor_fraction"]))))
+            if anchor_count < 8:
+                continue
+            anchors = rng.choice(clean, size=anchor_count, replace=False)
+            scored[anchors] = False
+            labels = y.astype(int)
+            if len(set(labels[anchors])) < 2:
+                continue
+            model = HistGradientBoostingClassifier(max_iter=200, max_leaf_nodes=15)
+            model.fit(x[anchors], labels[anchors])
+            probability = model.predict_proba(x)
+            position = {label: column for column, label in enumerate(model.classes_)}
+            score = np.array(
+                [
+                    1.0 - probability[row, position[label]] if label in position else 1.0
+                    for row, label in enumerate(labels)
+                ]
+            )
+            clean_fit.append(float(np.mean(score[(tag == 0) & scored] < 0.5)))
+        elif regression:
             separation.append(float(np.mean(np.abs(base - other))))
             score = _regression_misfit(x, y)
             clean_fit.append(float(np.mean(score[tag == 0] < np.median(score))))
         else:
-            distinct = base != other
             if len(set(y)) < 2:
                 continue
             score = _classification_misfit(x, y.astype(int))
             clean_fit.append(float(np.mean(score[tag == 0] < 0.5)))
+
         identifiable.append(float(distinct[tag == 1].mean()))
-        unrestricted.append(float(roc_auc_score(tag, score)))
-        keep = distinct | (tag == 0)
+        if len(set(tag[scored])) < 2:
+            continue
+        unrestricted.append(float(roc_auc_score(tag[scored], score[scored])))
+        keep = scored & (distinct | (tag == 0))
         if len(set(tag[keep])) > 1:
             restricted.append(float(roc_auc_score(tag[keep], score[keep])))
 
