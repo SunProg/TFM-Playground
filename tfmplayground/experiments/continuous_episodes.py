@@ -741,6 +741,64 @@ def sample_paired_episode(
     return short.to(device), long.to(device)
 
 
+def _regime_direction(rng: np.random.Generator, features: int, coherence: float) -> np.ndarray | None:
+    """One hyperplane normal per episode, shared by its support and query rows.
+
+    Drawing it once per episode rather than once per split is what makes the
+    grouping transferable: a model that infers the regime structure from the
+    support rows is then looking at the same structure when it predicts the
+    query rows.  ``None`` at zero coherence, where no direction is consulted.
+    """
+    return rng.normal(size=features) if coherence > 0.0 else None
+
+
+def _contaminated_positions(
+    rng: np.random.Generator,
+    x: np.ndarray,
+    count: int,
+    coherence: float,
+    direction: np.ndarray | None,
+) -> np.ndarray:
+    """Which rows get relabelled under the second regime.
+
+    ``coherence`` interpolates between two designs of the same task.
+
+    At ``0.0`` the contaminated rows are a uniform random subset, which is what
+    this sampler has always drawn.  The regime tag is then statistically
+    independent of ``x``: ``P(contaminated | x)`` is flat, so no function of a
+    row's own features can predict it, and a mechanism that scores compatibility
+    between a row and a group has nothing to score.
+
+    As ``coherence`` grows the contaminated rows concentrate on one side of the
+    episode's hyperplane, so regime membership becomes a *latent but
+    feature-structured* grouping.  At finite coherence it stays genuinely
+    latent -- a row's own features never determine its regime -- while the group
+    as a whole becomes coherent enough for a clustering mechanism to find.  In
+    the limit it degenerates into a deterministic half-space, at which point the
+    latent variable disappears and the episode collapses to a single piecewise
+    label function that needs no mixture at all.
+
+    Implemented as Gumbel-top-k, which is exactly sampling ``count`` rows
+    without replacement with probability proportional to ``exp(coherence * z)``
+    for standardized projections ``z``.  Standardizing matters because the
+    feature columns carry per-episode scales spanning orders of magnitude, so a
+    raw projection would be decided by whichever column happened to be largest.
+    ``count`` is held exactly at every coherence, so the marginal contamination
+    fraction is unchanged and coherence is the only thing that varies.
+    """
+    if count <= 0:
+        return np.empty(0, dtype=np.int64)
+    if coherence <= 0.0 or direction is None:
+        # Preserved verbatim rather than folded into the Gumbel path, so runs at
+        # the default consume the identical RNG stream they always have.
+        return rng.choice(len(x), size=count, replace=False)
+    projection = x @ direction
+    spread = float(projection.std())
+    standardized = (projection - projection.mean()) / spread if spread > 0.0 else np.zeros_like(projection)
+    scores = coherence * standardized + rng.gumbel(size=len(x))
+    return np.argpartition(-scores, count - 1)[:count].astype(np.int64)
+
+
 def _build_multiregime_item(
     regime: EpisodeRegime,
     rng: np.random.Generator,
@@ -752,6 +810,7 @@ def _build_multiregime_item(
     noise: float,
     features: int,
     contamination: float,
+    regime_coherence: float = 0.0,
 ) -> dict[str, np.ndarray]:
     rows = max(support_size + query_count + 16, 4 * (support_size + query_count))
     x = rng.normal(size=(rows, features))
@@ -770,14 +829,15 @@ def _build_multiregime_item(
     support_labels = labels_base[support_indices].copy()
     query_labels = labels_base[query_indices].copy()
 
+    direction = _regime_direction(rng, features, regime_coherence)
     n_contam_support = int(round(support_size * contamination))
     if n_contam_support:
-        pos = rng.choice(support_size, size=n_contam_support, replace=False)
+        pos = _contaminated_positions(rng, x[support_indices], n_contam_support, regime_coherence, direction)
         support_labels[pos] = labels_other[support_indices][pos]
         support_source[pos] = 1
     n_contam_query = int(round(query_count * contamination))
     if n_contam_query:
-        pos = rng.choice(query_count, size=n_contam_query, replace=False)
+        pos = _contaminated_positions(rng, x[query_indices], n_contam_query, regime_coherence, direction)
         query_labels[pos] = labels_other[query_indices][pos]
         query_source[pos] = 1
 
@@ -828,6 +888,7 @@ def sample_multiregime_episode(
     query_count: int | None = None,
     noise: float | None = None,
     contamination: float | None = None,
+    regime_coherence: float = 0.0,
     device: torch.device | str = "cpu",
     max_support_size: int = max(SUPPORT_SIZES),
 ) -> ContinuousEpisode:
@@ -836,10 +897,12 @@ def sample_multiregime_episode(
     Two analytic families are evaluated on one shared feature table (the same
     construction tested by hand in ``paper/tabpfn_multi_regime_results.md``),
     and a ``contamination`` fraction of support rows -- and, independently, of
-    query rows -- are relabelled under the second family.  Nothing in
-    ``(support_x, support_y, query_x)`` marks which rows came from which
-    family; ``query_regime_source`` on the returned episode carries that
-    information for scoring only, never as training input.
+    query rows -- are relabelled under the second family.  At the default
+    ``regime_coherence=0.0`` nothing in ``(support_x, support_y, query_x)``
+    marks which rows came from which family; raising it makes the contaminated
+    rows a feature-coherent group instead of a uniform random subset (see
+    ``_contaminated_positions``).  ``query_regime_source`` on the returned
+    episode carries that tag for scoring only, never as training input.
 
     Held out at the *pair* level (``MULTIREGIME_HELDOUT_PAIRS``), not the
     family level: ``HELDOUT_REGIME`` has only one analytic family
@@ -871,6 +934,7 @@ def sample_multiregime_episode(
             noise=effective_noise,
             features=features,
             contamination=contamination,
+            regime_coherence=regime_coherence,
         )
         for _ in range(batch_size)
     ]
@@ -890,6 +954,7 @@ def sample_multiregime_episode(
             "query_count": query_count,
             "features": features,
             "contamination": contamination,
+            "regime_coherence": regime_coherence,
             "base_family": base_family,
             "other_family": other_family,
         },
@@ -909,6 +974,7 @@ def _build_scm_multiregime_item(
     noise: float,
     features: int,
     contamination: float,
+    regime_coherence: float = 0.0,
 ) -> dict[str, np.ndarray]:
     """Like ``_build_multiregime_item``, but the two regimes are two draws from
     the official TabICL SCM prior (``_scm_candidates``) sharing one feature
@@ -933,14 +999,15 @@ def _build_scm_multiregime_item(
     support_labels = labels_base[support_indices].copy()
     query_labels = labels_base[query_indices].copy()
 
+    direction = _regime_direction(rng, x.shape[1], regime_coherence)
     n_contam_support = int(round(support_size * contamination))
     if n_contam_support:
-        pos = rng.choice(support_size, size=n_contam_support, replace=False)
+        pos = _contaminated_positions(rng, x[support_indices], n_contam_support, regime_coherence, direction)
         support_labels[pos] = labels_other[support_indices][pos]
         support_source[pos] = 1
     n_contam_query = int(round(query_count * contamination))
     if n_contam_query:
-        pos = rng.choice(query_count, size=n_contam_query, replace=False)
+        pos = _contaminated_positions(rng, x[query_indices], n_contam_query, regime_coherence, direction)
         query_labels[pos] = labels_other[query_indices][pos]
         query_source[pos] = 1
 
@@ -978,6 +1045,7 @@ def sample_scm_multiregime_episode(
     query_count: int | None = None,
     noise: float | None = None,
     contamination: float | None = None,
+    regime_coherence: float = 0.0,
     device: torch.device | str = "cpu",
     max_support_size: int = max(SUPPORT_SIZES),
 ) -> ContinuousEpisode:
@@ -990,7 +1058,10 @@ def sample_scm_multiregime_episode(
     dumps, not this file's bespoke families. Both draws share one sampled
     feature table (``shared_raw_x`` inside ``_scm_candidates``), so the
     "which regime" question is entirely about the label function, never a
-    surface cue in the features.  ``family`` can explicitly select either
+    surface cue in the features.  ``regime_coherence`` is the one thing that
+    changes that: above zero it makes *which rows* were relabelled a
+    feature-coherent group, without ever making a single row's regime
+    recoverable from its own features.  ``family`` can explicitly select either
     TabICL SCM family; retaining the regime-based default preserves the
     held-out-family synthetic experiments that use this sampler elsewhere.
     """
@@ -1023,6 +1094,7 @@ def sample_scm_multiregime_episode(
             noise=effective_noise,
             features=features,
             contamination=contamination,
+            regime_coherence=regime_coherence,
         )
         for _ in range(batch_size)
     ]
@@ -1042,6 +1114,7 @@ def sample_scm_multiregime_episode(
             "query_count": query_count,
             "features": features,
             "contamination": contamination,
+            "regime_coherence": regime_coherence,
             "family": family_name,
         },
         _stack(items, "query_regime_source"),

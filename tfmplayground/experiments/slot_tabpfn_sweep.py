@@ -36,8 +36,23 @@ EXTENDED_SLOT_COUNTS = (5, 6, 7, 8)
 #: Constant multiregime share for the ``mixed`` arm: 70% single + 30% multi.
 MULTIREGIME_SHARE = 0.30
 
+#: Feature coherence of the contaminated group for the coherent-regime block.
+#: At 0 (every earlier cell) the regime tag is independent of the features, so
+#: nothing in a row predicts its group and slot competition has nothing to
+#: compete over -- which is the leading explanation for 28 cells of flat
+#: binding.  At 2.0 a row one standard deviation along the episode's hyperplane
+#: is e^4 ~ 55 times likelier to be relabelled than one a standard deviation the
+#: other way: strongly grouped, yet still stochastic, so a single row's regime
+#: is never determined by its own features.  That last part matters -- at
+#: infinite coherence the latent variable disappears and the episode collapses
+#: to one piecewise label function that needs no mixture to fit.
+REGIME_COHERENCE = 2.0
+
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
+#: Short budget for the coherent-regime block: 10 epochs, enough to see whether
+#: binding moves off the null at all before spending the full budget on it.
+COHERENT_STEPS = 5_000
 SCREENING_SEED = 2402
 #: Seeds for a three-seed rerun of whichever arm wins the screening pass.
 FINAL_SEEDS = (2402, 2403, 2404)
@@ -106,6 +121,25 @@ def screening_configurations() -> list[dict[str, Any]]:
         for num_slots in EXTENDED_SLOT_COUNTS
         for prior_mode in PRIOR_MODES
     ]
+    # The coherent-regime block.  Everything above ran at regime_coherence 0,
+    # where the contaminated rows are a uniform random subset and no function of
+    # a row's features can predict its group -- so slot competition had nothing
+    # to bind to, and binding sat at its permutation null in all 28 cells.  This
+    # block changes the task rather than the model: same code, same flags, same
+    # seed, contaminated rows now drawn as a feature-coherent group.  A vanilla
+    # control rides alongside each slot count, because a coherent prior is an
+    # easier task for *any* model and the slot numbers mean nothing without it.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": num_slots,
+            "model_kind": model_kind,
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+        }
+        for model_kind, num_slots in (("vanilla", 2), ("slot_backbone", 2), ("slot_backbone", 3))
+        for prior_mode in PRIOR_MODES
+    ]
     return grid
 
 
@@ -117,12 +151,18 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     """
     prior_mode, num_slots = configuration["prior_mode"], configuration["num_slots"]
     kind = configuration.get("model_kind", "slot")
+    # A coherent-regime cell is a different task, not a different arm of the
+    # same one, so it must never share a run directory with its coherence-0
+    # counterpart -- resume would silently continue the wrong training.
+    coherence = configuration.get("regime_coherence", 0.0)
+    suffix = "" if coherence == 0.0 else f"-coh{coherence:g}"
     if kind == "vanilla":
-        return f"{prior_mode}-{kind}"
+        return f"{prior_mode}-{kind}{suffix}"
     if kind == "slot_backbone":
         # K=2 keeps the bare label the already-running block was submitted with.
-        return f"{prior_mode}-{kind}" if num_slots == 2 else f"{prior_mode}-{kind}-k{num_slots}"
-    return str(prior_mode) if num_slots == 2 else f"{prior_mode}-k{num_slots}"
+        base = f"{prior_mode}-{kind}" if num_slots == 2 else f"{prior_mode}-{kind}-k{num_slots}"
+        return f"{base}{suffix}"
+    return f"{prior_mode}{suffix}" if num_slots == 2 else f"{prior_mode}-k{num_slots}{suffix}"
 
 
 def configuration_flags(index: int, *, final: bool = False, seed: int | None = None) -> str:
@@ -131,15 +171,24 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
     if not 0 <= index < len(configurations):
         raise IndexError(f"Array index {index} is outside 0..{len(configurations) - 1}.")
     configuration = configurations[index]
+    coherence = float(configuration.get("regime_coherence", 0.0))
     flags = [
         f"--prior-mode {configuration['prior_mode']}",
         f"--num-slots {configuration['num_slots']}",
         f"--model-kind {configuration.get('model_kind', 'slot')}",
         f"--multiregime-share {MULTIREGIME_SHARE:g}",
-        f"--max-steps {SCREENING_STEPS}",
+        f"--regime-coherence {coherence:g}",
+        f"--max-steps {configuration.get('max_steps', SCREENING_STEPS)}",
         f"--seed {seed if seed is not None else SCREENING_SEED}",
         *SHARED_FLAGS,
     ]
+    if coherence != 0.0:
+        # The dump was generated at coherence 0, so it holds the old task's
+        # episodes; generate on the fly instead.  This comes after SHARED_FLAGS
+        # and after the batch script's own `--multiregime-dump`, and argparse
+        # keeps the last occurrence, so it wins.  "none" rather than "" because
+        # the flags are word-split by the shell.
+        flags.append("--multiregime-dump none")
     if final:
         flags.append("--no-tensorboard")
     return " ".join(flags)
@@ -157,6 +206,7 @@ def _read_run(directory: Path) -> dict[str, Any] | None:
         "prior_mode": config.get("prior_mode"),
         "num_slots": config.get("num_slots"),
         "model_kind": config.get("model_kind", "slot"),
+        "regime_coherence": config.get("regime_coherence", 0.0),
         "seed": config.get("seed"),
         "multiregime_cross_entropy": selection.get("multiregime_cross_entropy"),
         "query_cross_entropy": selection.get("query_cross_entropy"),

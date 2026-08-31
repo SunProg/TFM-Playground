@@ -56,6 +56,12 @@ class PlainPretrainingConfig:
     prior_type: str = "mix_scm"
     prior_mode: Literal["plain", "multiregime", "curriculum"] = "plain"
     multiregime_contamination: float = 0.3
+    #: How feature-coherent the contaminated group is.  0.0 is the original
+    #: design, where the relabelled rows are a uniform random subset and the
+    #: regime tag is independent of the features; above zero they concentrate on
+    #: one side of a per-episode hyperplane.  See
+    #: ``continuous_episodes._contaminated_positions``.
+    regime_coherence: float = 0.0
     embedding_size: int = 192
     num_attention_heads: int = 6
     mlp_hidden_size: int = 768
@@ -128,6 +134,7 @@ def multiregime_batch(config: PlainPretrainingConfig, rng: np.random.Generator):
         query_count=config.query_size,
         noise=0.0,
         contamination=config.multiregime_contamination,
+        regime_coherence=config.regime_coherence,
         device=config.device,
     )
 
@@ -493,7 +500,14 @@ def build_parser() -> argparse.ArgumentParser:
         "num_layers",
     ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))
-    for name in ("learning_rate", "min_learning_rate", "weight_decay", "gradient_clip", "multiregime_contamination"):
+    for name in (
+        "learning_rate",
+        "min_learning_rate",
+        "weight_decay",
+        "gradient_clip",
+        "multiregime_contamination",
+        "regime_coherence",
+    ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=float, default=getattr(defaults, name))
     parser.add_argument("--prior-type", default=defaults.prior_type, choices=("mlp_scm", "tree_scm", "mix_scm"))
     parser.add_argument("--prior-mode", choices=("plain", "multiregime", "curriculum"), default=defaults.prior_mode)

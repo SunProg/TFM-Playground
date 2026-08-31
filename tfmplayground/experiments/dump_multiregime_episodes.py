@@ -52,6 +52,11 @@ class DumpConfig:
     support_size: int = 128
     query_count: int = 32
     contamination: float = 0.3
+    #: Feature coherence of the contaminated group; 0.0 is the tag-independent
+    #: original.  Recorded in the dump so a training run cannot silently stream
+    #: episodes built under a different regime assignment than it is configured
+    #: for -- ``pretrain_slot_tabpfn`` refuses on a mismatch.
+    regime_coherence: float = 0.0
     noise: float = 0.0
     max_features: int = 12
     seed: int = 2402
@@ -119,6 +124,7 @@ def dump_multiregime_episodes(config: DumpConfig) -> Path:
         handle.create_dataset("num_datapoints", data=np.array((rows,)))
         handle.create_dataset("train_test_split_index", data=np.array((config.support_size,)))
         handle.create_dataset("contamination", data=np.array((config.contamination,)))
+        handle.create_dataset("regime_coherence", data=np.array((config.regime_coherence,)))
         handle.create_dataset("problem_type", data="classification", dtype=h5py.string_dtype())
 
         written = 0
@@ -133,6 +139,7 @@ def dump_multiregime_episodes(config: DumpConfig) -> Path:
                 query_count=config.query_count,
                 noise=config.noise,
                 contamination=config.contamination,
+                regime_coherence=config.regime_coherence,
                 device="cpu",
             )
             count = episode.support_x.shape[0]
@@ -200,6 +207,10 @@ class MultiregimeDumpLoader:
         self._pointer = 0
         self._split = int(self._handle["train_test_split_index"][0])
         self._count = self._handle["X"].shape[0]
+        # Absent from dumps written before the regime assignment became
+        # configurable, and those were all generated at coherence 0.
+        coherence = self._handle.get("regime_coherence")
+        self.regime_coherence = 0.0 if coherence is None else float(coherence[0])
 
     def _advance_file(self) -> None:
         self._file_index = (self._file_index + 1) % len(self.paths)
@@ -233,7 +244,11 @@ class MultiregimeDumpLoader:
             0.0,
             "multiregime",
             "dump",
-            {"contamination": contamination, "source": str(self.paths[self._file_index])},
+            {
+                "contamination": contamination,
+                "regime_coherence": self.regime_coherence,
+                "source": str(self.paths[self._file_index]),
+            },
             regime[:, split:].to(device),
             regime[:, :split].to(device),
         )
@@ -259,7 +274,7 @@ def build_parser() -> argparse.ArgumentParser:
         "num_shards",
     ):
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))
-    for name in ("contamination", "noise"):
+    for name in ("contamination", "noise", "regime_coherence"):
         parser.add_argument(f"--{name.replace('_', '-')}", type=float, default=getattr(defaults, name))
     return parser
 

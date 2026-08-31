@@ -222,6 +222,6 @@ than assumed.
 - No `competitive=False` ablation on the in-backbone variant.
 - Nothing here learned the multiregime task, so these compare models that all
   failed the actual objective.
-- The empirical check that regime is unpredictable from `x` timed out on the
-  login node; the claim rests on the generator source, which is a proof rather
-  than an estimate, but the measurement is still owed.
+- The claim that regime is unpredictable from `x` rests on the generator source,
+  where `pos = rng.choice(support_size, ...)` never consults `x`. That is a proof
+  rather than an estimate, so no empirical probe is reported and none is owed.

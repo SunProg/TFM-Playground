@@ -30,8 +30,10 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
     validate_config,
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
+    COHERENT_STEPS,
     EXTENDED_SLOT_COUNTS,
     MULTIREGIME_SHARE,
+    REGIME_COHERENCE,
     SCREENING_STEPS,
     SLOT_COUNTS,
     configuration_flags,
@@ -123,8 +125,9 @@ class SweepTests(unittest.TestCase):
         )
 
         backbone_start = slot_cells + len(PRIOR_MODES)
-        backbone = configurations[backbone_start:]
         all_counts = SLOT_COUNTS + EXTENDED_SLOT_COUNTS
+        coherent_start = backbone_start + len(PRIOR_MODES) * len(all_counts)
+        backbone = configurations[backbone_start:coherent_start]
         self.assertEqual(len(backbone), len(PRIOR_MODES) * len(all_counts))
         # Its slot counts appear in order, each as a contiguous block of priors.
         self.assertEqual(
@@ -139,25 +142,54 @@ class SweepTests(unittest.TestCase):
         )
         self.assertTrue(all(c["num_slots"] == 2 for c in backbone[: len(PRIOR_MODES)]))
 
+        # Everything above runs at coherence 0, and its labels carry no suffix.
+        self.assertTrue(all(c.get("regime_coherence", 0.0) == 0.0 for c in configurations[:coherent_start]))
+        self.assertTrue(all("coh" not in label for label in labels[:coherent_start]))
+
+        # The coherent-regime block, appended last.  It changes the *task*, not
+        # the model, so it repeats three model cells already in the grid; the
+        # label suffix is what keeps those repeats from colliding with the
+        # coherence-0 runs' directories, where a resume would silently continue
+        # training on the other task.
+        coherent = configurations[coherent_start:]
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in coherent))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in coherent))
+        self.assertEqual(
+            [(c["model_kind"], c["num_slots"]) for c in coherent],
+            [pair for pair in (("vanilla", 2), ("slot_backbone", 2), ("slot_backbone", 3)) for _ in PRIOR_MODES],
+        )
+        self.assertTrue(all(label.endswith(f"-coh{REGIME_COHERENCE:g}") for label in labels[coherent_start:]))
+
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
         flag_sets = [configuration_flags(index) for index in range(len(configurations))]
         for configuration, flags in zip(configurations, flag_sets, strict=True):
+            coherence = configuration.get("regime_coherence", 0.0)
             self.assertIn(f"--prior-mode {configuration['prior_mode']}", flags)
             self.assertIn(f"--num-slots {configuration['num_slots']}", flags)
             self.assertIn(f"--model-kind {configuration['model_kind']}", flags)
-            self.assertIn(f"--max-steps {SCREENING_STEPS}", flags)
+            self.assertIn(f"--max-steps {configuration.get('max_steps', SCREENING_STEPS)}", flags)
+            self.assertIn(f"--regime-coherence {coherence:g}", flags)
             self.assertIn(f"--multiregime-share {MULTIREGIME_SHARE:g}", flags)
-        # Prior mode, slot count and model kind are the only axes: strip all
-        # three and every cell's remaining flags must be byte identical, so the
-        # grid really isolates them and nothing else drifts between cells.
-        stripped = {
-            flags.replace(f"--prior-mode {c['prior_mode']} ", "")
-            .replace(f"--num-slots {c['num_slots']} ", "")
-            .replace(f"--model-kind {c['model_kind']} ", "")
-            for c, flags in zip(configurations, flag_sets, strict=True)
-        }
-        self.assertEqual(len(stripped), 1)
+            # A coherent cell must not stream the dump, which holds coherence-0
+            # episodes; a coherence-0 cell must leave the batch script's dump
+            # flag alone.  Getting this backwards trains on one task and reports
+            # the other, silently.
+            self.assertEqual("--multiregime-dump none" in flags, coherence != 0.0)
+        # Prior mode, slot count and model kind are the only axes *within* one
+        # coherence level: strip all three and the remaining flags must be byte
+        # identical across that level, so the grid isolates them and nothing
+        # else drifts.  Coherence is a fourth axis between blocks, and it
+        # carries its own step budget and dump override by design.
+        for coherence in {c.get("regime_coherence", 0.0) for c in configurations}:
+            stripped = {
+                flags.replace(f"--prior-mode {c['prior_mode']} ", "")
+                .replace(f"--num-slots {c['num_slots']} ", "")
+                .replace(f"--model-kind {c['model_kind']} ", "")
+                for c, flags in zip(configurations, flag_sets, strict=True)
+                if c.get("regime_coherence", 0.0) == coherence
+            }
+            self.assertEqual(len(stripped), 1)
 
     def test_seed_override_and_index_bounds(self):
         self.assertIn("--seed 99", configuration_flags(0, seed=99))
@@ -286,6 +318,29 @@ class MultiregimeDumpTests(unittest.TestCase):
         self.assertEqual(episode.support_y.shape, (4, 16))
         self.assertEqual(episode.query_y.shape, (4, 4))
         self.assertEqual(episode.support_x.shape[2], episode.query_x.shape[2])
+
+    def test_dump_records_its_regime_coherence(self):
+        """A dump fixes the episodes and with them the regime assignment, so a
+        run configured for a different coherence must be able to tell.  Old
+        dumps predate the field and were all written at coherence 0."""
+        loader = self._loader()
+        self.assertEqual(loader.regime_coherence, 0.0)
+        self.assertEqual(loader.sample().metadata["regime_coherence"], 0.0)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dump_multiregime_episodes(
+                DumpConfig(
+                    output=str(root / "shard-000.h5"),
+                    episodes=4,
+                    batch_size=4,
+                    support_size=16,
+                    query_count=4,
+                    contamination=0.25,
+                    regime_coherence=3.0,
+                    seed=7,
+                )
+            )
+            self.assertEqual(MultiregimeDumpLoader(root, batch_size=4).regime_coherence, 3.0)
 
     def test_regime_tags_survive_the_round_trip(self):
         """Without these the slot-binding diagnostic cannot be computed at all."""

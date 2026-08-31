@@ -96,6 +96,13 @@ class SlotPretrainingConfig:
     #: share `finetune_multiregime_backbone.py` already uses.
     multiregime_share: float = 0.30
     multiregime_contamination: float = 0.3
+    #: How feature-coherent the contaminated group is; 0.0 reproduces the
+    #: original design exactly.  Above zero the relabelled rows concentrate on
+    #: one side of a per-episode hyperplane, so regime membership becomes a
+    #: latent *but structured* grouping -- the case slot attention's competition
+    #: is built for, and the one the tag-independent design never presented.
+    #: See ``continuous_episodes._contaminated_positions``.
+    regime_coherence: float = 0.0
     #: Optional HDF5 dump (file or shard directory) to stream multiregime
     #: episodes from instead of generating them.  Generation is the CPU
     #: bottleneck of the multiregime arm; streaming removes it.
@@ -603,13 +610,28 @@ def run_pretraining(
 
     prior = make_prior(config, batches=1) if config.prior_mode != "multiregime" else None
     multiregime_source = None
-    if config.multiregime_dump:
+    # "none" is a sentinel rather than an empty string so that a sweep cell can
+    # override the dump the batch script passes unconditionally: the flags are
+    # word-split, and an empty argument would vanish and let `--multiregime-dump`
+    # swallow the next flag instead.
+    if config.multiregime_dump and config.multiregime_dump.lower() != "none":
         multiregime_source = MultiregimeDumpLoader(
             config.multiregime_dump,
             batch_size=config.micro_batch_size,
             device=config.device,
             seed=config.seed,
         )
+        # A dump fixes the episodes, and with them the regime assignment. Reading
+        # a coherence-0 dump while configured for a coherent prior would train on
+        # the old task and report the new one, which is exactly the silent
+        # mismatch that made twelve earlier runs measure the wrong model.
+        if multiregime_source.regime_coherence != config.regime_coherence:
+            raise ValueError(
+                f"Dump at {config.multiregime_dump} was generated with "
+                f"regime_coherence={multiregime_source.regime_coherence}, but this run is configured for "
+                f"regime_coherence={config.regime_coherence}. Regenerate the dump or pass "
+                "--multiregime-dump none to generate episodes on the fly."
+            )
     episode_rng = np.random.default_rng(config.seed + 1)
     if state is not None:
         episode_rng.bit_generator.state = state["episode_rng_state"]
@@ -740,6 +762,7 @@ def build_parser() -> argparse.ArgumentParser:
         "gradient_clip",
         "multiregime_share",
         "multiregime_contamination",
+        "regime_coherence",
     )
     for name in integer_fields:
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))

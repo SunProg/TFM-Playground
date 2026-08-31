@@ -11,15 +11,30 @@
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
-# The slot-TabPFN screening grid: 4 prior compositions x 3 slot counts.
+# The slot-TabPFN screening grid: 4 prior compositions x model variant.
 #
-#            plain   multiregime   mixed(70/30)   curriculum
-#   K=2        0          1            2              3
-#   K=3        4          5            6              7
-#   K=4        8          9           10             11
+#                            plain   multiregime   mixed(70/30)   curriculum
+#   slot head       K=2        0          1            2              3
+#                   K=3        4          5            6              7
+#                   K=4        8          9           10             11
+#   vanilla                   12         13           14             15
+#   slot_backbone   K=2       16         17           18             19
+#                   K=3       20         21           22             23
+#                   K=4       24         25           26             27
+#                   K=5..8    28 .. 43
+#   coherent regime (regime_coherence 2.0, 10 epochs)
+#                   vanilla   44         45           46             47
+#                   K=2       48         49           50             51
+#                   K=3       52         53           54             55
 #
-# Slot count is the outer axis, so indices 0-3 are always the K=2 arms and an
-# in-flight array keeps its index-to-arm mapping when the grid is extended.
+# Blocks are appended, never reordered, so an in-flight array keeps its
+# index-to-arm mapping when the grid is extended.  Indices 0-43 all run at
+# regime_coherence 0, where the contaminated rows are a uniform random subset;
+# 44-55 change that assignment to a feature-coherent group and are the only
+# cells that generate episodes rather than streaming the dump, which holds
+# coherence-0 episodes.  Their run directories carry a `-coh2` suffix so they
+# cannot resume from, or be confused with, their coherence-0 counterparts.
+#
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial
 # submission is visible rather than silently skipping cells.

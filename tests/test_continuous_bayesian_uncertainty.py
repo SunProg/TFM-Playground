@@ -821,6 +821,115 @@ class ScmMultiregimeEpisodeTests(unittest.TestCase):
             self.assertNotEqual(tensor.shape, episode.query_regime_source.shape)
 
 
+class RegimeCoherenceTests(unittest.TestCase):
+    """``regime_coherence`` controls whether the contaminated rows are a group.
+
+    At 0 the sampler draws a uniform random subset, so the regime tag is
+    independent of ``x`` and no mechanism that scores a row against a group can
+    find it -- the design under which every earlier slot run measured binding at
+    its permutation null.  Above 0 the tag becomes feature-structured while
+    staying latent per row.
+    """
+
+    @staticmethod
+    def _episode(coherence: float, seed: int = 11):
+        return sample_scm_multiregime_episode(
+            np.random.default_rng(seed),
+            regime=TRAIN_REGIME,
+            family="mlp_scm",
+            batch_size=4,
+            support_size=64,
+            query_count=32,
+            noise=0.0,
+            contamination=0.3,
+            regime_coherence=coherence,
+        )
+
+    def test_default_is_the_original_uniform_draw(self):
+        """The default must consume the identical RNG stream it always has, so
+        every existing run and dump stays reproducible."""
+        torch.testing.assert_close(self._episode(0.0).support_regime_source, self._episode(0.0).support_regime_source)
+        default = sample_scm_multiregime_episode(
+            np.random.default_rng(11),
+            regime=TRAIN_REGIME,
+            family="mlp_scm",
+            batch_size=4,
+            support_size=64,
+            query_count=32,
+            noise=0.0,
+            contamination=0.3,
+        )
+        torch.testing.assert_close(default.support_regime_source, self._episode(0.0).support_regime_source)
+
+    def test_contamination_fraction_is_held_exactly_at_every_coherence(self):
+        """Coherence must move only *which* rows are relabelled, never how many,
+        or it would confound itself with the contamination rate."""
+        for coherence in (0.0, 1.0, 2.0, 8.0):
+            episode = self._episode(coherence)
+            self.assertTrue(bool((episode.support_regime_source.sum(dim=1) == round(64 * 0.3)).all()))
+            self.assertTrue(bool((episode.query_regime_source.sum(dim=1) == round(32 * 0.3)).all()))
+
+    def test_coherence_separates_the_two_groups_in_feature_space(self):
+        """The contaminated rows' feature mean must move away from the base
+        rows' as coherence rises, and must not at coherence 0.
+
+        Two details make this a real test rather than a threshold picked to
+        pass.  Columns are standardized first, because the feature scales span
+        orders of magnitude and a raw mean difference would report whichever
+        column happened to be largest -- the same reason
+        ``_contaminated_positions`` standardizes its own projection.  And the
+        comparison is against a *permutation* null computed from the same
+        episode by reshuffling the tags, because the gap between two finite
+        groups is well above zero even when they are drawn identically: at
+        coherence 0 the whole point is that the real gap is indistinguishable
+        from that null.
+        """
+        generator = torch.Generator().manual_seed(3)
+
+        def gap(z: torch.Tensor, tag: torch.Tensor) -> float:
+            return float((z[tag].mean(dim=0) - z[~tag].mean(dim=0)).norm())
+
+        def ratio_to_null(coherence: float) -> float:
+            observed, null = [], []
+            # 24 episodes rather than one batch: a single episode's gap is one
+            # draw from a wide distribution, and comparing one draw against a
+            # 32-sample null is dominated by that variance rather than by the
+            # effect being tested.
+            for offset in range(6):
+                episode = self._episode(coherence, seed=11 + offset)
+                x, tags = episode.support_x, episode.support_regime_source.bool()
+                for b in range(x.shape[0]):
+                    z = (x[b] - x[b].mean(dim=0)) / x[b].std(dim=0).clamp_min(1e-6)
+                    observed.append(gap(z, tags[b]))
+                    null += [gap(z, tags[b][torch.randperm(tags.shape[1], generator=generator)]) for _ in range(32)]
+            return (sum(observed) / len(observed)) / (sum(null) / len(null))
+
+        # Measured 1.03 at coherence 0 and 2.41 at coherence 4.
+        self.assertLess(ratio_to_null(0.0), 1.3)
+        self.assertGreater(ratio_to_null(4.0), 1.8)
+
+    def test_support_and_query_share_one_hyperplane(self):
+        """The direction is drawn once per episode, not once per split: a model
+        that reads the grouping off the support rows must be looking at the same
+        grouping when it predicts the query rows, or the structure is useless.
+        """
+        episode = self._episode(6.0)
+        for b in range(episode.support_x.shape[0]):
+            support_gap = (
+                episode.support_x[b][episode.support_regime_source[b].bool()].mean(dim=0)
+                - episode.support_x[b][~episode.support_regime_source[b].bool()].mean(dim=0)
+            )
+            query_gap = (
+                episode.query_x[b][episode.query_regime_source[b].bool()].mean(dim=0)
+                - episode.query_x[b][~episode.query_regime_source[b].bool()].mean(dim=0)
+            )
+            cosine = torch.nn.functional.cosine_similarity(support_gap, query_gap, dim=0)
+            self.assertGreater(float(cosine), 0.5)
+
+    def test_metadata_records_the_coherence(self):
+        self.assertEqual(self._episode(2.0).metadata["regime_coherence"], 2.0)
+
+
 class CheckpointTests(unittest.TestCase):
     def test_round_trip_reproduces_predictions_exactly(self):
         model = NanoTabPFNContinuousPosteriorModel(tiny_backbone(18), latent_dim=8, num_samples=8, inference_seed=5)
