@@ -237,7 +237,16 @@ class SweepTests(unittest.TestCase):
             # episodes; a coherence-0 cell must leave the batch script's dump
             # flag alone.  Getting this backwards trains on one task and reports
             # the other, silently.
-            self.assertEqual("--multiregime-dump none" in flags, coherence != 0.0)
+            # The dump fixes coherence, class count, features and
+            # contamination together.  Any cell that departs from any of them
+            # must generate its own episodes, or it trains on the dump's task
+            # while reporting its own -- which coherence-keyed logic missed for
+            # the learnable cells, since those run at coherence 0.
+            departs = coherence != 0.0 or any(
+                key in configuration
+                for key in ("max_classes", "min_features", "max_features", "multiregime_contamination")
+            )
+            self.assertEqual("--multiregime-dump none" in flags, departs)
             # Per-cell overrides must come *after* SHARED_FLAGS, since argparse
             # keeps the last occurrence and SHARED_FLAGS pins the defaults.
             if "max_classes" in configuration:
@@ -422,6 +431,11 @@ class MultiregimeDumpTests(unittest.TestCase):
                 )
             )
             self.assertEqual(MultiregimeDumpLoader(root, batch_size=4).regime_coherence, 3.0)
+
+    def test_dump_records_its_contamination(self):
+        """Coherence was not the only thing a dump fixes; a run configured for a
+        different contamination would otherwise stream the dump's silently."""
+        self.assertEqual(self._loader().contamination, 0.25)
 
     def test_regime_tags_survive_the_round_trip(self):
         """Without these the slot-binding diagnostic cannot be computed at all."""

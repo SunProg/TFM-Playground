@@ -670,12 +670,19 @@ def run_pretraining(
         # a coherence-0 dump while configured for a coherent prior would train on
         # the old task and report the new one, which is exactly the silent
         # mismatch that made twelve earlier runs measure the wrong model.
-        if multiregime_source.regime_coherence != config.regime_coherence:
+        mismatches = {
+            name: (recorded, configured)
+            for name, recorded, configured in (
+                ("regime_coherence", multiregime_source.regime_coherence, config.regime_coherence),
+                ("contamination", multiregime_source.contamination, config.multiregime_contamination),
+            )
+            if recorded != configured
+        }
+        if mismatches:
             raise ValueError(
-                f"Dump at {config.multiregime_dump} was generated with "
-                f"regime_coherence={multiregime_source.regime_coherence}, but this run is configured for "
-                f"regime_coherence={config.regime_coherence}. Regenerate the dump or pass "
-                "--multiregime-dump none to generate episodes on the fly."
+                f"Dump at {config.multiregime_dump} does not match this run: "
+                + "; ".join(f"{name} is {was} in the dump, {now} in the config" for name, (was, now) in mismatches.items())
+                + ". Regenerate the dump or pass --multiregime-dump none to generate episodes on the fly."
             )
     episode_rng = np.random.default_rng(config.seed + 1)
     if state is not None:

@@ -282,12 +282,19 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
         f"--seed {seed if seed is not None else SCREENING_SEED}",
         *SHARED_FLAGS,
     ]
-    if coherence != 0.0:
-        # The dump was generated at coherence 0, so it holds the old task's
-        # episodes; generate on the fly instead.  This comes after SHARED_FLAGS
-        # and after the batch script's own `--multiregime-dump`, and argparse
-        # keeps the last occurrence, so it wins.  "none" rather than "" because
-        # the flags are word-split by the shell.
+    # The dump fixes the episodes and everything about them: coherence 0, two
+    # classes, twelve features, 30% contamination.  Any cell that departs from
+    # that has to generate its own, or it trains on the dump's task while
+    # reporting its own.  Keyed on the overrides themselves rather than on
+    # coherence alone, which is what let the learnable cells through.
+    overrides_the_dump = coherence != 0.0 or any(
+        key in configuration
+        for key in ("max_classes", "min_features", "max_features", "multiregime_contamination")
+    )
+    if overrides_the_dump:
+        # This comes after SHARED_FLAGS and after the batch script's own
+        # `--multiregime-dump`, and argparse keeps the last occurrence, so it
+        # wins.  "none" rather than "" because the flags are word-split.
         flags.append("--multiregime-dump none")
     # Per-cell overrides come after SHARED_FLAGS so argparse's last-wins
     # behaviour applies them; SHARED_FLAGS fixes features and class count for

@@ -211,6 +211,7 @@ class MultiregimeDumpLoader:
         # configurable, and those were all generated at coherence 0.
         coherence = self._handle.get("regime_coherence")
         self.regime_coherence = 0.0 if coherence is None else float(coherence[0])
+        self.contamination = float(self._handle["contamination"][0])
 
     def _advance_file(self) -> None:
         self._file_index = (self._file_index + 1) % len(self.paths)
