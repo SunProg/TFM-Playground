@@ -50,7 +50,8 @@
 # model number on those could never be read: "the model failed" and "nothing
 # can succeed" produce the same value.  These run at 0.742 instead, with one
 # label per row and the regime still latent, so discovery is still required.
-# TabArena is off for them: it is a binary benchmark.
+# TabArena stays on: at max_classes=3 the prior mixes 2- and 3-class episodes,
+# so the model learns to use its first two outputs for binary tables.
 #
 # 56-71 change the model rather than the task: the competition scores
 # `log p(y | x, slot)` instead of a dot product, holding the coherent task

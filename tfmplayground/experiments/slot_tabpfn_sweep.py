@@ -58,6 +58,11 @@ COMPATIBILITY_MODES_SCREENED = ("likelihood", "additive")
 #: AUC at 0.742, against 0.505 for the design every earlier arm trained on.
 #: Three classes, four features, 15% contamination -- one label per row, regime
 #: still latent, so a model scoring well has actually inferred something.
+#: TabArena stays on for these cells.  A wider head is not a problem there:
+#: at `max_classes=3` the TabICL prior yields a mix of 2- and 3-class episodes,
+#: so the model is trained on binary tables too and learns to use its first two
+#: outputs for them -- which is exactly what `predict_vanilla`'s `logits[..., :2]`
+#: reads, and how TabPFN handles a variable class count generally.
 LEARNABLE_DESIGN = {
     "max_classes": 3,
     "min_features": 4,
@@ -302,9 +307,6 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
     for name in ("max_classes", "min_features", "max_features", "multiregime_contamination"):
         if name in configuration:
             flags.append(f"--{name.replace('_', '-')} {configuration[name]:g}")
-    if int(configuration.get("max_classes", 2)) != 2:
-        # TabArena is a binary benchmark.
-        flags.append("--no-tabarena-every-epoch")
     if final:
         flags.append("--no-tensorboard")
     return " ".join(flags)

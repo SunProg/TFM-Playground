@@ -254,8 +254,11 @@ class SweepTests(unittest.TestCase):
                 self.assertGreater(
                     flags.rindex(f"--max-classes {configuration['max_classes']}"), shared
                 )
-                # TabArena is binary and must be off for a multiclass run.
-                self.assertIn("--no-tabarena-every-epoch", flags)
+                # TabArena stays on: the prior mixes 2- and 3-class episodes
+                # at max_classes=3, so the model learns to use its first two
+                # outputs for binary tables, which is what TabArena reads.
+                self.assertNotIn("--no-tabarena-every-epoch", flags)
+                self.assertIn("--tabarena-every-epoch", flags)
         # Prior mode, slot count and model kind are the only axes *within* one
         # block: strip all three and the remaining flags must be byte identical
         # across that block, so the grid isolates them and nothing else drifts.
