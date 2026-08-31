@@ -63,6 +63,16 @@ CLASS_COUNTS = (2, 3, 4, 5)
 FEATURE_COUNTS = (12, 4)
 CONTAMINATIONS = (0.30, 0.15)
 SUPPORT_SIZES = (128, 512)
+#: How far apart the two label rules are pushed, for continuous targets.
+#:
+#: Mixture-of-experts identifiability needs two things: a covariate-dependent
+#: gate, *and* well-separated components.  `regime_coherence` supplied the gate
+#: and separation was left to chance -- two independent SCM draws are however
+#: far apart they happen to land -- which is why the gate bought nothing.  This
+#: is the missing half, as a correlation: 0.0 leaves the rules independent (the
+#: behaviour every earlier measurement used) and 1.0 makes the second rule the
+#: negation of the first.
+SEPARATIONS = (0.0, 0.5, 0.9)
 EPISODES = 60
 SEED = 11
 
@@ -88,7 +98,26 @@ def ceiling_cells() -> list[dict[str, Any]]:
             "features": features,
             "contamination": contamination,
             "support": support,
+            "separation": 0.0,
         }
+        for support in SUPPORT_SIZES
+        for features in FEATURE_COUNTS
+        for contamination in CONTAMINATIONS
+    ]
+    # Separated-component cells, appended so the indices above keep their
+    # meaning while the array that is using them is still running.  Separation
+    # is the half of mixture-of-experts identifiability that this prior never
+    # controlled; the block above is its zero point.
+    grid += [
+        {
+            "target": "regression",
+            "num_classes": 0,
+            "features": features,
+            "contamination": contamination,
+            "support": support,
+            "separation": separation,
+        }
+        for separation in SEPARATIONS[1:]
         for support in SUPPORT_SIZES
         for features in FEATURE_COUNTS
         for contamination in CONTAMINATIONS
@@ -96,7 +125,30 @@ def ceiling_cells() -> list[dict[str, Any]]:
     return grid
 
 
-def _continuous_candidates(rows: int, features: int, rng: np.random.Generator, max_attempts: int = 16):
+def _separate(values: list[torch.Tensor], separation: float) -> list[torch.Tensor]:
+    """Push every rule after the first toward the negation of the first.
+
+    Standardize, project out the component along rule A, then recombine at a
+    target correlation of ``-separation``.  At 0.0 the rules are returned
+    untouched, so the default reproduces independent draws exactly.
+    """
+    if separation <= 0.0:
+        return values
+    base = values[0]
+    anchor = (base - base.mean()) / base.std().clamp_min(1e-6)
+    separated = [base]
+    for value in values[1:]:
+        centred = (value - value.mean()) / value.std().clamp_min(1e-6)
+        orthogonal = centred - (centred * anchor).mean() * anchor
+        orthogonal = orthogonal / orthogonal.std().clamp_min(1e-6)
+        residual = float(np.sqrt(max(0.0, 1.0 - separation**2)))
+        separated.append(-separation * anchor + residual * orthogonal)
+    return separated
+
+
+def _continuous_candidates(
+    rows: int, features: int, rng: np.random.Generator, separation: float = 0.0, max_attempts: int = 16
+):
     """Two independent SCM label functions on one shared table, undiscretized.
 
     ``_scm_candidates`` runs the SCM's continuous output through ``Reg2Cls``.
@@ -154,6 +206,7 @@ def _continuous_candidates(rows: int, features: int, rng: np.random.Generator, m
                 if processed_x is None:
                     processed_x = x_value.float()
                 values.append(value.reshape(-1).float())
+            values = _separate(values, separation)
             stacked = torch.stack(values).cpu().numpy().astype(np.float64)
             x = processed_x.reshape(-1, features).cpu().numpy().astype(np.float64)
             if np.isfinite(x).all() and np.isfinite(stacked).all() and stacked.std(axis=1).min() > 1e-6:
@@ -204,7 +257,9 @@ def measure(cell: dict[str, Any], episodes: int = EPISODES, seed: int = SEED) ->
     for _ in range(episodes):
         try:
             if regression:
-                x, rules = _continuous_candidates(support + 8, features, rng)
+                x, rules = _continuous_candidates(
+                    support + 8, features, rng, separation=float(cell.get("separation", 0.0))
+                )
             else:
                 x, rules = _scm_candidates(
                     "mlp_scm", 2, support + 8, features, rng, num_classes=int(cell["num_classes"])

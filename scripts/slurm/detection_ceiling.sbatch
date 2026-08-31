@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
 #SBATCH --time=04:00:00
-#SBATCH --array=0-39
+#SBATCH --array=0-55
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -18,7 +18,13 @@
 # This grid finds which design, if any, is worth training on.
 #
 #   0-31   classification, support x features x contamination x num_classes
-#   32-39  regression, same axes minus num_classes
+#   32-39  regression, independent rules (separation 0.0)
+#   40-55  regression, separated rules (separation 0.5 and 0.9)
+#
+# Separation is the half of mixture-of-experts identifiability this prior
+# never controlled: `regime_coherence` supplied the covariate-dependent gate
+# and left component separation to chance, which is why the gate bought
+# nothing.  32-39 is its zero point.
 #
 # This work is entirely CPU-bound -- SCM generation and scikit-learn, nothing
 # on the device.  It runs on the gpu partition for queue availability and the

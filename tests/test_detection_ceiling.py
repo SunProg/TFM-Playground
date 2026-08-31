@@ -2,6 +2,7 @@ import unittest
 
 from tfmplayground.experiments.detection_ceiling import (
     CLASS_COUNTS,
+    SEPARATIONS,
     CONTAMINATIONS,
     FEATURE_COUNTS,
     SUPPORT_SIZES,
@@ -19,10 +20,47 @@ class CeilingGridTests(unittest.TestCase):
         self.assertEqual(
             len(classification), len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS) * len(CLASS_COUNTS)
         )
-        self.assertEqual(len(regression), len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS))
+        self.assertEqual(
+            len(regression), len(SEPARATIONS) * len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS)
+        )
         # Classification first, so adding regression cells did not renumber them.
         self.assertEqual([c["target"] for c in cells[: len(classification)]], ["classification"] * len(classification))
         self.assertEqual(len({tuple(sorted(c.items())) for c in cells}), len(cells))
+
+    def test_regression_indices_are_stable_across_the_separation_block(self):
+        """Indices 32-39 were already in flight when separation was added, and a
+        pending array task reads this grid when it starts -- so appending must
+        not move them."""
+        cells = ceiling_cells()
+        zero = [c for c in cells if c["target"] == "regression" and c["separation"] == 0.0]
+        self.assertEqual(len(zero), len(SUPPORT_SIZES) * len(FEATURE_COUNTS) * len(CONTAMINATIONS))
+        # Every zero-separation regression cell precedes every separated one.
+        separated = [i for i, c in enumerate(cells) if c.get("separation", 0.0) > 0.0]
+        self.assertTrue(min(separated) > max(i for i, c in enumerate(cells) if c.get("separation", 0.0) == 0.0))
+        self.assertEqual(
+            sorted({c["separation"] for c in cells if c["target"] == "regression"}), sorted(SEPARATIONS)
+        )
+
+    def test_separation_pushes_the_rules_apart(self):
+        """The half of mixture-of-experts identifiability the prior never had:
+        two independent draws land wherever chance puts them, so raising this
+        must measurably increase the gap between the rules."""
+        import numpy as np
+
+        from tfmplayground.experiments.detection_ceiling import _continuous_candidates
+
+        gaps = {}
+        for separation in (0.0, 0.9):
+            rng = np.random.default_rng(4)
+            gaps[separation] = float(
+                np.mean(
+                    [
+                        np.mean(np.abs(rules[0] - rules[1]))
+                        for _, rules in (_continuous_candidates(72, 4, rng, separation=separation) for _ in range(3))
+                    ]
+                )
+            )
+        self.assertGreater(gaps[0.9], 1.3 * gaps[0.0])
 
     def test_index_bounds(self):
         for index in (-1, len(ceiling_cells())):
