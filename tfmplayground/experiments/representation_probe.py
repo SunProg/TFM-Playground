@@ -167,12 +167,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> str:
+    """Print each checkpoint's row as it finishes.
+
+    Accumulating and printing once at the end means a run killed partway --
+    which is what a detached remote process does when its session ends --
+    produces nothing at all, discarding every checkpoint already probed.
+    """
     arguments = build_parser().parse_args(argv)
-    return "\n".join(
-        json.dumps(probe_checkpoint(path, episodes=arguments.episodes, seed=arguments.seed))
-        for path in arguments.checkpoints
-    )
+    lines = []
+    for path in arguments.checkpoints:
+        line = json.dumps(probe_checkpoint(path, episodes=arguments.episodes, seed=arguments.seed))
+        print(line, flush=True)
+        lines.append(line)
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
-    print(main())
+    main()
