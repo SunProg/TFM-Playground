@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-103
+#SBATCH --array=0-109
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -31,6 +31,8 @@
 #     slot head K=2           92         93           94             95
 #     slot_backbone K=2       96         97           98             99
 #     slot_mixture  K=2      100        101          102            103
+#   positive control (coherence 8.0, learnable design) -- multiregime/mixed only
+#     slot head / backbone / mixture      104-105  106-107  108-109
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59

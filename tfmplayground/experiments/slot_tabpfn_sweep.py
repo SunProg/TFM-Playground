@@ -53,6 +53,19 @@ REGIME_COHERENCE = 2.0
 #: would buy nothing the existing cells do not already report.
 COMPATIBILITY_MODES_SCREENED = ("likelihood", "additive")
 
+#: The positive control's gate strength.  At 2.0 the regime stays genuinely
+#: latent; at 8.0 the contaminated rows are all but a deterministic half-space,
+#: so group membership becomes a property of the row itself -- which is the
+#: assumption slot attention is built on and the one this task violates.
+#: Measured supervised `x -> tag` AUC at this setting: 0.980.
+#:
+#: The task is *worse* as a benchmark here -- a single piecewise label function
+#: fits it and no mixture is needed -- and that is deliberate.  This is not a
+#: proposed design.  It asks only whether the competition can group rows when
+#: the grouping is element-wise, so that a null result elsewhere cannot be
+#: attributed to a bug in the implementation.
+CONTROL_COHERENCE = 8.0
+
 #: The one design measured to be both learnable *and* still to require
 #: discovering the latent structure: `detection_ceiling` puts its achievable
 #: AUC at 0.742, against 0.505 for the design every earlier arm trained on.
@@ -242,6 +255,25 @@ def screening_configurations() -> list[dict[str, Any]]:
             **LEARNABLE_DESIGN,
         }
         for prior_mode in PRIOR_MODES
+    ]
+    # The positive control.  Every null result in this project is consistent
+    # with two stories: the competition is correct and the task violates its
+    # inductive bias, or the implementation is quietly broken and would fail on
+    # object discovery too.  Nothing measured so far separates them.  Here the
+    # regime is nearly a deterministic function of the features, so a working
+    # competition must group the rows; if binding stays flat even here, the
+    # mechanism is broken rather than mismatched.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 2,
+            "model_kind": model_kind,
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            **LEARNABLE_DESIGN,
+        }
+        for model_kind in ("slot", "slot_backbone", "slot_backbone_mixture")
+        for prior_mode in ("multiregime", "mixed")
     ]
     return grid
 

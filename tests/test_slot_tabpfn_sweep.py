@@ -32,6 +32,7 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
     COHERENT_STEPS,
+    CONTROL_COHERENCE,
     LEARNABLE_DESIGN,
     COMPATIBILITY_MODES_SCREENED,
     EXTENDED_SLOT_COUNTS,
@@ -213,7 +214,12 @@ class SweepTests(unittest.TestCase):
         # The learnable-design block, appended last.  Every block before it
         # trains on a task whose achievable detection AUC is 0.505 -- chance --
         # so a model number on it cannot be read at all.
-        learnable = [c for c in configurations if c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]]
+        learnable = [
+            c
+            for c in configurations
+            if c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]
+            and c.get("regime_coherence", 0.0) != CONTROL_COHERENCE
+        ]
         self.assertEqual(len(learnable), 4 * len(PRIOR_MODES))
         self.assertEqual(
             [c["model_kind"] for c in learnable],
@@ -228,7 +234,18 @@ class SweepTests(unittest.TestCase):
         # was missed on the first pass.
         self.assertEqual({c["model_kind"] for c in learnable}, set(MODEL_KINDS))
         self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in learnable))
-        self.assertEqual(configurations[-len(learnable):], learnable)
+        self.assertEqual(configurations[len(configurations) - len(learnable) - 6 : -6], learnable)
+
+        # The positive control, appended last.  It asks only whether the
+        # competition can group rows when membership is element-wise, so a null
+        # elsewhere cannot be blamed on a broken implementation.  Vanilla is
+        # absent by design: it has no slots, so no binding to score.
+        control = [c for c in configurations if c.get("regime_coherence", 0.0) == CONTROL_COHERENCE]
+        self.assertEqual(len(control), 6)
+        self.assertEqual(configurations[-6:], control)
+        self.assertNotIn("vanilla", {c["model_kind"] for c in control})
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in control))
+        self.assertTrue(all(f"-coh{CONTROL_COHERENCE:g}-" in configuration_label(c) for c in control))
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
