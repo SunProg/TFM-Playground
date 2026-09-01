@@ -68,9 +68,13 @@ def load_backbone(path: str | Path) -> tuple[NanoTabPFNModel, dict[str, Any]]:
         embedding_size=architecture["embedding_size"],
         num_attention_heads=architecture["num_attention_heads"],
         mlp_hidden_size=architecture["mlp_hidden_size"],
-        num_outputs=architecture["num_outputs"],
+        # The head variant writes `backbone_num_outputs`, since its own output
+        # width is the mixture's, not the backbone's.
+        num_outputs=architecture.get("num_outputs", architecture.get("backbone_num_outputs", 2)),
     )
-    if "num_slots" in architecture and architecture.get("model_kind") in ("slot_backbone", "slot_backbone_mixture"):
+    # The head variant carries `num_slots` too but builds its slots outside the
+    # backbone, so only the in-backbone kinds need layers installed.
+    if architecture.get("model_kind") in ("slot_backbone", "slot_backbone_mixture"):
         install_slot_layers(
             backbone,
             num_slots=architecture["num_slots"],
