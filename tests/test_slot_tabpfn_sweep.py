@@ -145,9 +145,12 @@ class SweepTests(unittest.TestCase):
         # so every later append shifts them.  Rebasing onto the slice that
         # precedes the newest block keeps that arithmetic correct without
         # renumbering four offsets each time.
-        # `blind_similarity` on the learnable design, appended newest.
+        # The learnable-design similarity block: `cell_and_data` first, then the
+        # other two scopes appended after 36996446 was already submitted.
+        similarity_scope_cells = 2 * len(PRIOR_MODES_READABLE)
+        before_similarity_scopes = configurations[:-similarity_scope_cells]
         similarity_cells = len(PRIOR_MODES_READABLE)
-        before_similarity = configurations[:-similarity_cells]
+        before_similarity = before_similarity_scopes[:-similarity_cells]
 
         # The compositing block's negative control.
         control_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_CONTROL_PRIORS)
@@ -554,7 +557,7 @@ class SweepTests(unittest.TestCase):
         # `blind_similarity` on the learnable design.  Baseline compositing
         # only: the mode replaces the decoder's alpha, so there is nothing for
         # `reconstruction_mixture="alpha"` to composite with.
-        similarity = configurations[-similarity_cells:]
+        similarity = before_similarity_scopes[-similarity_cells:]
         self.assertTrue(all(c["query_routing_mode"] == "blind_similarity" for c in similarity))
         self.assertTrue(all("reconstruction_mixture" not in c for c in similarity))
         self.assertEqual([c["prior_mode"] for c in similarity], list(PRIOR_MODES_READABLE))
@@ -571,6 +574,23 @@ class SweepTests(unittest.TestCase):
         for cell in similarity:
             twin = {k: v for k, v in cell.items() if k != "query_routing_mode"}
             self.assertIn(twin, [{k: v for k, v in c.items() if k != "query_routing_mode"} for c in control + baseline])
+
+        # The other two scopes for that block, so the gate gets the same
+        # three-scope crossing on the learnable design that 195-203 have on the
+        # unreadable one.
+        scoped = configurations[-similarity_scope_cells:]
+        self.assertEqual(
+            [(c["slot_scope"], c["prior_mode"]) for c in scoped],
+            [(scope, prior) for scope in ("cell", "data") for prior in PRIOR_MODES_READABLE],
+        )
+        self.assertTrue(all(c["query_routing_mode"] == "blind_similarity" for c in scoped))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in scoped))
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in scoped))
+        # Together with 216-218 that is every scope, once per prior.
+        self.assertEqual(
+            {(c.get("slot_scope", "cell_and_data"), c["prior_mode"]) for c in similarity + scoped},
+            {(s_, p_) for s_ in TABLE_SLOT_SCOPES_READABLE for p_ in PRIOR_MODES_READABLE},
+        )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()

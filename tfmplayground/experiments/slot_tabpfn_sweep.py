@@ -653,6 +653,29 @@ def screening_configurations() -> list[dict[str, Any]]:
         }
         for prior_mode in PRIOR_MODES_READABLE
     ]
+    # The remaining two scopes for the block above, so `blind_similarity` gets
+    # the same three-scope crossing on the learnable design that 195-203 have on
+    # the coherence-2.0 one -- and on a design whose numbers can be read.  216
+    # -218 already cover `cell_and_data`; appending the other two rather than
+    # rebuilding that block keeps 212-218 resolving to what job 36996446 was
+    # submitted against.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": "blind_similarity",
+            "slot_scope": scope,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
     return grid
 
 

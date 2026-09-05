@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-218
+#SBATCH --array=0-224
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -54,7 +54,8 @@
 #     (mixed / curriculum; `plain` is the control below)
 #   compositing negative control -- `plain`, matched to 204-211
 #     alpha 212-213, baseline 214-215
-#   blind_similarity on the learnable design (plain/mixed/curriculum) 216-218
+#   blind_similarity on the learnable design, three scopes x three priors
+#     cell_and_data 216-218, cell 219-221, data 222-224
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59
@@ -135,6 +136,9 @@
 # a flat result cannot be read.  These sit alongside 208-215 so all three gates
 # are comparable at baseline compositing.  Baseline only: the mode replaces the
 # decoder's alpha, so there is no alpha for the compositing axis to act on.
+# 219-224 add the other two scopes, giving the gate the same three-scope
+# crossing 195-203 have on the coherence-2.0 design but on one whose numbers can
+# be read.  195-203 are superseded by these and should not be run.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial
