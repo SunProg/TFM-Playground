@@ -23,6 +23,7 @@ from tfmplayground.models.integrated_latent_filter import (
     IntegratedFilterPrediction,
     NanoTabPFNIntegratedLatentFilter,
 )
+from tfmplayground.models.mufasa_slot_tabpfn import MufasaSlotTabPFNModel
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.particle_online import (
     AdaptiveParticleOnlineClassifier,
@@ -38,6 +39,11 @@ from tfmplayground.models.slot_regime import (
     save_slot_regime_checkpoint,
     slot_regime_loss,
 )
+from tfmplayground.models.supervised_tabpfn import (
+    SupervisedNanoTabPFNModel,
+    supervised_regime_loss,
+)
+from tfmplayground.models.table_slot import TableSlotAdapter, TableSlotModel
 from tfmplayground.models.task_posterior_adapter import (
     NanoTabPFNTaskPosteriorAdapter,
     RegimeParticleAssignment,
@@ -65,6 +71,10 @@ __all__ = [
     "NanoTabPFNMeanPreservingBayesianModel",
     "NanoTabPFNIntegratedLatentFilter",
     "NanoTabPFNModel",
+    "TableSlotAdapter",
+    "TableSlotModel",
+    "SupervisedNanoTabPFNModel",
+    "MufasaSlotTabPFNModel",
     "NanoTabPFNSlotRegimeModel",
     "SlotAttention",
     "SlotLogitsAdapter",
@@ -72,6 +82,7 @@ __all__ = [
     "load_slot_regime_checkpoint",
     "save_slot_regime_checkpoint",
     "slot_regime_loss",
+    "supervised_regime_loss",
     "NanoTabPFNContextOnlineClassifier",
     "NanoTabPFNTaskPosteriorAdapter",
     "NanoTabPFNVariationalHypothesisModel",

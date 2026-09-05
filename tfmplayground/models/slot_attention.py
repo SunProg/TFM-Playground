@@ -54,6 +54,7 @@ class SlotAttention(nn.Module):
         epsilon: float = 1e-8,
         competitive: bool = True,
         eval_seed: int = 0,
+        max_log_sigma: float | None = None,
     ):
         super().__init__()
         if num_slots < 1:
@@ -73,6 +74,7 @@ class SlotAttention(nn.Module):
         self.epsilon = epsilon
         self.competitive = competitive
         self.eval_seed = eval_seed
+        self.max_log_sigma = max_log_sigma
 
         self.norm_inputs = nn.LayerNorm(slot_size)
         self.norm_slots = nn.LayerNorm(slot_size)
@@ -127,7 +129,10 @@ class SlotAttention(nn.Module):
             # requested one, so draw on the generator's device and move after.
             noise = torch.randn(shape, generator=generator, device=generator.device, dtype=self.slots_mu.dtype)
             noise = noise.to(self.slots_mu.device)
-        return self.slots_mu + self.slots_log_sigma.exp() * noise
+        log_sigma = self.slots_log_sigma
+        if self.max_log_sigma is not None:
+            log_sigma = log_sigma.clamp(max=self.max_log_sigma)
+        return self.slots_mu + log_sigma.exp() * noise
 
     def forward(
         self,
@@ -199,8 +204,7 @@ class SlotAttention(nn.Module):
                 logits = compatibility(normalized_slots)
                 if logits.shape != (inputs.shape[0], inputs.shape[1], self.num_slots):
                     raise ValueError(
-                        "compatibility must return (batch, num_inputs, num_slots), "
-                        f"got {tuple(logits.shape)}."
+                        f"compatibility must return (batch, num_inputs, num_slots), got {tuple(logits.shape)}."
                     )
             # dim=-1 makes the slots compete for each input row; dim=-2 is the
             # ordinary cross-attention this module exists to replace.

@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-109
+#SBATCH --array=0-113
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -33,6 +33,18 @@
 #     slot_mixture  K=2      100        101          102            103
 #   positive control (coherence 8.0, learnable design) -- multiregime/mixed only
 #     slot head / backbone / mixture      104-105  106-107  108-109
+#   slots after feature attention -- matched to controls 106-109
+#     backbone / mixture                  110-111  112-113
+#   table slots (K=4, coherence 2.0, 10 epochs), both competitions
+#     head / backbone / mufasa           114-117  118-121  122-125
+#   table-slot scope ablation: cell 126-137, data 138-149
+#     head / backbone / mufasa, four priors each, in that order
+#   readable design (3 classes, 512 support, 15-dataset TabArena) -- no
+#   multiregime arm, so three priors per cell rather than four
+#     cell_and_data 150-158, cell 159-167, data 168-176, vanilla 177-179
+#   closure objective (support-label reconstruction) -- matched to 114/116/117
+#     reconstruction only            180  181  182   (plain/mixed/curriculum)
+#     reconstruction + MI 0.05       183  184  185
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59
@@ -47,6 +59,9 @@
 # cells that generate episodes rather than streaming the dump, which holds
 # coherence-0 episodes.  Their run directories carry a `-coh2` suffix so they
 # cannot resume from, or be confused with, their coherence-0 counterparts.
+# Indices 110-113 use the same positive-control task as 106-109 but move each
+# layer's slot competition before datapoint attention.  Their directories carry
+# an `-after-feature` suffix.
 #
 # 88-99 are the only cells trained on a task whose achievable detection AUC is
 # not chance.  detection_ceiling.py puts every earlier design at ~0.505, so a
@@ -62,6 +77,15 @@
 # directories carry a `-likelihood` / `-additive` suffix for the same reason,
 # and they generate episodes too.  Indices 48-55 are their matched
 # dot-product controls, 44-47 the vanilla ones.
+#
+# 180-185 change the objective rather than the task or the placement.  Every
+# cell above trains the head on the query mixture NLL alone, which reads only
+# the slot logits and the query gate -- the support competition carries no
+# gradient at all, so one slot claiming every row costs nothing, and
+# `purity - base` has been exactly zero throughout.  These add the tabular
+# reading of Slot Attention's mask-weighted reconstruction: the assignment must
+# explain the labels it claims.  Their directories carry a `-rec1` / `-rec1-mi`
+# suffix, and 114/116/117 are the matched baseline at identical settings.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial
@@ -94,15 +118,17 @@ fi
 export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export TOKENIZERS_PARALLELISM=false
-
-if [[ ! -d "${DUMP_DIR}" ]]; then
-    echo "Missing multiregime dump at ${DUMP_DIR}; run dump_multiregime_episodes.sbatch first" >&2
-    exit 2
-fi
+# The large-support cells sit close to the card's limit, where a fragmented
+# allocator fails on an allocation the free memory could otherwise satisfy.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 TRIAL_LABEL="$("${PYTHON_BIN}" -m tfmplayground.experiments.slot_tabpfn_sweep --label "${SLURM_ARRAY_TASK_ID}")"
 TRIAL_FLAGS="$("${PYTHON_BIN}" -m tfmplayground.experiments.slot_tabpfn_sweep --index "${SLURM_ARRAY_TASK_ID}")"
 readonly TRIAL_LABEL TRIAL_FLAGS
+if [[ "${TRIAL_FLAGS}" != *"--multiregime-dump none"* && ! -d "${DUMP_DIR}" ]]; then
+    echo "Missing multiregime dump at ${DUMP_DIR}; run dump_multiregime_episodes.sbatch first" >&2
+    exit 2
+fi
 readonly STUDY_DIR="${PROJECT_DIR}/runs/slot_tabpfn/${STUDY_ID}"
 readonly RUN_DIR="${STUDY_DIR}/${TRIAL_LABEL}"
 readonly ROLLING_CHECKPOINT="${RUN_DIR}/epoch-latest-checkpoint.pth"

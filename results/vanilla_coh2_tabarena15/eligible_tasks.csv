@@ -1,0 +1,16 @@
+task_id,dataset,classes,predictors,instances
+363613,Amazon_employee_access,2,9,32769
+363618,bank-marketing,2,13,45211
+363619,Bank_Customer_Churn,2,10,10000
+363621,blood-transfusion-service-center,2,4,748
+363623,churn,2,19,5000
+363626,credit-g,2,20,1000
+363627,credit_card_clients_default,2,23,30000
+363629,diabetes,2,8,768
+363632,E-CommereShippingData,2,10,10999
+363674,hazelnut-spread-contaminant-detection,2,30,2400
+363676,heloc,2,23,10459
+363681,in_vehicle_coupon_recommendation,2,24,12684
+363682,Is-this-a-good-customer,2,13,1723
+363691,online_shoppers_intention,2,17,12330
+363700,seismic-bumps,2,15,2584

@@ -82,6 +82,11 @@ class SmallTabArenaConfig:
     device: str = "cpu"
     cache_directory: str | None = None
     max_predictors: int = 10
+    #: Largest class count admitted.  2 keeps the binary-only protocol every
+    #: result before this flag was written under; 3 adds the three three-class
+    #: tables the suite offers, and the metrics below switch to their macro
+    #: forms for those tables only.
+    max_eval_classes: int = 2
     subsample: int = 200
     support_size: int | None = None
     require_full_subsample: bool = False
@@ -103,7 +108,7 @@ class SmallTabArenaConfig:
 
 
 def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
-    """Binary classification, no missing values, at most `max_predictors` predictors."""
+    """Classification with at most `max_eval_classes` classes and `max_predictors` predictors, no missing values."""
     selected = []
     required_rows = _evaluation_rows(config)
     for task_id in config.task_ids:
@@ -118,7 +123,8 @@ def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
             # OpenML counts the target in NumberOfFeatures.
             predictors = int(qualities["NumberOfFeatures"]) - 1
             if (
-                classes != 2
+                classes < 2
+                or classes > config.max_eval_classes
                 or missing != 0
                 or predictors > config.max_predictors
                 or (config.require_full_subsample and int(qualities["NumberOfInstances"]) < required_rows)
@@ -128,6 +134,7 @@ def eligible_tasks(config: SmallTabArenaConfig) -> list[dict[str, Any]]:
                 {
                     "task_id": task_id,
                     "dataset": str(dataset.name),
+                    "classes": classes,
                     "predictors": predictors,
                     "instances": int(qualities["NumberOfInstances"]),
                 }
@@ -349,6 +356,7 @@ def run(config: SmallTabArenaConfig) -> Path:
                         query_regimes[query_positions] = "synthetic"
                     if len(np.unique(y_train)) < 2 or len(np.unique(query_labels)) < 2:
                         continue  # contaminated context collapsed to one class
+            fold_classes = int(task_info.get("classes", 2))
             preprocessor = get_feature_preprocessor(train_frame)
             train_x = preprocessor.fit_transform(train_frame)
             test_x = preprocessor.transform(test_frame)
@@ -371,27 +379,70 @@ def run(config: SmallTabArenaConfig) -> Path:
                 query_regimes=query_regimes,
             ):
                 probability = np.asarray(probability)
-                predicted = probability >= 0.5
+                # A 1-D score is the binary positive-class probability every
+                # result before the multi-class path was written used; a 2-D
+                # score is a full distribution.  The binary branch is left
+                # exactly as it was so those results stay comparable.
+                multiclass = probability.ndim > 1
+                classes = list(range(probability.shape[1])) if multiclass else [0, 1]
+                predicted = probability.argmax(1) if multiclass else probability >= 0.5
+                average = "macro" if multiclass else "binary"
                 rows.append(
                     {
                         "dataset": task_info["dataset"],
                         "task_id": task_info["task_id"],
+                        "classes": len(classes),
                         "predictors": task_info["predictors"],
                         "fold": fold_index,
                         "model": model_name,
-                        "roc_auc": roc_auc_score(query_labels, probability),
+                        # One-vs-rest, macro-averaged above two classes: the
+                        # multi-class generalization of the binary number, not
+                        # a different metric under the same name.
+                        "roc_auc": (
+                            roc_auc_score(query_labels, probability, multi_class="ovr", average="macro", labels=classes)
+                            if multiclass
+                            else roc_auc_score(query_labels, probability)
+                        ),
                         "accuracy": accuracy_score(query_labels, predicted),
                         # Positive-class classification metrics; ``zero_division=0``
                         # makes a fold with no predicted positives explicitly score 0.
-                        "precision": precision_score(query_labels, predicted, zero_division=0),
-                        "recall": recall_score(query_labels, predicted, zero_division=0),
-                        "f1": f1_score(query_labels, predicted, zero_division=0),
-                        "specificity": float(np.mean(~predicted[query_labels == 0])),
-                        "auprc": average_precision_score(query_labels, probability),
-                        "cross_entropy": log_loss(query_labels, probability, labels=[0, 1]),
-                        "brier": brier_score_loss(query_labels, probability),
-                        "support_positive_pct": 100.0 * float(np.mean(y_train == 1)),
-                        "query_positive_pct": 100.0 * float(np.mean(query_labels == 1)),
+                        "precision": precision_score(query_labels, predicted, average=average, zero_division=0),
+                        "recall": recall_score(query_labels, predicted, average=average, zero_division=0),
+                        "f1": f1_score(query_labels, predicted, average=average, zero_division=0),
+                        # Undefined without a designated negative class.
+                        "specificity": (
+                            float("nan") if multiclass else float(np.mean(~predicted[query_labels == 0]))
+                        ),
+                        "auprc": (
+                            float(
+                                np.mean(
+                                    [
+                                        average_precision_score((query_labels == k).astype(int), probability[:, k])
+                                        for k in classes
+                                        if (query_labels == k).any()
+                                    ]
+                                )
+                            )
+                            if multiclass
+                            else average_precision_score(query_labels, probability)
+                        ),
+                        "cross_entropy": log_loss(query_labels, probability, labels=classes),
+                        "brier": (
+                            float(
+                                np.mean(
+                                    (probability - np.eye(len(classes))[query_labels]) ** 2
+                                )
+                                * len(classes)
+                            )
+                            if multiclass
+                            else brier_score_loss(query_labels, probability)
+                        ),
+                        "support_positive_pct": (
+                            float("nan") if multiclass else 100.0 * float(np.mean(y_train == 1))
+                        ),
+                        "query_positive_pct": (
+                            float("nan") if multiclass else 100.0 * float(np.mean(query_labels == 1))
+                        ),
                         "fit_seconds": fit_seconds,
                         # In-context models do essentially all their work at predict time, so a
                         # training-time-only comparison would make them look free. Recorded
@@ -436,6 +487,11 @@ def run(config: SmallTabArenaConfig) -> Path:
                         mask = query_regimes == query_regime
                         regime_query_labels = query_labels[mask]
                         regime_probability = np.asarray(probability)[mask]
+                        if regime_probability.ndim > 1:
+                            # The contaminated arms build their second regime
+                            # with a binary relabeller, so this block has no
+                            # multi-class form to report.
+                            continue
                         regime_rows.append(
                             {
                                 "dataset": task_info["dataset"],
@@ -470,6 +526,7 @@ def run(config: SmallTabArenaConfig) -> Path:
                     device=config.device,
                     query_chunk_size=config.query_chunk_size,
                     num_mem_chunks=config.num_mem_chunks,
+                    num_classes=fold_classes,
                 )
                 record("vanilla", vanilla_probability, time.perf_counter() - start)
                 release_device_memory(config.device)
@@ -481,6 +538,7 @@ def run(config: SmallTabArenaConfig) -> Path:
                     device=config.device,
                     query_chunk_size=config.query_chunk_size,
                     num_mem_chunks=config.num_mem_chunks,
+                    num_classes=fold_classes,
                 )
                 record(name, probability, time.perf_counter() - start)
                 release_device_memory(config.device)
@@ -522,7 +580,8 @@ def run(config: SmallTabArenaConfig) -> Path:
                     estimator.fit(train_x, y_train)
                     fit_elapsed = time.perf_counter() - start
                     start = time.perf_counter()
-                    probability = estimator.predict_proba(test_x)[:, 1]
+                    proba = estimator.predict_proba(test_x)
+                    probability = proba[:, 1] if fold_classes == 2 else proba
                     record(
                         name,
                         probability,
@@ -538,7 +597,8 @@ def run(config: SmallTabArenaConfig) -> Path:
                 classifier.fit(train_frame, y_train)
                 fit_elapsed = time.perf_counter() - start
                 start = time.perf_counter()
-                probability = classifier.predict_proba(test_frame)[:, 1]
+                proba = classifier.predict_proba(test_frame)
+                probability = proba[:, 1] if fold_classes == 2 else proba
                 record(
                     "tabpfn",
                     probability,
@@ -708,6 +768,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default=str(get_default_device()))
     parser.add_argument("--cache-directory", default=None)
     parser.add_argument("--max-predictors", type=int, default=10)
+    parser.add_argument("--max-eval-classes", type=int, default=2)
     parser.add_argument("--subsample", type=int, default=200)
     parser.add_argument(
         "--support-size",

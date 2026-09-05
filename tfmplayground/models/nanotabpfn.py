@@ -204,6 +204,7 @@ class TransformerEncoderLayer(nn.Module):
         Returns
             (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features, embedding_size)
         """
+        src = self.adapt_before_feature_attention(src)
         src = self.feature_attention_stage(src, num_mem_chunks=num_mem_chunks)
         src = self.adapt_after_feature_attention(src)
         src = self.datapoint_attention_stage(
@@ -212,6 +213,10 @@ class TransformerEncoderLayer(nn.Module):
         src = self.adapt_after_datapoint_attention(src)
         src = self.mlp_stage(src, num_mem_chunks=num_mem_chunks)
         return self.adapt_after_mlp(src)
+
+    def adapt_before_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Hook for research heads; the pretrained model applies no modification."""
+        return src
 
     def adapt_after_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
         """Hook for research heads; the pretrained model applies no modification."""

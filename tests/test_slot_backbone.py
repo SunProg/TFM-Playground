@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import torch
@@ -109,6 +110,46 @@ class SlotBackboneTests(unittest.TestCase):
         self.slotted(self.support_x, self.support_y, self.query_x)
         deepest = self.slotted.transformer_blocks[-1].last_support_attention
         torch.testing.assert_close(collect_support_attention(self.slotted), deepest, atol=0, rtol=0)
+
+    def test_slot_position_selects_the_expected_states_and_call_count(self):
+        """Single placements run once on their boundary; the dual placement
+        runs on both sides of feature attention and nowhere else."""
+        source = torch.randn(BATCH, SUPPORT + QUERY, FEATURES + 1, 16)
+        for position in (
+            "before_feature",
+            "after_feature",
+            "before_and_after_feature",
+            "after_datapoint",
+        ):
+            layer = SlotTransformerEncoderLayer(16, 2, 32, slot_position=position).eval()
+            post_feature = layer.feature_attention_stage(source)
+            post_datapoint = layer.datapoint_attention_stage(
+                post_feature, train_test_split_index=SUPPORT
+            )
+            with mock.patch.object(layer, "_slot_write_back", side_effect=lambda value: value) as apply_slots:
+                layer(source, train_test_split_index=SUPPORT)
+            expected = {
+                "before_feature": (source,),
+                "after_feature": (post_feature,),
+                "before_and_after_feature": (source, post_feature),
+                "after_datapoint": (post_datapoint,),
+            }[position]
+            self.assertEqual(apply_slots.call_count, len(expected))
+            for call, expected_state in zip(apply_slots.call_args_list, expected, strict=True):
+                torch.testing.assert_close(call.args[0], expected_state, atol=0, rtol=0)
+
+    def test_historical_slot_position_is_the_default(self):
+        for layer in self.slotted.transformer_blocks:
+            self.assertEqual(layer.slot_position, "after_datapoint")
+
+    def test_unknown_slot_position_is_rejected(self):
+        with self.assertRaises(ValueError):
+            install_slot_layers(backbone(), num_slots=SLOTS, slot_position="between_attentions")
+
+    def test_dual_placement_reuses_one_slot_parameter_set(self):
+        before = install_slot_layers(backbone(), num_slots=SLOTS, slot_position="before_feature")
+        dual = install_slot_layers(backbone(), num_slots=SLOTS, slot_position="before_and_after_feature")
+        self.assertEqual(sum(p.numel() for p in before.parameters()), sum(p.numel() for p in dual.parameters()))
 
 
 class CompatibilityTests(unittest.TestCase):
@@ -246,6 +287,19 @@ class MixtureReadoutTests(unittest.TestCase):
             self.assertIsNotNone(layer.slot_attention.gru.weight_ih.grad)
             self.assertIsNotNone(layer.slot_mix.grad)
 
+    def test_new_placement_losses_reach_slots_write_back_and_decoder(self):
+        for position in ("before_feature", "before_and_after_feature"):
+            model = SlotBackboneMixtureModel(
+                install_slot_layers(backbone(), num_slots=SLOTS, slot_position=position)
+            )
+            target = torch.randint(0, 2, (BATCH, QUERY))
+            slot_regime_loss(model(self.support_x, self.support_y, self.query_x), target).backward()
+            self.assertIsNotNone(model.decoder.body[0].weight.grad)
+            for layer in model.backbone.transformer_blocks:
+                self.assertIsNotNone(layer.slot_attention.slots_mu.grad)
+                self.assertIsNotNone(layer.write_back.in_proj_weight.grad)
+                self.assertIsNotNone(layer.slot_mix.grad)
+
     def test_slots_are_kept_undetached_for_that_gradient(self):
         """`last_support_attention` is detached because it is only ever scored;
         `last_slots` must not be, because the loss trains through it."""
@@ -291,7 +345,6 @@ class MixtureReadoutTests(unittest.TestCase):
         above would have passed against a wrapper that still mismatched here.
         """
         from tfmplayground.experiments.evaluate_integrated_tabarena import predict_vanilla
-
         from tfmplayground.models.slot_regime import SlotLogitsAdapter
 
         rng = np.random.default_rng(0)
@@ -343,9 +396,45 @@ class MixtureReadoutTests(unittest.TestCase):
                 path,
             )
             restored = load_checkpoint_for_inference(path)
+        self.assertTrue(
+            all(layer.slot_position == "after_datapoint" for layer in restored.backbone.transformer_blocks)
+        )
         actual = restored(self.support_x, self.support_y, self.query_x)
         self.assertEqual(actual.shape, (BATCH, QUERY, 2))
         torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
+
+    def test_new_checkpoint_preserves_feature_boundary_positions(self):
+        from tfmplayground.models.slot_regime import load_checkpoint_for_inference
+
+        for position in ("before_feature", "after_feature", "before_and_after_feature"):
+            model = SlotBackboneMixtureModel(
+                install_slot_layers(backbone(), num_slots=SLOTS, slot_position=position)
+            ).eval()
+            expected = model(self.support_x, self.support_y, self.query_x).marginal_log_probabilities()
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "checkpoint.pth"
+                torch.save(
+                    {
+                        "architecture": {
+                            "embedding_size": 16,
+                            "num_attention_heads": 2,
+                            "mlp_hidden_size": 32,
+                            "num_layers": 2,
+                            "num_outputs": 3,
+                            "model_kind": "slot_backbone_mixture",
+                            "num_slots": SLOTS,
+                            "max_classes": 2,
+                            "slot_position": position,
+                        },
+                        "model": model.state_dict(),
+                    },
+                    path,
+                )
+                restored = load_checkpoint_for_inference(path)
+            self.assertTrue(all(layer.slot_position == position for layer in restored.backbone.transformer_blocks))
+            torch.testing.assert_close(
+                restored(self.support_x, self.support_y, self.query_x), expected, atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == "__main__":

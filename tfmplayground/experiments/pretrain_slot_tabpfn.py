@@ -51,6 +51,7 @@ from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_attention import slot_assignment_entropy
 from tfmplayground.models.slot_backbone import (
     COMPATIBILITY_MODES,
+    SLOT_POSITIONS,
     SlotBackboneMixtureModel,
     collect_support_attention,
     install_slot_layers,
@@ -58,13 +59,25 @@ from tfmplayground.models.slot_backbone import (
 from tfmplayground.models.slot_regime import (
     NanoTabPFNSlotRegimeModel,
     SlotRegimePrediction,
+    slot_mi_loss,
     slot_regime_checkpoint,
     slot_regime_loss,
+    slot_utilization_scores,
+    support_reconstruction_loss,
 )
+from tfmplayground.models.table_slot import QUERY_ROUTING_MODES, SLOT_SCOPES, TableSlotModel
 from tfmplayground.utils import set_randomness_seed
 
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
-MODEL_KINDS = ("slot", "vanilla", "slot_backbone", "slot_backbone_mixture")
+MODEL_KINDS = (
+    "slot",
+    "vanilla",
+    "slot_backbone",
+    "slot_backbone_mixture",
+    "table_slot_head",
+    "table_slot_backbone",
+    "table_slot_mufasa",
+)
 #: The kinds whose slots live inside the transformer layers, so the competition
 #: runs before full row attention has mixed the regimes together.  They differ
 #: only in the readout: ``slot_backbone`` decodes the finished representation
@@ -129,15 +142,47 @@ class SlotPretrainingConfig:
     #: the only variable when the two are compared.
     #: "slot_backbone" puts the competition inside every transformer layer
     #: instead of on top of the finished representation.
-    model_kind: Literal["slot", "vanilla", "slot_backbone", "slot_backbone_mixture"] = "slot"
+    model_kind: Literal[
+        "slot",
+        "vanilla",
+        "slot_backbone",
+        "slot_backbone_mixture",
+        "table_slot_head",
+        "table_slot_backbone",
+        "table_slot_mufasa",
+    ] = "slot"
     num_slots: int = 2
     num_slot_iterations: int = 3
+    table_slot_layer_indices: tuple[int, ...] = (3, 4, 5)
+    #: Which competitions a ``table_slot_*`` model runs: over the cells of each
+    #: row, over the feature-pooled rows, or both.  See
+    #: ``table_slot.SLOT_SCOPES``.
+    table_slot_scope: Literal["cell_and_data", "cell", "data"] = "cell_and_data"
+    #: Weight on the support-label reconstruction, the tabular reading of Slot
+    #: Attention's mask-weighted image reconstruction.  0.0 reproduces every
+    #: earlier run exactly: the second backbone pass it needs is skipped
+    #: outright rather than run and multiplied by zero.
+    support_reconstruction_weight: float = 0.0
+    #: Weight on the balanced-sharpness term, which penalizes uniform
+    #: assignments and one-slot collapse alike.
+    slot_mi_weight: float = 0.0
+    #: How a ``table_slot_head`` query row is routed to slots.  See
+    #: ``table_slot.QueryRoutingMode`` for what each value means.
+    query_routing_mode: Literal["decoder", "blind_decoder", "blind_similarity"] = "decoder"
     competitive_slots: bool = True
     #: What a slot's claim on a support row is scored by, for ``slot_backbone``.
     #: "dot" is Locatello's own compatibility; "likelihood" scores
     #: ``log p(y | x, slot)``; "additive" keeps both.  See
     #: ``slot_backbone.COMPATIBILITY_MODES``.
     slot_compatibility: Literal["dot", "likelihood", "additive"] = "dot"
+    #: Whether in-backbone slots run immediately after feature attention or in
+    #: their historical position after datapoint attention.
+    slot_position: Literal[
+        "before_feature",
+        "after_feature",
+        "before_and_after_feature",
+        "after_datapoint",
+    ] = "after_datapoint"
     #: One "epoch" for progress reporting: TabArena runs on each boundary.
     epoch_steps: int = 500
     #: Retain a durable checkpoint this often.  Every epoch also overwrites a
@@ -148,6 +193,14 @@ class SlotPretrainingConfig:
     tabarena_folds: int = 5
     tabarena_repeats: int = 10
     tabarena_subsample: int = 2_048
+    #: Predictor cap for TabArena eligibility.  The default 10 admits five
+    #: binary datasets; 30 admits fifteen, which is the same protocol over a
+    #: wider slice rather than a different one.
+    tabarena_max_predictors: int = 10
+    #: Largest class count TabArena admits.  2 is the binary-only protocol; 3
+    #: adds the suite's three three-class tables and switches those tables'
+    #: metrics to their macro forms.
+    tabarena_max_classes: int = 2
     tabarena_cache_directory: str | None = None
     tensorboard: bool = True
 
@@ -175,9 +228,7 @@ def validate_config(config: SlotPretrainingConfig) -> None:
     if config.model_kind not in MODEL_KINDS:
         raise ValueError(f"model_kind must be one of {MODEL_KINDS}, got {config.model_kind!r}.")
     if config.slot_compatibility not in COMPATIBILITY_MODES:
-        raise ValueError(
-            f"slot_compatibility must be one of {COMPATIBILITY_MODES}, got {config.slot_compatibility!r}."
-        )
+        raise ValueError(f"slot_compatibility must be one of {COMPATIBILITY_MODES}, got {config.slot_compatibility!r}.")
     if config.slot_compatibility != "dot" and config.model_kind not in _SLOT_LAYER_KINDS:
         # The head variant builds its slots from the finished representation and
         # has no per-layer classifier to score a likelihood with, so silently
@@ -186,8 +237,49 @@ def validate_config(config: SlotPretrainingConfig) -> None:
             f"slot_compatibility={config.slot_compatibility!r} needs in-backbone slot layers "
             f"({' or '.join(_SLOT_LAYER_KINDS)}), not model_kind={config.model_kind!r}."
         )
+    if config.slot_position not in SLOT_POSITIONS:
+        raise ValueError(f"slot_position must be one of {SLOT_POSITIONS}, got {config.slot_position!r}.")
+    if config.slot_position != "after_datapoint" and config.model_kind not in _SLOT_LAYER_KINDS:
+        raise ValueError(
+            f"slot_position={config.slot_position!r} needs in-backbone slot layers "
+            f"({' or '.join(_SLOT_LAYER_KINDS)}), not model_kind={config.model_kind!r}."
+        )
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
+    if config.tabarena_max_predictors < 1:
+        raise ValueError("tabarena_max_predictors must be positive.")
+    if config.tabarena_max_classes < 2:
+        raise ValueError("tabarena_max_classes must be at least two.")
+    if config.tabarena_max_classes > config.max_classes:
+        raise ValueError(
+            "tabarena_max_classes exceeds the head width: a model trained with "
+            f"max_classes={config.max_classes} cannot score {config.tabarena_max_classes}-class tables."
+        )
+    if config.table_slot_scope not in SLOT_SCOPES:
+        raise ValueError(f"table_slot_scope must be one of {SLOT_SCOPES}, got {config.table_slot_scope!r}.")
+    if config.table_slot_scope != "cell_and_data" and not config.model_kind.startswith("table_slot_"):
+        raise ValueError(f"table_slot_scope is a table-slot setting, not model_kind={config.model_kind!r}.")
+    if config.query_routing_mode not in QUERY_ROUTING_MODES:
+        raise ValueError(f"query_routing_mode must be one of {QUERY_ROUTING_MODES}, got {config.query_routing_mode!r}.")
+    if config.query_routing_mode != "decoder" and config.model_kind != "table_slot_head":
+        raise ValueError(
+            f"query_routing_mode={config.query_routing_mode!r} needs model_kind=table_slot_head, "
+            f"not {config.model_kind!r}."
+        )
+    for name in ("support_reconstruction_weight", "slot_mi_weight"):
+        weight = getattr(config, name)
+        if weight < 0.0:
+            raise ValueError(f"{name} must not be negative, got {weight}.")
+        # The pilot is scoped to the head placement: the reconstruction needs a
+        # single adapter to run label-blind, and the other two placements have
+        # slots inside the layers instead.
+        if weight and config.model_kind != "table_slot_head":
+            raise ValueError(f"{name} needs model_kind=table_slot_head, not {config.model_kind!r}.")
+    if config.model_kind in ("table_slot_backbone", "table_slot_mufasa"):
+        if not config.table_slot_layer_indices or any(
+            index < 0 or index >= config.num_layers for index in config.table_slot_layer_indices
+        ):
+            raise ValueError("table_slot_layer_indices must identify transformer blocks.")
     if config.require_cuda and not torch.cuda.is_available():
         raise RuntimeError("--require-cuda was set but no CUDA device is available.")
 
@@ -237,17 +329,52 @@ def slot_batch_loss(model, batch) -> torch.Tensor:
     cross entropy `pretrain_plain_nanotabpfn.query_loss` uses, so the two differ
     only in the model, not in how they are scored.
     """
-    if isinstance(batch, dict):
-        split = int(batch["train_test_split_index"])
-        x, y = batch["x"], batch["y"]
-        support_x, support_y, query_x, target = x[:, :split], y[:, :split], x[:, split:], y[:, split:]
-    else:
-        support_x, support_y, query_x, target = batch.support_x, batch.support_y, batch.query_x, batch.query_y
+    support_x, support_y, query_x, target = _batch_arguments(batch)
     output = model(support_x, support_y, query_x)
     if isinstance(output, SlotRegimePrediction):
         return slot_regime_loss(output, target)
     classes = output.shape[-1]
     return F.cross_entropy(output.reshape(-1, classes), target.reshape(-1).long())
+
+
+def _batch_arguments(batch):
+    """``(support_x, support_y, query_x, query_target)`` for either batch shape."""
+    if isinstance(batch, dict):
+        split = int(batch["train_test_split_index"])
+        x, y = batch["x"], batch["y"]
+        return x[:, :split], y[:, :split], x[:, split:], y[:, split:]
+    return batch.support_x, batch.support_y, batch.query_x, batch.query_y
+
+
+def slot_training_loss(model, batch, config: SlotPretrainingConfig) -> tuple[torch.Tensor, dict[str, float]]:
+    """The optimized objective: query NLL plus the two optional slot terms.
+
+    Kept separate from ``slot_batch_loss`` on purpose.  That function is what
+    ``validate`` scores ``query_cross_entropy`` and ``multiregime_cross_entropy``
+    with, and those must stay the *pure* query cross entropy or an arm carrying
+    an auxiliary term would be ranked on a different quantity than the arms it
+    is compared against.
+    """
+    reconstruction_weight = float(config.support_reconstruction_weight)
+    mi_weight = float(config.slot_mi_weight)
+    if not reconstruction_weight and not mi_weight:
+        return slot_batch_loss(model, batch), {}
+    support_x, support_y, query_x, target = _batch_arguments(batch)
+    # The second backbone pass is the expensive half, so it is requested only
+    # when something actually reads it.
+    prediction = model(support_x, support_y, query_x, reconstruct_support=bool(reconstruction_weight))
+    target_loss = slot_regime_loss(prediction, target)
+    total = target_loss
+    components = {"target_loss": float(target_loss.detach())}
+    if reconstruction_weight:
+        reconstruction = support_reconstruction_loss(prediction, support_y)
+        total = total + reconstruction_weight * reconstruction
+        components["reconstruction_nll"] = float(reconstruction.detach())
+    if mi_weight:
+        mi = slot_mi_loss(prediction.support_attention)
+        total = total + mi_weight * mi
+        components["mi_loss"] = float(mi.detach())
+    return total, components
 
 
 def gate_regime_auc(prediction, episode) -> float | None:
@@ -392,6 +519,8 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         gate_aucs: list[float] = []
         gate_entropies: list[float] = []
         binding: dict[str, list[float]] = {}
+        utilization: dict[str, list[float]] = {}
+        reconstruction: list[float] = []
         for _ in range(config.validation_episodes):
             episode = multiregime_batch(config, episode_rng)
             loss = slot_batch_loss(model, episode)
@@ -415,7 +544,17 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
                     ).items():
                         binding.setdefault(key, []).append(value)
                 continue
-            prediction = model(episode.support_x, episode.support_y, episode.query_x)
+            reconstructing = config.model_kind == "table_slot_head" and bool(config.support_reconstruction_weight)
+            prediction = model(
+                episode.support_x, episode.support_y, episode.query_x, **({"reconstruct_support": True} if reconstructing else {})
+            )
+            if reconstructing:
+                reconstruction.append(float(support_reconstruction_loss(prediction, episode.support_y)))
+            # Sharpness and balance need no regime tag, so unlike the binding
+            # scores below they are reported for every slot arm and would still
+            # be reported on a real table.
+            for key, value in slot_utilization_scores(prediction.support_attention).items():
+                utilization.setdefault(key, []).append(value)
             gate_entropies.append(float(prediction.gate_entropy().mean()))
             auc = gate_regime_auc(prediction, episode)
             if auc is not None:
@@ -451,6 +590,10 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
                 "support_identifiable_fraction",
             )
         },
+        # Sharpness, balance and the reconstruction NLL: what the closure pilot
+        # is screened on.  Absent for every arm that requests neither.
+        "support_reconstruction_nll": reconstruction,
+        **utilization,
     }
     for name, values in samples.items():
         summary = summarize_samples(name, values)
@@ -481,6 +624,8 @@ def evaluate_tabarena_epoch(
                 device=config.device,
                 cache_directory=config.tabarena_cache_directory,
                 subsample=config.tabarena_subsample,
+                max_predictors=config.tabarena_max_predictors,
+                max_eval_classes=config.tabarena_max_classes,
                 folds=config.tabarena_folds,
                 repeats=config.tabarena_repeats,
                 include_sklearn=False,
@@ -547,6 +692,17 @@ def build_model(config: SlotPretrainingConfig):
     backbone = NanoTabPFNModel(**config.architecture())
     if config.model_kind == "vanilla":
         return backbone.to(config.device)
+    if config.model_kind.startswith("table_slot_"):
+        return TableSlotModel(
+            backbone,
+            mode=config.model_kind.removeprefix("table_slot_"),
+            num_slots=config.num_slots,
+            layer_indices=config.table_slot_layer_indices,
+            num_slot_iterations=config.num_slot_iterations,
+            max_classes=config.max_classes,
+            scope=config.table_slot_scope,
+            query_routing_mode=config.query_routing_mode,
+        ).to(config.device)
     if config.model_kind in _SLOT_LAYER_KINDS:
         install_slot_layers(
             backbone,
@@ -554,6 +710,7 @@ def build_model(config: SlotPretrainingConfig):
             num_slot_iterations=config.num_slot_iterations,
             competitive_slots=config.competitive_slots,
             compatibility=config.slot_compatibility,
+            slot_position=config.slot_position,
             max_classes=config.max_classes,
         )
         if config.model_kind == "slot_backbone":
@@ -577,7 +734,27 @@ def _checkpoint(
     validation: dict[str, float] | None,
     episode_rng: np.random.Generator,
 ) -> dict[str, Any]:
-    if config.model_kind in _SLOT_LAYER_KINDS:
+    if config.model_kind.startswith("table_slot_"):
+        checkpoint = {
+            "architecture": {
+                **config.architecture(),
+                "model_kind": config.model_kind,
+                "num_slots": config.num_slots,
+                "num_slot_iterations": config.num_slot_iterations,
+                "slot_layer_indices": list(config.table_slot_layer_indices),
+                "table_slot_scope": config.table_slot_scope,
+                "max_classes": config.max_classes,
+                "target_inclusive_routing": True,
+                # Metadata: neither weight is a constructor argument, so a
+                # checkpoint written before they existed still loads.
+                "support_reconstruction_weight": config.support_reconstruction_weight,
+                "slot_mi_weight": config.slot_mi_weight,
+                "query_routing_mode": config.query_routing_mode,
+            },
+            "model": model.state_dict(),
+            "training_config": asdict(config),
+        }
+    elif config.model_kind in _SLOT_LAYER_KINDS:
         # Slot settings must travel with the checkpoint: the layers cannot be
         # rebuilt from the five backbone keys alone.  The mixture variant adds a
         # decoder outside the backbone, so its state dictionary is prefixed and
@@ -591,6 +768,7 @@ def _checkpoint(
                 "num_slot_iterations": config.num_slot_iterations,
                 "competitive_slots": config.competitive_slots,
                 "slot_compatibility": config.slot_compatibility,
+                "slot_position": config.slot_position,
                 "max_classes": config.max_classes,
             },
             "model": model.state_dict(),
@@ -681,7 +859,9 @@ def run_pretraining(
         if mismatches:
             raise ValueError(
                 f"Dump at {config.multiregime_dump} does not match this run: "
-                + "; ".join(f"{name} is {was} in the dump, {now} in the config" for name, (was, now) in mismatches.items())
+                + "; ".join(
+                    f"{name} is {was} in the dump, {now} in the config" for name, (was, now) in mismatches.items()
+                )
                 + ". Regenerate the dump or pass --multiregime-dump none to generate episodes on the fly."
             )
     episode_rng = np.random.default_rng(config.seed + 1)
@@ -695,16 +875,19 @@ def run_pretraining(
         for step in range(start_step + 1, config.max_steps + 1):
             optimizer.zero_grad(set_to_none=True)
             loss_total = 0.0
+            component_totals: dict[str, float] = {}
             for _ in range(config.accumulate_gradients):
                 for _attempt in range(_MAX_NON_FINITE_BATCH_RETRIES):
                     batch = training_batch(config, prior, episode_rng, step, multiregime_source)
-                    loss = slot_batch_loss(model, batch)
+                    loss, components = slot_training_loss(model, batch, config)
                     if torch.isfinite(loss):
                         break
                 else:
                     raise RuntimeError(f"Could not draw a finite training batch at step {step}.")
                 (loss / config.accumulate_gradients).backward()
                 loss_total += float(loss.detach()) / config.accumulate_gradients
+                for name, value in components.items():
+                    component_totals[name] = component_totals.get(name, 0.0) + value / config.accumulate_gradients
             gradient_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip))
             if not math.isfinite(gradient_norm):
                 raise RuntimeError(f"Non-finite gradient norm at step {step}.")
@@ -735,6 +918,7 @@ def run_pretraining(
                 "learning_rate": float(scheduler.get_last_lr()[0]),
                 "multiregime_probability": multiregime_probability(config, step),
                 "elapsed_seconds": time.perf_counter() - started_at,
+                **component_totals,
                 **(tabarena or {}),
             }
             if validation is not None:
@@ -745,6 +929,8 @@ def run_pretraining(
                 writer.add_scalar("tabarena/mean_roc_auc", tabarena["tabarena_mean_roc_auc"], step)
                 writer.add_scalar("tabarena/mean_accuracy", tabarena["tabarena_mean_accuracy"], step)
             writer.add_scalar("train/loss", loss_total, step)
+            for name, value in component_totals.items():
+                writer.add_scalar(f"train/{name}", value, step)
             history.write(json.dumps(row, sort_keys=True) + "\n")
             history.flush()
             print(json.dumps(row, sort_keys=True), flush=True)
@@ -770,11 +956,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-cuda", action="store_true")
     parser.add_argument("--prior-mode", choices=PRIOR_MODES, default=defaults.prior_mode)
     parser.add_argument("--model-kind", choices=MODEL_KINDS, default=defaults.model_kind)
-    parser.add_argument(
-        "--slot-compatibility", choices=COMPATIBILITY_MODES, default=defaults.slot_compatibility
-    )
+    parser.add_argument("--slot-compatibility", choices=COMPATIBILITY_MODES, default=defaults.slot_compatibility)
+    parser.add_argument("--slot-position", choices=SLOT_POSITIONS, default=defaults.slot_position)
     parser.add_argument("--prior-type", default=defaults.prior_type)
     parser.add_argument("--multiregime-dump", default=defaults.multiregime_dump)
+    parser.add_argument("--table-slot-layer-indices", nargs="+", type=int, default=defaults.table_slot_layer_indices)
+    parser.add_argument("--table-slot-scope", choices=SLOT_SCOPES, default=defaults.table_slot_scope)
+    parser.add_argument(
+        "--query-routing-mode", choices=QUERY_ROUTING_MODES, default=defaults.query_routing_mode
+    )
+    parser.add_argument("--tabarena-max-predictors", type=int, default=defaults.tabarena_max_predictors)
+    parser.add_argument("--tabarena-max-classes", type=int, default=defaults.tabarena_max_classes)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
     parser.add_argument("--tabarena-every-epoch", dest="tabarena_every_epoch", action="store_true")
     # TabArena is binary; a multiclass run would score `logits[..., :2]` of a
@@ -821,6 +1013,8 @@ def build_parser() -> argparse.ArgumentParser:
         "multiregime_share",
         "multiregime_contamination",
         "regime_coherence",
+        "support_reconstruction_weight",
+        "slot_mi_weight",
     )
     for name in integer_fields:
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))
@@ -833,6 +1027,7 @@ def main(argv: list[str] | None = None) -> Path:
     arguments = vars(build_parser().parse_args(argv))
     output = Path(arguments.pop("output_dir"))
     resume = arguments.pop("resume_from")
+    arguments["table_slot_layer_indices"] = tuple(arguments["table_slot_layer_indices"])
     config = SlotPretrainingConfig(**arguments)
     return run_pretraining(config, output, Path(resume) if resume else None)
 

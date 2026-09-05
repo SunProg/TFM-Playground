@@ -81,6 +81,7 @@ def load_backbone(path: str | Path) -> tuple[NanoTabPFNModel, dict[str, Any]]:
             num_slot_iterations=architecture.get("num_slot_iterations", 3),
             competitive_slots=architecture.get("competitive_slots", True),
             compatibility=architecture.get("slot_compatibility", "dot"),
+            slot_position=architecture.get("slot_position", "after_datapoint"),
             max_classes=architecture.get("max_classes", 2),
         )
     weights = state["model"]

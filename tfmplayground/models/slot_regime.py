@@ -29,7 +29,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
-from tfmplayground.models.slot_attention import SlotBindingMixin, slot_binding_kwargs
+from tfmplayground.models.slot_attention import SlotBindingMixin, slot_assignment_entropy, slot_binding_kwargs
 
 
 @dataclass(frozen=True)
@@ -44,11 +44,19 @@ class SlotRegimePrediction:
         support_attention: ``(batch, support, slot)`` slot competition over the
             labelled rows.  Under competitive slot attention each support row's
             weights sum to one, so this is a soft per-row regime assignment.
+        support_reconstruction_log_probabilities: ``(batch, support, class)``
+            or ``None``.  See the field comment below.
     """
 
     slot_logits: torch.Tensor
     log_gate: torch.Tensor
     support_attention: torch.Tensor
+    #: ``(batch, support, class)`` log probabilities of each *support* label
+    #: under the mixture its own assignment defines, or ``None`` when the
+    #: reconstruction pass was not requested.  Last and defaulted because this
+    #: dataclass is built positionally in ``table_slot.py`` and field-by-field
+    #: in ``benchmark_multiregime_v2.py``.
+    support_reconstruction_log_probabilities: torch.Tensor | None = None
 
     @property
     def num_slots(self) -> int:
@@ -228,6 +236,11 @@ class NanoTabPFNSlotRegimeModel(SlotBindingMixin, nn.Module):
         support_states, query_states = states[:, :split], states[:, split:]
 
         slots, support_attention = self.make_slots(support_states, generator=generator)
+        # Keep both views for v2: diagnostics may use detached attention, while
+        # the auxiliary Hungarian loss needs the live tensor for gradients.
+        self.last_support_attention = support_attention.detach()
+        self.last_support_attention_for_loss = support_attention
+        self.last_slots = slots
         slot_logits, mask_logits = self.slot_decoder(query_states, slots)
         # Softmax over slots, exactly as the vision decoder normalizes its alpha
         # masks across slots before compositing.
@@ -273,6 +286,88 @@ def slot_regime_loss(prediction: SlotRegimePrediction, target_y: torch.Tensor) -
     if target_y.shape != log_probabilities.shape[:2]:
         raise ValueError("target_y must have shape (batch, query rows).")
     return F.nll_loss(log_probabilities.flatten(0, 1), target_y.reshape(-1).long())
+
+
+def support_reconstruction_loss(prediction: SlotRegimePrediction, support_y: torch.Tensor) -> torch.Tensor:
+    """Negative log likelihood of the support labels under their own assignment.
+
+    The tabular reading of Slot Attention's mask-weighted image reconstruction:
+    the same ``a[i,k]`` that routes support row ``i`` to slot ``k`` also weights
+    slot ``k``'s contribution to explaining that row's label,
+
+    ``L_rec = mean_i -log sum_k a[i,k] p_k(y_i | x_i, s_k)``.
+
+    Without it the support competition carries no gradient at all -- the query
+    mixture NLL reads only ``slot_logits`` and ``log_gate`` -- so one slot
+    taking every row costs nothing.  This is the term that makes it cost
+    something.
+    """
+    log_probabilities = prediction.support_reconstruction_log_probabilities
+    if log_probabilities is None:
+        # A silent zero here would leave a mis-wired arm reporting a
+        # reconstruction weight it never applied.
+        raise ValueError("The prediction carries no support reconstruction; call the model with reconstruct_support=True.")
+    if support_y.shape != log_probabilities.shape[:2]:
+        raise ValueError("support_y must have shape (batch, support rows).")
+    return F.nll_loss(log_probabilities.flatten(0, 1), support_y.reshape(-1).long())
+
+
+def slot_mi_loss(support_attention: torch.Tensor) -> torch.Tensor:
+    """Balanced sharpness: sharp per-row assignments that still use every slot.
+
+    ``L_MI = row_entropy + (1 - usage_entropy)``, both entropies normalized to
+    ``[0, 1]``.  Uniform assignments score 1 through the first term and one-slot
+    collapse scores 1 through the second, so the minimum sits at balanced
+    one-hot assignments -- the only configuration neither term penalizes.
+
+    ``usage`` is computed *within* each episode and then averaged.  Pooling it
+    over the micro-batch would let a model use slot 1 for one episode and slot 2
+    for the next while collapsing inside both, and score perfectly balanced.
+    """
+    if support_attention.ndim != 3:
+        raise ValueError("support_attention must have shape (batch, support, slot).")
+    num_slots = support_attention.shape[-1]
+    if num_slots < 2:
+        return support_attention.new_zeros(())
+    row_entropy = slot_assignment_entropy(support_attention).mean()
+    usage = support_attention.mean(dim=1)
+    usage_entropy = -(usage * usage.clamp_min(1e-12).log()).sum(-1) / math.log(num_slots)
+    return row_entropy + (1.0 - usage_entropy.mean())
+
+
+def slot_utilization_scores(support_attention: torch.Tensor) -> dict[str, float]:
+    """How sharp and how balanced the support assignment is, in five numbers.
+
+    Unlike ``support_binding_scores`` this needs no held-out regime tag, so it
+    reports on every episode and on real tables where no tag exists.  It is the
+    quantity the reconstruction pilot is screened on: the objective is sharp,
+    non-collapsed assignments, not recovery of the hidden regime.
+
+    ``support_row_entropy`` is the same quantity ``support_binding_scores``
+    already reports as ``support_attention_entropy``, deliberately: runs that
+    predate this function can still supply the baseline it is compared against.
+    """
+    if support_attention.ndim != 3:
+        raise ValueError("support_attention must have shape (batch, support, slot).")
+    attention = support_attention.detach()
+    num_slots = attention.shape[-1]
+    usage = attention.mean(dim=1)
+    entropy = -(usage * usage.clamp_min(1e-12).log()).sum(-1)
+    hard = attention.argmax(dim=-1).reshape(-1)
+    counts = torch.bincount(hard, minlength=num_slots).to(attention.dtype) / max(1, hard.numel())
+    scores = {
+        "support_row_entropy": float(slot_assignment_entropy(attention).mean()),
+        # exp of the entropy in nats: how many slots the usage behaves like.
+        "support_effective_slots": float(entropy.exp().mean()),
+        "support_max_utilization": float(usage.max(dim=-1).values.mean()),
+        "support_hard_max_fraction": float(counts.max()),
+    }
+    scores["support_utilization_entropy"] = (
+        float((entropy / math.log(num_slots)).mean()) if num_slots > 1 else 0.0
+    )
+    for slot in range(num_slots):
+        scores[f"support_hard_fraction_{slot}"] = float(counts[slot])
+    return scores
 
 
 def slot_regime_checkpoint(
@@ -347,6 +442,43 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
 
     state = torch.load(str(path), map_location="cpu", weights_only=False)
     architecture = state.get("architecture") or {}
+    if architecture.get("model_kind") == "supervised_tabpfn":
+        from tfmplayground.models.supervised_tabpfn import build_supervised_tabpfn_model
+
+        model = build_supervised_tabpfn_model(architecture)
+        model.load_state_dict(state["model"])
+        return model.to(device).eval()
+    if architecture.get("model_kind") == "mufasa_slot_tabpfn":
+        from tfmplayground.models.mufasa_slot_tabpfn import build_mufasa_model
+
+        model = build_mufasa_model(architecture)
+        model.load_state_dict(state["model"])
+        return SlotLogitsAdapter(model).to(device).eval()
+    if architecture.get("model_kind") in ("table_slot_head", "table_slot_backbone", "table_slot_mufasa"):
+        from tfmplayground.models.table_slot import TableSlotModel
+
+        backbone = NanoTabPFNModel(
+            num_layers=architecture["num_layers"],
+            embedding_size=architecture["embedding_size"],
+            num_attention_heads=architecture["num_attention_heads"],
+            mlp_hidden_size=architecture["mlp_hidden_size"],
+            num_outputs=architecture["num_outputs"],
+        )
+        model = TableSlotModel(
+            backbone,
+            mode=architecture["model_kind"].removeprefix("table_slot_"),
+            num_slots=architecture["num_slots"],
+            layer_indices=architecture.get("slot_layer_indices", (3, 4, 5)),
+            num_slot_iterations=architecture.get("num_slot_iterations", 3),
+            max_classes=architecture.get("max_classes", 2),
+            # Checkpoints written before the scope ablation ran both paths.
+            scope=architecture.get("table_slot_scope", "cell_and_data"),
+            # Checkpoints written before this axis existed used the historical
+            # learned-gate-on-the-labelled-embedding design.
+            query_routing_mode=architecture.get("query_routing_mode", "decoder"),
+        )
+        model.load_state_dict(state["model"])
+        return SlotLogitsAdapter(model).to(device).eval()
     if architecture.get("model_kind") in ("slot_backbone", "slot_backbone_mixture"):
         # Slots live inside the transformer layers, so the layers must be
         # installed before the state dict will match.
@@ -367,7 +499,12 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             # Absent from checkpoints written before the compatibility became
             # configurable, and all of those scored by dot product.
             compatibility=architecture.get("slot_compatibility", "dot"),
+            # Missing from historical checkpoints, whose slots ran after
+            # datapoint attention.
+            slot_position=architecture.get("slot_position", "after_datapoint"),
             max_classes=architecture.get("max_classes", 2),
+            # V1 omitted this key and therefore keeps its all-layer default.
+            layer_indices=(architecture["slot_layer_index"],) if "slot_layer_index" in architecture else None,
         )
         if architecture["model_kind"] == "slot_backbone":
             backbone.load_state_dict(state["model"])
@@ -400,6 +537,7 @@ def is_slot_regime_checkpoint(checkpoint: dict[str, Any]) -> bool:
     return "num_slots" in architecture and architecture.get("model_kind") not in (
         "slot_backbone",
         "slot_backbone_mixture",
+        "supervised_tabpfn",
     )
 
 
@@ -412,6 +550,9 @@ __all__ = [
     "load_checkpoint_for_inference",
     "load_slot_regime_checkpoint",
     "save_slot_regime_checkpoint",
+    "slot_mi_loss",
     "slot_regime_checkpoint",
     "slot_regime_loss",
+    "slot_utilization_scores",
+    "support_reconstruction_loss",
 ]

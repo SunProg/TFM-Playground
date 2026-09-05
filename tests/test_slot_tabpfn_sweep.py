@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 import unittest
 from dataclasses import replace
@@ -21,9 +22,10 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     multiregime_probability as plain_multiregime_probability,
 )
 from tfmplayground.experiments.pretrain_slot_tabpfn import (
-    MODEL_KINDS,
     PRIOR_MODES,
     SlotPretrainingConfig,
+    _checkpoint,
+    build_model,
     identifiable_support_rows,
     multiregime_probability,
     summarize_samples,
@@ -31,15 +33,22 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
     validate_config,
 )
 from tfmplayground.experiments.slot_tabpfn_sweep import (
+    CLOSURE_WEIGHTS,
     COHERENT_STEPS,
-    CONTROL_COHERENCE,
-    LEARNABLE_DESIGN,
     COMPATIBILITY_MODES_SCREENED,
+    CONTROL_COHERENCE,
     EXTENDED_SLOT_COUNTS,
+    LEARNABLE_DESIGN,
     MULTIREGIME_SHARE,
+    PRIOR_MODES_READABLE,
+    QUERY_ROUTING_MODES_SCREENED,
+    READABLE_DESIGN,
+    READABLE_MICRO_BATCH,
     REGIME_COHERENCE,
     SCREENING_STEPS,
     SLOT_COUNTS,
+    TABLE_SLOT_SCOPES_READABLE,
+    TABLE_SLOT_SCOPES_SCREENED,
     configuration_flags,
     configuration_label,
     screening_configurations,
@@ -101,6 +110,19 @@ class CurriculumTests(unittest.TestCase):
             validate_config(config("mixed", multiregime_share=1.5))
         with self.assertRaises(ValueError):
             validate_config(replace(config("plain"), max_steps=0))
+        for position in ("before_feature", "after_feature", "before_and_after_feature"):
+            for model_kind in ("vanilla", "slot"):
+                with self.assertRaises(ValueError):
+                    validate_config(config("plain", model_kind=model_kind, slot_position=position))
+            validate_config(config("plain", model_kind="slot_backbone", slot_position=position))
+
+    def test_checkpoint_architecture_records_slot_position(self):
+        configured = config("plain", model_kind="slot_backbone", slot_position="before_and_after_feature")
+        model = build_model(configured)
+        optimizer = torch.optim.AdamW(model.parameters())
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _step: 1.0)
+        checkpoint = _checkpoint(model, optimizer, scheduler, configured, 0, None, np.random.default_rng(1))
+        self.assertEqual(checkpoint["architecture"]["slot_position"], "before_and_after_feature")
 
 
 class SweepTests(unittest.TestCase):
@@ -115,6 +137,16 @@ class SweepTests(unittest.TestCase):
         configurations = screening_configurations()
         labels = [configuration_label(c) for c in configurations]
         self.assertEqual(len(set(labels)), len(labels))
+
+        # Blocks appended after the table-slot ones are located from the end,
+        # so every later append shifts them.  Rebasing onto the slice that
+        # precedes the newest block keeps that arithmetic correct without
+        # renumbering four offsets each time.
+        routing_cells = len(QUERY_ROUTING_MODES_SCREENED) * len(TABLE_SLOT_SCOPES_READABLE) * len(PRIOR_MODES_READABLE)
+        before_routing = configurations[:-routing_cells]
+
+        closure_cells = len(CLOSURE_WEIGHTS) * len(PRIOR_MODES_READABLE)
+        before_closure = before_routing[:-closure_cells]
 
         slot_cells = len(PRIOR_MODES) * len(SLOT_COUNTS)
         self.assertTrue(all(c["model_kind"] == "slot" for c in configurations[:slot_cells]))
@@ -175,12 +207,7 @@ class SweepTests(unittest.TestCase):
         compatibility = configurations[compatibility_start:mixture_start]
         self.assertEqual(
             [(c["slot_compatibility"], c["num_slots"]) for c in compatibility],
-            [
-                (mode, k)
-                for mode in COMPATIBILITY_MODES_SCREENED
-                for k in (2, 3)
-                for _ in PRIOR_MODES
-            ],
+            [(mode, k) for mode in COMPATIBILITY_MODES_SCREENED for k in (2, 3) for _ in PRIOR_MODES],
         )
         self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in compatibility))
         self.assertTrue(all(c["model_kind"] == "slot_backbone" for c in compatibility))
@@ -188,9 +215,7 @@ class SweepTests(unittest.TestCase):
         for label, c in zip(labels[compatibility_start:mixture_start], compatibility, strict=True):
             self.assertTrue(label.endswith(f"-coh{REGIME_COHERENCE:g}-{c['slot_compatibility']}"))
         # Everything before it scores by dot product.
-        self.assertTrue(
-            all(c.get("slot_compatibility", "dot") == "dot" for c in configurations[:compatibility_start])
-        )
+        self.assertTrue(all(c.get("slot_compatibility", "dot") == "dot" for c in configurations[:compatibility_start]))
 
         # The mixture-readout block, appended last.  Everything before it trains
         # on one cross entropy over the finished representation, so the loss
@@ -207,9 +232,7 @@ class SweepTests(unittest.TestCase):
         self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in mixture))
         for label, c in zip(labels[mixture_start:learnable_start], mixture, strict=True):
             self.assertIn(f"-slot_mixture-k{c['num_slots']}-", label + "-")
-        self.assertTrue(
-            all(c["model_kind"] != "slot_backbone_mixture" for c in configurations[:mixture_start])
-        )
+        self.assertTrue(all(c["model_kind"] != "slot_backbone_mixture" for c in configurations[:mixture_start]))
 
         # The learnable-design block, appended last.  Every block before it
         # trains on a task whose achievable detection AUC is 0.505 -- chance --
@@ -219,33 +242,226 @@ class SweepTests(unittest.TestCase):
             for c in configurations
             if c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]
             and c.get("regime_coherence", 0.0) != CONTROL_COHERENCE
+            # The readable-design block shares the class count but not the
+            # support size, features or contamination; it is its own block.
+            and "support_size" not in c
         ]
         self.assertEqual(len(learnable), 4 * len(PRIOR_MODES))
         self.assertEqual(
             [c["model_kind"] for c in learnable],
-            [
-                kind
-                for kind in ("vanilla", "slot", "slot_backbone", "slot_backbone_mixture")
-                for _ in PRIOR_MODES
-            ],
+            [kind for kind in ("vanilla", "slot", "slot_backbone", "slot_backbone_mixture") for _ in PRIOR_MODES],
         )
         # Every model kind the trainer supports is exercised on the one design
         # whose results can be read; leaving one out is how the mixture backbone
         # was missed on the first pass.
-        self.assertEqual({c["model_kind"] for c in learnable}, set(MODEL_KINDS))
+        self.assertEqual(
+            {c["model_kind"] for c in learnable},
+            {"vanilla", "slot", "slot_backbone", "slot_backbone_mixture"},
+        )
         self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in learnable))
-        self.assertEqual(configurations[len(configurations) - len(learnable) - 6 : -6], learnable)
+        before_table = before_closure[:-66]
+        self.assertEqual(before_table[len(before_table) - len(learnable) - 10 : -10], learnable)
 
         # The positive control, appended last.  It asks only whether the
         # competition can group rows when membership is element-wise, so a null
         # elsewhere cannot be blamed on a broken implementation.  Vanilla is
         # absent by design: it has no slots, so no binding to score.
-        control = [c for c in configurations if c.get("regime_coherence", 0.0) == CONTROL_COHERENCE]
+        control = [
+            c
+            for c in configurations
+            if c.get("regime_coherence", 0.0) == CONTROL_COHERENCE
+            and c.get("slot_position", "after_datapoint") == "after_datapoint"
+        ]
         self.assertEqual(len(control), 6)
-        self.assertEqual(configurations[-6:], control)
+        self.assertEqual(before_table[-10:-4], control)
         self.assertNotIn("vanilla", {c["model_kind"] for c in control})
         self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in control))
         self.assertTrue(all(f"-coh{CONTROL_COHERENCE:g}-" in configuration_label(c) for c in control))
+
+        after_feature = before_table[-4:]
+        self.assertEqual(
+            [(c["model_kind"], c["prior_mode"]) for c in after_feature],
+            [
+                ("slot_backbone", "multiregime"),
+                ("slot_backbone", "mixed"),
+                ("slot_backbone_mixture", "multiregime"),
+                ("slot_backbone_mixture", "mixed"),
+            ],
+        )
+        self.assertTrue(all(c["slot_position"] == "after_feature" for c in after_feature))
+        self.assertTrue(all(c["num_slots"] == 2 and c["max_steps"] == COHERENT_STEPS for c in after_feature))
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in after_feature))
+        self.assertTrue(all(configuration_label(c).endswith("-after-feature") for c in after_feature))
+
+        table = before_closure[-66:-54]
+        self.assertEqual(
+            [(c["model_kind"], c["prior_mode"]) for c in table],
+            [
+                (kind, mode)
+                for kind in ("table_slot_head", "table_slot_backbone", "table_slot_mufasa")
+                for mode in PRIOR_MODES
+            ],
+        )
+        self.assertTrue(all(c["num_slots"] == 4 for c in table))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in table))
+        # The both-paths cells predate the scope axis and must keep running
+        # under labels that carry no scope suffix, or a resubmission of
+        # 114-125 would land in a fresh directory.
+        self.assertTrue(all("slot_scope" not in c for c in table))
+
+        # The scope ablation, appended last: one cell per scope, placement and
+        # prior, holding the task and slot count fixed.
+        scoped = before_closure[-54:-30]
+        self.assertEqual(
+            [(c["slot_scope"], c["model_kind"], c["prior_mode"]) for c in scoped],
+            [
+                (scope, kind, mode)
+                for scope in TABLE_SLOT_SCOPES_SCREENED
+                for kind in ("table_slot_head", "table_slot_backbone", "table_slot_mufasa")
+                for mode in PRIOR_MODES
+            ],
+        )
+        self.assertNotIn("cell_and_data", TABLE_SLOT_SCOPES_SCREENED)
+        self.assertTrue(all(c["num_slots"] == 4 for c in scoped))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in scoped))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in scoped))
+        # Each scoped cell shares every other setting with a both-paths cell,
+        # so only the suffix keeps it out of that cell's run directory.
+        for scoped_cell in scoped:
+            twin = {k: v for k, v in scoped_cell.items() if k != "slot_scope"}
+            self.assertIn(twin, table)
+            self.assertEqual(
+                configuration_label(scoped_cell),
+                f"{configuration_label(twin)}-{scoped_cell['slot_scope']}",
+            )
+
+        # The readable-design block, appended last: the same three scopes and
+        # three placements on the task the measured detection ceiling leaves
+        # headroom on, plus its own vanilla control.
+        readable = before_closure[-30:]
+        self.assertEqual(len(readable), 3 * 3 * 3 + 3)
+        slot_cells, vanilla_cells = readable[:-3], readable[-3:]
+        self.assertEqual(
+            [(c["slot_scope"], c["model_kind"], c["prior_mode"]) for c in slot_cells],
+            [
+                (scope, kind, mode)
+                for scope in TABLE_SLOT_SCOPES_READABLE
+                for kind in ("table_slot_head", "table_slot_backbone", "table_slot_mufasa")
+                for mode in PRIOR_MODES_READABLE
+            ],
+        )
+        self.assertTrue(all(c["model_kind"] == "vanilla" for c in vanilla_cells))
+        # The collapsed prior is excluded by design, and every cell carries the
+        # whole design rather than part of it.
+        self.assertNotIn("multiregime", {c["prior_mode"] for c in readable})
+        # Every design key holds except the micro-batch pair, which the
+        # placements set individually to fit a 24 GiB card.  What must hold
+        # there is the *effective* batch: the optimization has to be identical
+        # across placements even when the memory footprint cannot be.
+        batch_keys = {"micro_batch_size", "accumulate_gradients"}
+        self.assertTrue(
+            all(all(c[k] == v for k, v in READABLE_DESIGN.items() if k not in batch_keys) for c in readable)
+        )
+        effective = READABLE_DESIGN["micro_batch_size"] * READABLE_DESIGN["accumulate_gradients"]
+        for cell in readable:
+            self.assertEqual(cell["micro_batch_size"] * cell["accumulate_gradients"], effective)
+            self.assertEqual(
+                cell["micro_batch_size"],
+                READABLE_MICRO_BATCH.get(cell["model_kind"], READABLE_DESIGN["micro_batch_size"]),
+            )
+        # A larger support set is a different task and must not share a run
+        # directory with the 128-row cells it otherwise matches.
+        for cell in readable:
+            self.assertIn("-s512", configuration_label(cell))
+
+        # The closure block, appended last.  It changes the *objective*: every
+        # cell before it trains the head on the query mixture NLL alone, which
+        # never mentions the support competition, so one slot taking every row
+        # costs nothing.  Matched cell for cell against the both-paths head
+        # arms so the objective is the only thing that varies.
+        closure = before_routing[-closure_cells:]
+        self.assertEqual(
+            [(c["support_reconstruction_weight"], c["slot_mi_weight"], c["prior_mode"]) for c in closure],
+            [(rec, mi, mode) for rec, mi in CLOSURE_WEIGHTS for mode in PRIOR_MODES_READABLE],
+        )
+        self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in closure))
+        self.assertTrue(all(c["num_slots"] == 4 for c in closure))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in closure))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in closure))
+        # The collapsed prior is excluded for the reason the readable block
+        # excludes it: every run of it sat at chance.
+        self.assertNotIn("multiregime", {c["prior_mode"] for c in closure})
+        # Every earlier cell trains the unmodified objective, and none of them
+        # may gain a suffix -- 114-125 and 150-179 were live when this landed.
+        self.assertTrue(
+            all(
+                not c.get("support_reconstruction_weight") and not c.get("slot_mi_weight") for c in before_closure
+            )
+        )
+        # Each closure cell shares every other setting with a both-paths head
+        # cell, so only the suffix keeps it out of that cell's run directory.
+        for cell in closure:
+            twin = {k: v for k, v in cell.items() if k not in ("support_reconstruction_weight", "slot_mi_weight")}
+            self.assertIn(twin, table)
+            suffix = f"-rec{cell['support_reconstruction_weight']:g}"
+            if cell["slot_mi_weight"]:
+                suffix += f"-mi{cell['slot_mi_weight']:g}"
+            self.assertEqual(configuration_label(cell), f"{configuration_label(twin)}{suffix}")
+
+        # The query-routing block, appended last.  Every cell before it --
+        # closure or not -- routes a query through the learned gate on the
+        # *labelled*-pass embedding; these fix the closure weights at the
+        # passing configuration and vary only the routing mechanism, crossed
+        # with every scope since a fix's value could depend on which
+        # competition produced the slots it routes against.
+        routing = configurations[-routing_cells:]
+        self.assertEqual(
+            [(c["query_routing_mode"], c["slot_scope"], c["prior_mode"]) for c in routing],
+            [
+                (mode, scope, prior)
+                for mode in QUERY_ROUTING_MODES_SCREENED
+                for scope in TABLE_SLOT_SCOPES_READABLE
+                for prior in PRIOR_MODES_READABLE
+            ],
+        )
+        self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in routing))
+        self.assertTrue(all(c["num_slots"] == 4 for c in routing))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in routing))
+        self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in routing))
+        # Fixed at the passing closure configuration (183-185), not re-swept.
+        self.assertTrue(
+            all(
+                c["support_reconstruction_weight"] == CLOSURE_WEIGHTS[1][0]
+                and c["slot_mi_weight"] == CLOSURE_WEIGHTS[1][1]
+                for c in routing
+            )
+        )
+        self.assertNotIn("multiregime", {c["prior_mode"] for c in routing})
+        # No earlier cell -- including the closure block itself -- may carry
+        # this axis, or a resubmission of 180-185 would land somewhere new.
+        self.assertTrue(all(c.get("query_routing_mode", "decoder") == "decoder" for c in before_routing))
+        # In-training TabArena widens to the fifteen-task slice here, unlike
+        # the closure block it is otherwise matched to -- a routing fix's
+        # payoff is exactly the real-table query number, and there is no cost
+        # to widening it before these cells start.
+        self.assertTrue(all(c.get("tabarena_max_predictors") == 30 for c in routing))
+        # The closure block specifically -- not every earlier cell, since the
+        # readable-design block also carries this key at 30 for its own
+        # unrelated reason -- must not have gained it retroactively.
+        self.assertTrue(all(c.get("tabarena_max_predictors") is None for c in closure))
+        # Each routing cell shares every other setting -- including scope --
+        # with some non-routing cell, so only the routing-mode suffix and the
+        # TabArena breadth above keep it out of that cell's run directory. At
+        # the default scope that twin is a closure cell directly; at cell/data
+        # scope it is not (the closure block never ran those), so only the
+        # suffix's well-formedness is checked there.
+        for cell in routing:
+            twin = {k: v for k, v in cell.items() if k not in ("query_routing_mode", "tabarena_max_predictors")}
+            if cell["slot_scope"] == "cell_and_data":
+                self.assertIn({k: v for k, v in twin.items() if k != "slot_scope"}, closure)
+            self.assertEqual(
+                configuration_label(cell), f"{configuration_label(twin)}-{cell['query_routing_mode']}"
+            )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
@@ -259,6 +475,27 @@ class SweepTests(unittest.TestCase):
             self.assertIn(f"--regime-coherence {coherence:g}", flags)
             self.assertIn(f"--slot-compatibility {configuration.get('slot_compatibility', 'dot')}", flags)
             self.assertIn(f"--multiregime-share {MULTIREGIME_SHARE:g}", flags)
+            self.assertEqual(
+                "--slot-position after_feature" in flags,
+                configuration.get("slot_position", "after_datapoint") == "after_feature",
+            )
+            # Naming the default would rewrite the flags of every cell that
+            # predates the scope axis, including the twelve now running.
+            scope = configuration.get("slot_scope", "cell_and_data")
+            self.assertEqual("--table-slot-scope" in flags, scope != "cell_and_data")
+            # The readable design's overrides must all reach the trainer, or a
+            # cell trains on the old task while reporting the new one.
+            for name, flag in (
+                ("support_size", "--support-size"),
+                ("tabarena_max_predictors", "--tabarena-max-predictors"),
+            ):
+                if name not in configuration:
+                    continue
+                words = flags.split()
+                last = len(words) - 1 - words[::-1].index(flag)
+                self.assertEqual(words[last + 1], f"{configuration[name]:g}")
+            if scope != "cell_and_data":
+                self.assertIn(f"--table-slot-scope {scope}", flags)
             # A coherent cell must not stream the dump, which holds coherence-0
             # episodes; a coherence-0 cell must leave the batch script's dump
             # flag alone.  Getting this backwards trains on one task and reports
@@ -276,15 +513,14 @@ class SweepTests(unittest.TestCase):
             # Per-cell overrides must come *after* SHARED_FLAGS, since argparse
             # keeps the last occurrence and SHARED_FLAGS pins the defaults.
             if "max_classes" in configuration:
-                shared = flags.index("--max-classes 2".split()[0])
-                self.assertGreater(
-                    flags.rindex(f"--max-classes {configuration['max_classes']}"), shared
-                )
+                shared = flags.index("--max-classes")
+                self.assertGreater(flags.rindex(f"--max-classes {configuration['max_classes']}"), shared)
                 # TabArena stays on: the prior mixes 2- and 3-class episodes
                 # at max_classes=3, so the model learns to use its first two
                 # outputs for binary tables, which is what TabArena reads.
                 self.assertNotIn("--no-tabarena-every-epoch", flags)
                 self.assertIn("--tabarena-every-epoch", flags)
+
         # Prior mode, slot count and model kind are the only axes *within* one
         # block: strip all three and the remaining flags must be byte identical
         # across that block, so the grid isolates them and nothing else drifts.
@@ -298,17 +534,63 @@ class SweepTests(unittest.TestCase):
                 configuration.get("regime_coherence", 0.0),
                 configuration.get("slot_compatibility", "dot"),
                 configuration.get("max_classes", 2),
+                configuration.get("slot_position", "after_datapoint"),
+                # Scope is a between-block axis for the same reason
+                # compatibility is: it names a different model, not a different
+                # arm of one.
+                configuration.get("slot_scope", "cell_and_data"),
+                # The objective is a between-block axis too: a closure cell
+                # matches the baseline in every flag but these two.
+                configuration.get("support_reconstruction_weight", 0.0),
+                configuration.get("slot_mi_weight", 0.0),
+                # And the routing mode is a between-block axis for the same
+                # reason: a routing cell matches its closure twin in every
+                # flag but this one.
+                configuration.get("query_routing_mode", "decoder"),
             )
+
+        def without_axes(flags: str, configuration: dict) -> str:
+            """Flags with the per-arm axes removed, for byte comparison.
+
+            The micro-batch pair is an axis in the same sense the model kind
+            is: the readable-design placements set it to whatever fits a 24 GiB
+            card, and the *effective* batch they multiply out to is asserted
+            constant separately.  Both the shared default and any per-cell
+            override are dropped, or a block would read as drifting when only
+            the memory footprint differs.
+            """
+            text = (
+                flags.replace(f"--prior-mode {configuration['prior_mode']} ", "")
+                .replace(f"--num-slots {configuration['num_slots']} ", "")
+                .replace(f"--model-kind {configuration['model_kind']} ", "")
+            )
+            for flag in ("--micro-batch-size", "--accumulate-gradients"):
+                text = re.sub(rf"{flag} \d+", "", text)
+            return " ".join(text.split())
 
         for key in {block(c) for c in configurations}:
             stripped = {
-                flags.replace(f"--prior-mode {c['prior_mode']} ", "")
-                .replace(f"--num-slots {c['num_slots']} ", "")
-                .replace(f"--model-kind {c['model_kind']} ", "")
-                for c, flags in zip(configurations, flag_sets, strict=True)
-                if block(c) == key
+                without_axes(flags, c) for c, flags in zip(configurations, flag_sets, strict=True) if block(c) == key
             }
             self.assertEqual(len(stripped), 1, msg=f"flags drift inside block {key}")
+
+        # Appending the new option must not rewrite command lines already used
+        # by the active 0-109 controls.
+        self.assertTrue(all("--slot-position" not in flags for flags in flag_sets[:110]))
+        # Likewise for the twelve both-paths table-slot cells, which were live
+        # when the scope axis was appended.
+        self.assertTrue(all("--table-slot-scope" not in flags for flags in flag_sets[:126]))
+        # Likewise for every cell that predates the closure objective: 114-125
+        # and 150-179 were live when it was appended.
+        self.assertTrue(
+            all(
+                "--support-reconstruction-weight" not in flags and "--slot-mi-weight" not in flags
+                for flags in flag_sets[:180]
+            )
+        )
+        # Likewise for every cell that predates the query-routing block:
+        # 0-185 (114-125 and 150-185 in particular) were live when it landed.
+        self.assertTrue(all("--query-routing-mode" not in flags for flags in flag_sets[:186]))
 
     def test_seed_override_and_index_bounds(self):
         self.assertIn("--seed 99", configuration_flags(0, seed=99))

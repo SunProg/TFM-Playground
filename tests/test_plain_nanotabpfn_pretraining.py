@@ -305,3 +305,26 @@ class LockedEvaluationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_rng_state_restores_from_a_checkpoint_loaded_onto_another_device():
+    """Resume must survive ``map_location='cuda'`` moving the RNG state.
+
+    ``torch.set_rng_state`` takes only a CPU ByteTensor, and resume loads the
+    whole checkpoint onto the training device, so the saved state arrives as a
+    GPU tensor and the run died on its first line.  A dtype change stands in
+    for the device change here, since CI has no GPU.
+    """
+    import torch
+
+    from tfmplayground.experiments.pretrain_plain_nanotabpfn import _restore_rng_state, _serializable_rng_state
+
+    torch.manual_seed(0)
+    saved = _serializable_rng_state()
+    expected = torch.rand(4)
+    # Whatever the checkpoint round trip did to it, restoring must reproduce
+    # exactly the draw the original state would have produced.
+    saved["torch"] = saved["torch"].to(torch.int64)
+    torch.manual_seed(12345)
+    _restore_rng_state(saved)
+    torch.testing.assert_close(torch.rand(4), expected)

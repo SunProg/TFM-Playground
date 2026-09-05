@@ -274,6 +274,17 @@ def _serializable_rng_state() -> dict:
     }
 
 
+def _as_rng_tensor(state) -> torch.Tensor:
+    """A CPU uint8 tensor, whatever device or dtype the checkpoint carried.
+
+    Resume loads the checkpoint with ``map_location=config.device``, which puts
+    every tensor in it -- the RNG state included -- on the GPU.  ``set_rng_state``
+    accepts only a CPU ByteTensor and raises ``TypeError`` otherwise, so a GPU
+    resume failed on its first line before this coercion existed.
+    """
+    return torch.as_tensor(state).detach().cpu().to(torch.uint8)
+
+
 def _restore_rng_state(rng_state: dict) -> None:
     random.setstate(rng_state["python"])
     np.random.set_state(
@@ -285,9 +296,9 @@ def _restore_rng_state(rng_state: dict) -> None:
             float(rng_state["numpy_cached_gaussian"]),
         )
     )
-    torch.set_rng_state(rng_state["torch"])
+    torch.set_rng_state(_as_rng_tensor(rng_state["torch"]))
     if rng_state["cuda"] is not None and torch.cuda.is_available():
-        torch.cuda.set_rng_state_all(rng_state["cuda"])
+        torch.cuda.set_rng_state_all([_as_rng_tensor(state) for state in rng_state["cuda"]])
 
 
 def _make_tensorboard_writer(output: Path):

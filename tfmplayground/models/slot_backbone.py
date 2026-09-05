@@ -12,11 +12,14 @@ whose receptive field is *local*, so pixels belonging to different objects have
 genuinely different features before any competition happens.  The tabular
 analogue of "before the mixing" is inside the block, not after the stack.
 
-So the slots here live in every transformer layer.  After each layer's datapoint
-attention they read the support rows, compete for them, and a learned share of
-every row state is reconstructed from them.  Being in the loop, they shape the
-representation rather than only reading the finished one, and can carry a regime
-distinction forward that full row-attention would otherwise average away.
+So the slots here live in every transformer layer.  By default they retain the
+historical placement after datapoint attention; configurable alternatives run
+them before feature attention, after it, or at both boundaries with shared
+parameters.  At each selected position they read the support rows, compete for
+them, and reconstruct a learned share of every row state.  Being in the loop,
+they shape the representation rather than only reading the finished one, and
+can carry a regime distinction forward that full row-attention would otherwise
+average away.
 
 The share starts at one half, and that matters.  The first version of this layer
 used a ``tanh`` gate initialized at zero, copying the adapter convention
@@ -32,7 +35,8 @@ the optimizer has to choose to do.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, Literal
 
 import torch
 from torch import nn
@@ -56,13 +60,26 @@ from tfmplayground.models.slot_attention import SlotAttention
 #:     ``-inf`` and ``likelihood`` at ``+inf``, so it keeps the module genuinely
 #:     Slot Attention while giving the label evidence a way in.
 COMPATIBILITY_MODES = ("dot", "likelihood", "additive")
+SLOT_POSITIONS = (
+    "before_feature",
+    "after_feature",
+    "before_and_after_feature",
+    "after_datapoint",
+)
+SlotPosition = Literal[
+    "before_feature",
+    "after_feature",
+    "before_and_after_feature",
+    "after_datapoint",
+]
 
 
 class SlotTransformerEncoderLayer(TransformerEncoderLayer):
     """A pretrained layer whose row states pass through a slot bottleneck.
 
-    Subclasses the stock layer and overrides only ``adapt_after_datapoint_attention``,
-    the hook the architecture already exposes for research heads, so the
+    Subclasses the stock layer and uses the research hooks around feature
+    attention and after datapoint attention.  ``slot_position`` selects one
+    hook, or both sides of feature attention with shared slot parameters.  The
     pretrained parameters keep their state-dictionary names and a vanilla
     checkpoint still loads.
     """
@@ -76,14 +93,18 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         num_slot_iterations: int = 3,
         competitive_slots: bool = True,
         compatibility: str = "dot",
+        slot_position: SlotPosition = "after_datapoint",
         max_classes: int = 2,
         **kwargs: Any,
     ):
         super().__init__(embedding_size, nhead, mlp_hidden_size, **kwargs)
         if compatibility not in COMPATIBILITY_MODES:
             raise ValueError(f"compatibility must be one of {COMPATIBILITY_MODES}, got {compatibility!r}.")
+        if slot_position not in SLOT_POSITIONS:
+            raise ValueError(f"slot_position must be one of {SLOT_POSITIONS}, got {slot_position!r}.")
         self.num_slots = num_slots
         self.compatibility = compatibility
+        self.slot_position = slot_position
         self.max_classes = max_classes
         self.slot_attention = SlotAttention(
             num_slots,
@@ -123,6 +144,10 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         self._split: int | None = None
         self.support_labels: torch.Tensor | None = None
         self.last_support_attention: torch.Tensor | None = None
+        # The diagnostic tensor above intentionally stays detached for the
+        # historical v1 evaluators.  V2 auxiliary supervision reads this live
+        # view so L_z can train the competition without changing v1 outputs.
+        self.last_support_attention_for_loss: torch.Tensor | None = None
         # Kept *without* detaching, unlike the attention above: a mixture head
         # reads these to decode one prediction per slot, so gradient from the
         # loss has to reach the competition through them.  The attention is only
@@ -138,6 +163,7 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
         num_slot_iterations: int,
         competitive_slots: bool,
         compatibility: str = "dot",
+        slot_position: SlotPosition = "after_datapoint",
         max_classes: int = 2,
     ) -> SlotTransformerEncoderLayer:
         adapted = cls(
@@ -148,6 +174,7 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
             num_slot_iterations=num_slot_iterations,
             competitive_slots=competitive_slots,
             compatibility=compatibility,
+            slot_position=slot_position,
             max_classes=max_classes,
         )
         missing, unexpected = adapted.load_state_dict(layer.state_dict(), strict=False)
@@ -214,7 +241,7 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
 
         return score
 
-    def adapt_after_datapoint_attention(self, src: torch.Tensor) -> torch.Tensor:
+    def _slot_write_back(self, src: torch.Tensor) -> torch.Tensor:
         """Slots read the support rows, compete, and write back into every row.
 
         ``src`` is ``(batch, rows, columns, embedding)``.  The target column is
@@ -231,11 +258,30 @@ class SlotTransformerEncoderLayer(TransformerEncoderLayer):
             return src
         slots, attention = self.slot_attention(support, compatibility=self._compatibility(support))
         self.last_support_attention = attention.detach()
+        self.last_support_attention_for_loss = attention
         self.last_slots = slots
         reconstruction = self.write_norm(self.write_back(target, slots, slots, need_weights=False)[0])
         mix = torch.sigmoid(self.slot_mix)
         updated = (1.0 - mix) * target + mix * reconstruction
         return torch.cat((src[:, :, :-1, :], updated[:, :, None, :]), dim=2)
+
+    def adapt_after_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Optionally run slots before datapoint attention mixes row states."""
+        if self.slot_position in ("after_feature", "before_and_after_feature"):
+            return self._slot_write_back(src)
+        return src
+
+    def adapt_before_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Optionally run slots on the layer input, before columns mix."""
+        if self.slot_position in ("before_feature", "before_and_after_feature"):
+            return self._slot_write_back(src)
+        return src
+
+    def adapt_after_datapoint_attention(self, src: torch.Tensor) -> torch.Tensor:
+        """Run slots in their historical, checkpoint-compatible position."""
+        if self.slot_position == "after_datapoint":
+            return self._slot_write_back(src)
+        return src
 
 
 class SlotBackboneModel(NanoTabPFNModel):
@@ -269,10 +315,22 @@ def install_slot_layers(
     num_slot_iterations: int = 3,
     competitive_slots: bool = True,
     compatibility: str = "dot",
+    slot_position: SlotPosition = "after_datapoint",
     max_classes: int = 2,
+    layer_indices: Sequence[int] | None = None,
 ) -> NanoTabPFNModel:
-    """Replace every transformer layer in place with a slot-equipped copy."""
+    """Replace selected transformer layers with slot-equipped copies.
+
+    ``None`` retains the historical all-layer behavior.  V2 passes ``(0,)`` so
+    slots run after block zero's datapoint attention and before its MLP.
+    """
+    selected = set(range(len(backbone.transformer_blocks))) if layer_indices is None else set(layer_indices)
+    invalid = sorted(index for index in selected if index < 0 or index >= len(backbone.transformer_blocks))
+    if invalid:
+        raise ValueError(f"layer_indices contains out-of-range indices: {invalid}.")
     for index, layer in enumerate(backbone.transformer_blocks):
+        if index not in selected:
+            continue
         if isinstance(layer, SlotTransformerEncoderLayer):
             continue
         backbone.transformer_blocks[index] = SlotTransformerEncoderLayer.from_pretrained(
@@ -281,6 +339,7 @@ def install_slot_layers(
             num_slot_iterations=num_slot_iterations,
             competitive_slots=competitive_slots,
             compatibility=compatibility,
+            slot_position=slot_position,
             max_classes=max_classes,
         )
     # Retype in place rather than rebuilding: the caller already holds this
@@ -436,13 +495,25 @@ def collect_support_attention(backbone: NanoTabPFNModel) -> torch.Tensor | None:
     return found
 
 
+def collect_support_attention_for_loss(backbone: NanoTabPFNModel) -> torch.Tensor | None:
+    """Live support assignment from the deepest slot layer that ran."""
+    found = None
+    for layer in backbone.transformer_blocks:
+        if isinstance(layer, SlotTransformerEncoderLayer) and layer.last_support_attention_for_loss is not None:
+            found = layer.last_support_attention_for_loss
+    return found
+
+
 __all__ = [
     "COMPATIBILITY_MODES",
+    "SLOT_POSITIONS",
+    "SlotPosition",
     "SlotBackboneMixtureModel",
     "SlotBackboneModel",
     "SlotTransformerEncoderLayer",
     "bind_support_labels",
     "collect_support_attention",
+    "collect_support_attention_for_loss",
     "deepest_slot_layer",
     "install_slot_layers",
     "slot_layer_parameters",

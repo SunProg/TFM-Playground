@@ -107,7 +107,18 @@ def predict_vanilla(
     device: str,
     query_chunk_size: int,
     num_mem_chunks: int,
+    num_classes: int = 2,
 ) -> np.ndarray:
+    """Query probabilities.
+
+    Returns the positive-class probability at ``num_classes=2``, which every
+    caller of this function predates the multi-class path and expects, and the
+    full ``(queries, num_classes)`` distribution above it.  The binary return
+    is kept scalar rather than unified, so results written before the
+    multi-class path stay bit-comparable with results written after it.
+    """
+    if num_classes < 2:
+        raise ValueError("num_classes must be at least two.")
     model.to(device).eval()
     support_x = torch.as_tensor(train_x, dtype=torch.float32, device=device).unsqueeze(0)
     support_y = torch.as_tensor(train_y, dtype=torch.float32, device=device).unsqueeze(0)
@@ -120,8 +131,11 @@ def predict_vanilla(
             (torch.cat((support_x, query), dim=1), support_y),
             train_test_split_index=len(train_x),
             num_mem_chunks=num_mem_chunks,
-        )[..., :2]
-        probabilities.append(logits.softmax(-1)[0, :, 1].cpu().numpy())
+        )[..., :num_classes]
+        distribution = logits.softmax(-1)[0]
+        probabilities.append(
+            distribution[:, 1].cpu().numpy() if num_classes == 2 else distribution.cpu().numpy()
+        )
     return np.concatenate(probabilities)
 
 
