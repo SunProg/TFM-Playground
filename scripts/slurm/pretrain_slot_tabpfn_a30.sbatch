@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-211
+#SBATCH --array=0-218
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -51,7 +51,10 @@
 #   compositing rule, on the learnable design -- see the note at the bottom
 #     alpha    blind_decoder 204-205, decoder 206-207
 #     baseline blind_decoder 208-209, decoder 210-211
-#     (mixed / curriculum only; `plain` never trains on a mixture)
+#     (mixed / curriculum; `plain` is the control below)
+#   compositing negative control -- `plain`, matched to 204-211
+#     alpha 212-213, baseline 214-215
+#   blind_similarity on the learnable design (plain/mixed/curriculum) 216-218
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59
@@ -112,10 +115,13 @@
 # directories carry an `-alpha` suffix and 208-211 are the matched baseline at
 # identical settings.
 #
-# They run on `mixed` and `curriculum` only.  `plain`'s multiregime share is
-# 0.00 at every step, so a `plain` cell never trains on a mixture -- and the
-# compositing rule decides how slots split a mixture, so there the manipulated
-# variable has nothing to act on.
+# 212-215 are their negative control.  `plain`'s multiregime share is 0.00 at
+# every step, so those cells never train on a mixture -- which is the point.
+# Compositing by alpha does one thing unrelated to mixtures: it puts `L_rec`
+# gradient on the mask head, which the `a[i,k]` weighting never did.  A gap on
+# `mixed` alone cannot separate "alpha splits regimes better" from "training the
+# mask head is good for the model"; a matched pair on `plain` can.  Appended
+# rather than folded in, because 204-211 were already running.
 #
 # These are the only cells after 103 that run on the learnable design, and that
 # is deliberate: `detection_ceiling` puts the coherence-2.0 design every block
@@ -123,6 +129,12 @@
 # -- "the fix did nothing" and "nothing could have worked here" produce the same
 # value.  Screening a routing fix against an unmeasurable task would repeat the
 # mistake 88-103 exist to correct.
+#
+# 216-218 put `blind_similarity` on the learnable design.  195-203 already
+# screen that gate, but on the coherence-2.0 design at ~0.505 achievable, where
+# a flat result cannot be read.  These sit alongside 208-215 so all three gates
+# are comparable at baseline compositing.  Baseline only: the mode replaces the
+# decoder's alpha, so there is no alpha for the compositing axis to act on.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

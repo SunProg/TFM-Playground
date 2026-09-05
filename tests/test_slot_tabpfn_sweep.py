@@ -41,6 +41,7 @@ from tfmplayground.experiments.slot_tabpfn_sweep import (
     LEARNABLE_DESIGN,
     MULTIREGIME_SHARE,
     PRIOR_MODES_READABLE,
+    COMPOSITING_CONTROL_PRIORS,
     COMPOSITING_PRIOR_MODES,
     COMPOSITING_ROUTING_MODES,
     QUERY_ROUTING_MODES_SCREENED,
@@ -144,9 +145,17 @@ class SweepTests(unittest.TestCase):
         # so every later append shifts them.  Rebasing onto the slice that
         # precedes the newest block keeps that arithmetic correct without
         # renumbering four offsets each time.
-        # The compositing block and its matched baseline, appended newest.
+        # `blind_similarity` on the learnable design, appended newest.
+        similarity_cells = len(PRIOR_MODES_READABLE)
+        before_similarity = configurations[:-similarity_cells]
+
+        # The compositing block's negative control.
+        control_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_CONTROL_PRIORS)
+        before_control = before_similarity[:-control_cells]
+
+        # The compositing block and its matched baseline.
         compositing_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
-        before_compositing = configurations[:-compositing_cells]
+        before_compositing = before_control[:-compositing_cells]
 
         routing_cells = len(QUERY_ROUTING_MODES_SCREENED) * len(TABLE_SLOT_SCOPES_READABLE) * len(PRIOR_MODES_READABLE)
         before_routing = before_compositing[:-routing_cells]
@@ -479,7 +488,7 @@ class SweepTests(unittest.TestCase):
         # side gates on -- so the model runs two routings and trains one.
         # `reconstruction_mixture="alpha"` composites the way Locatello does,
         # which makes `L_rec` and the query mixture one expression.
-        compositing = configurations[-compositing_cells:]
+        compositing = before_control[-compositing_cells:]
         alpha, baseline = compositing[: compositing_cells // 2], compositing[compositing_cells // 2 :]
         self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in alpha))
         self.assertTrue(all("reconstruction_mixture" not in c for c in baseline))
@@ -522,6 +531,46 @@ class SweepTests(unittest.TestCase):
         for cell, twin in zip(alpha, baseline, strict=True):
             self.assertEqual({k: v for k, v in cell.items() if k != "reconstruction_mixture"}, twin)
             self.assertEqual(configuration_label(cell), f"{configuration_label(twin)}-alpha")
+
+        # The negative control: the same alpha/baseline pairing on a prior that
+        # never trains on a mixture, so a gap that survives here is not about
+        # compositing regimes.  Appended after the block it controls, because
+        # 204-211 were already running and inserting a prior would have shifted
+        # the indices those tasks resolve their flags from.
+        control = before_similarity[-control_cells:]
+        c_alpha, c_base = control[: control_cells // 2], control[control_cells // 2 :]
+        self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in c_alpha))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in c_base))
+        self.assertEqual({c["prior_mode"] for c in control}, set(COMPOSITING_CONTROL_PRIORS))
+        self.assertNotIn("plain", {c["prior_mode"] for c in compositing})
+        # Matched to the block it controls on everything except the prior.
+        for cell in control:
+            twin = {**cell, "prior_mode": COMPOSITING_PRIOR_MODES[0]}
+            self.assertIn(twin, compositing)
+        for cell, twin in zip(c_alpha, c_base, strict=True):
+            self.assertEqual({k: v for k, v in cell.items() if k != "reconstruction_mixture"}, twin)
+            self.assertEqual(configuration_label(cell), f"{configuration_label(twin)}-alpha")
+
+        # `blind_similarity` on the learnable design.  Baseline compositing
+        # only: the mode replaces the decoder's alpha, so there is nothing for
+        # `reconstruction_mixture="alpha"` to composite with.
+        similarity = configurations[-similarity_cells:]
+        self.assertTrue(all(c["query_routing_mode"] == "blind_similarity" for c in similarity))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in similarity))
+        self.assertEqual([c["prior_mode"] for c in similarity], list(PRIOR_MODES_READABLE))
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in similarity))
+        # No learnable-design similarity cell existed before this block.
+        self.assertFalse(
+            any(
+                c.get("query_routing_mode") == "blind_similarity"
+                and c.get("max_classes") == LEARNABLE_DESIGN["max_classes"]
+                for c in before_similarity
+            )
+        )
+        # Each shares every setting but the gate with a baseline cell above it.
+        for cell in similarity:
+            twin = {k: v for k, v in cell.items() if k != "query_routing_mode"}
+            self.assertIn(twin, [{k: v for k, v in c.items() if k != "query_routing_mode"} for c in control + baseline])
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()

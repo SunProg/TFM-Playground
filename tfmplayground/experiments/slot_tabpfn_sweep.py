@@ -178,6 +178,20 @@ COMPOSITING_ROUTING_MODES = ("blind_decoder", "decoder")
 #: collapsed model rather than an objective.
 COMPOSITING_PRIOR_MODES = ("mixed", "curriculum")
 
+#: The compositing block's negative control, appended after it rather than
+#: folded into it: 204-211 were already running when this landed, and inserting
+#: a prior would have shifted the indices those tasks resolve their flags from.
+#:
+#: `plain` never trains on a mixture -- its multiregime share is 0.00 at every
+#: step -- and that is precisely the point.  Compositing by the decoder's alpha
+#: does one thing that has nothing to do with mixtures: it puts `L_rec` gradient
+#: on the mask head, which the `a[i,k]` weighting never did.  So an alpha-vs-
+#: baseline gap on `mixed` is consistent with two stories -- alpha splits
+#: regimes better, or training the mask head is simply good for the model.  A
+#: matched pair on `plain` separates them: a gap that survives where there is no
+#: mixture to split is not about compositing regimes.
+COMPOSITING_CONTROL_PRIORS = ("plain",)
+
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
 #: Short budget for the coherent-regime block: 10 epochs, enough to see whether
@@ -589,6 +603,55 @@ def screening_configurations() -> list[dict[str, Any]]:
         }
         for routing_mode in COMPOSITING_ROUTING_MODES
         for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
+    # The negative control for the two blocks above, matched cell for cell on
+    # everything but the prior.  See `COMPOSITING_CONTROL_PRIORS` for why a
+    # prior that never sees a mixture is the arm that makes the comparison
+    # readable rather than a wasted cell.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            **({"reconstruction_mixture": "alpha"} if mixture == "alpha" else {}),
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for mixture in ("alpha", "attention")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_CONTROL_PRIORS
+    ]
+    # `blind_similarity` on the learnable design.  The existing similarity cells
+    # (195-203) sit on the coherence-2.0 design, whose achievable detection AUC
+    # `detection_ceiling` puts at ~0.505 -- so a flat result there cannot be
+    # read.  These put the same routing mode on the one design measured to be
+    # learnable, alongside 208-215, which makes all three gates comparable at
+    # baseline compositing: `decoder`, `blind_decoder`, `blind_similarity`.
+    #
+    # Baseline compositing only, and not as an oversight: `blind_similarity`
+    # replaces the decoder's learned alpha with cosine similarity to a slot
+    # centroid, so there is no alpha for `reconstruction_mixture="alpha"` to
+    # composite with.  Pairing them would disconnect the two sides again, which
+    # is the thing the alpha arm exists to fix.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": "blind_similarity",
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for prior_mode in PRIOR_MODES_READABLE
     ]
     return grid
 
