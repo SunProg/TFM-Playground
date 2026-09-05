@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-227
+#SBATCH --array=0-243
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -146,6 +146,16 @@
 # 177-179 share the coherence and TabArena breadth but run on READABLE_DESIGN
 # (12 features, support 512) instead.  Nothing in the trainer needed to change
 # for this -- the combination was simply never submitted.
+#
+# 228-243 give the compositing block's own gates -- `decoder` and
+# `blind_decoder` -- the other two scopes.  204-211 ran only `cell_and_data`;
+# these add `cell` and `data`, matching the three-scope crossing 216-224 already
+# give `blind_similarity`, so a compositing gain that only shows up under one
+# competition is not mistaken for one that holds everywhere.  228-235 are alpha
+# compositing, 236-243 the matched baseline -- same layout as 204-211, just
+# scoped.  The negative control (212-215) is not re-scoped: it already
+# establishes that a gap survives on a prior with nothing to composite, and
+# doubling it per scope would not sharpen that reading.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

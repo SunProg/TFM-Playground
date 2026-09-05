@@ -696,6 +696,54 @@ def screening_configurations() -> list[dict[str, Any]]:
         }
         for prior_mode in PRIOR_MODES_READABLE
     ]
+    # The other two scopes for the compositing block and its matched baseline,
+    # appended newest.  204-211 ran only `cell_and_data`; this gives `decoder`
+    # and `blind_decoder` the same three-scope crossing `blind_similarity`
+    # already has (216-224), so a compositing gain that only shows up under one
+    # competition is not mistaken for one that holds everywhere.  Appended
+    # after 204-227 rather than inserted, so none of those live indices move.
+    #
+    # The negative control is deliberately not re-scoped here: it exists to
+    # show a gap survives on a prior with nothing to composite, which the
+    # `cell_and_data` control cells already establish, and doubling it per
+    # scope would not sharpen that reading.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "reconstruction_mixture": "alpha",
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            "slot_scope": scope,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            "slot_scope": scope,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
     return grid
 
 

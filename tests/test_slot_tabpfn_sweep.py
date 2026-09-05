@@ -147,9 +147,12 @@ class SweepTests(unittest.TestCase):
         # renumbering four offsets each time.
         # The learnable-design similarity block: `cell_and_data` first, then the
         # other two scopes appended after 36996446 was already submitted.
-        # The matched vanilla baseline, appended newest of all.
+        # The matched vanilla baseline, then the compositing block's own
+        # other-two-scopes cells, appended newest of all.
+        compositing_scope_cells = 2 * 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
+        before_compositing_scopes = configurations[:-compositing_scope_cells]
         matched_vanilla_count = len(PRIOR_MODES_READABLE)
-        before_vanilla = configurations[:-matched_vanilla_count]
+        before_vanilla = before_compositing_scopes[:-matched_vanilla_count]
 
         similarity_scope_cells = 2 * len(PRIOR_MODES_READABLE)
         before_similarity_scopes = before_vanilla[:-similarity_scope_cells]
@@ -599,10 +602,9 @@ class SweepTests(unittest.TestCase):
             {(s_, p_) for s_ in TABLE_SLOT_SCOPES_READABLE for p_ in PRIOR_MODES_READABLE},
         )
 
-        # The matched vanilla baseline, appended last: same task and TabArena
-        # breadth as the compositing block, which no earlier vanilla arm has all
-        # of at once.
-        matched_vanilla = configurations[-matched_vanilla_count:]
+        # The matched vanilla baseline, appended after 216-224 but before the
+        # compositing block's own scope extension below.
+        matched_vanilla = before_compositing_scopes[-matched_vanilla_count:]
         self.assertEqual([c["prior_mode"] for c in matched_vanilla], list(PRIOR_MODES_READABLE))
         self.assertTrue(all(c["model_kind"] == "vanilla" for c in matched_vanilla))
         self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in matched_vanilla))
@@ -619,6 +621,57 @@ class SweepTests(unittest.TestCase):
                 for c in before_vanilla
             )
         )
+
+        # The compositing block's own other-two-scopes cells, appended last of
+        # all.  204-211 ran only `cell_and_data`; this gives `decoder` and
+        # `blind_decoder` the same three-scope crossing `blind_similarity`
+        # already has, so a compositing gain that only shows up under one
+        # competition is not mistaken for one that holds everywhere.
+        compositing_scopes = configurations[-compositing_scope_cells:]
+        scoped_alpha = compositing_scopes[: compositing_scope_cells // 2]
+        scoped_baseline = compositing_scopes[compositing_scope_cells // 2 :]
+        self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in scoped_alpha))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in scoped_baseline))
+        # No earlier `reconstruction_mixture="alpha"` cell may carry a scope, or
+        # a resubmission of 204-207 would land somewhere new.
+        self.assertTrue(
+            all(
+                c.get("slot_scope", "cell_and_data") == "cell_and_data"
+                for c in before_compositing_scopes
+                if c.get("reconstruction_mixture") == "alpha"
+            )
+        )
+        for half in (scoped_alpha, scoped_baseline):
+            self.assertEqual(
+                [(c["slot_scope"], c["query_routing_mode"], c["prior_mode"]) for c in half],
+                [
+                    (scope, mode, prior)
+                    for scope in ("cell", "data")
+                    for mode in COMPOSITING_ROUTING_MODES
+                    for prior in COMPOSITING_PRIOR_MODES
+                ],
+            )
+            self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in half))
+            self.assertTrue(all(c["num_slots"] == 4 for c in half))
+            self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in half))
+            self.assertTrue(
+                all(
+                    c["support_reconstruction_weight"] == CLOSURE_WEIGHTS[1][0]
+                    and c["slot_mi_weight"] == CLOSURE_WEIGHTS[1][1]
+                    for c in half
+                )
+            )
+            self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in half))
+        # Each scoped cell shares every other setting with its `cell_and_data`
+        # twin from 204-211, so only the scope marker keeps it out of that
+        # cell's run directory.  The marker sits right after `-learnable-`,
+        # ahead of the `-rec`/`-mi`/routing suffixes those twins already carry
+        # -- unlike the scope-ablation block, whose twins have no such suffix
+        # for the marker to precede.
+        for cell in scoped_alpha + scoped_baseline:
+            twin = {k: v for k, v in cell.items() if k != "slot_scope"}
+            self.assertIn(twin, compositing)
+            self.assertIn(f"-learnable-{cell['slot_scope']}-", configuration_label(cell))
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
