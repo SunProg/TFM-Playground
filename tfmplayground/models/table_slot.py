@@ -72,6 +72,28 @@ SlotScope = Literal["cell_and_data", "cell", "data"]
 QueryRoutingMode = Literal["decoder", "blind_decoder", "blind_similarity"]
 QUERY_ROUTING_MODES = ("decoder", "blind_decoder", "blind_similarity")
 
+#: What weights a slot's contribution when the support labels are reconstructed,
+#: head mode only.
+#:
+#: ``"attention"`` -- the historical design: ``a[i,k]``, slot attention's own
+#: assignment of support row ``i``, is the mixture weight, and the decoder's
+#: mask channel is discarded.  The query side gates on that discarded channel
+#: instead, so the two sides route by different quantities and only one of them
+#: is trained.
+#:
+#: ``"alpha"`` -- Locatello's own compositing rule: the decoder emits content
+#: *and* an unnormalized alpha channel from one pathway, the alphas are
+#: softmaxed across slots, and that softmax is the mixture weight.  The paper
+#: has exactly one routing quantity and the reconstruction trains it directly.
+#: Here that makes ``L_rec`` and the query mixture the same expression --
+#: ``decoder(blind row, slots)``, softmax the mask over slots, composite --
+#: evaluated on rows that do and do not carry a target.  Pair it with
+#: ``query_routing_mode="blind_decoder"`` so both sides read the same
+#: label-blind embedding; with ``"decoder"`` the query alpha is still computed
+#: from the labelled pass and only the weight is shared.
+ReconstructionMixture = Literal["attention", "alpha"]
+RECONSTRUCTION_MIXTURES = ("attention", "alpha")
+
 
 @dataclass
 class TableSlotState:
@@ -312,6 +334,7 @@ class TableSlotModel(nn.Module):
         max_classes: int = 2,
         scope: SlotScope = "cell_and_data",
         query_routing_mode: QueryRoutingMode = "decoder",
+        reconstruction_mixture: ReconstructionMixture = "attention",
     ):
         super().__init__()
         if mode not in ("head", "backbone", "mufasa"):
@@ -324,9 +347,19 @@ class TableSlotModel(nn.Module):
             # Ignoring this would report a run nobody configured; the blind
             # pass this needs is only wired up for the head placement.
             raise ValueError(f"query_routing_mode={query_routing_mode!r} needs mode='head', not mode={mode!r}.")
+        if reconstruction_mixture not in RECONSTRUCTION_MIXTURES:
+            raise ValueError(
+                f"reconstruction_mixture must be one of {RECONSTRUCTION_MIXTURES}, got {reconstruction_mixture!r}."
+            )
+        if reconstruction_mixture != "attention" and mode != "head":
+            # Same reasoning as the routing guard: the reconstruction this
+            # weights is only wired up for the head placement, so accepting the
+            # setting elsewhere would report a run nobody configured.
+            raise ValueError(f"reconstruction_mixture={reconstruction_mixture!r} needs mode='head', not mode={mode!r}.")
         self.backbone, self.mode, self.num_slots, self.layer_indices = backbone, mode, num_slots, tuple(layer_indices)
         self.scope = scope
         self.query_routing_mode = query_routing_mode
+        self.reconstruction_mixture = reconstruction_mixture
         if mode == "head":
             self.adapters = nn.ModuleList(
                 [
@@ -378,6 +411,13 @@ class TableSlotModel(nn.Module):
         self.last_query_gates: torch.Tensor | None = None
         self.last_slot_utilization: torch.Tensor | None = None
         self.last_assignment_entropy: torch.Tensor | None = None
+        #: ``KL(a || alpha)`` on the support rows, set by ``_reconstruct_support``.
+        #: The two routings were never forced to agree and nothing measured
+        #: whether they did; this is that number.  ``None`` until a
+        #: reconstructing forward pass has run.
+        self.last_gate_agreement: torch.Tensor | None = None
+        #: ``(B,S,K)`` live log alpha on the support rows, for a consistency term.
+        self.last_support_alpha_for_loss: torch.Tensor | None = None
         #: How often the Hungarian matching fell back to the identity, and what
         #: the first such episode looked like.  Both are diagnostics: a run that
         #: leans on the fallback is not the run that was intended.
@@ -498,15 +538,36 @@ class TableSlotModel(nn.Module):
         return blind_state
 
     def _reconstruct_support(self, state: TableSlotState, blind_state: TableSlotState, split: int) -> torch.Tensor:
-        """``(B,S,C)`` log probabilities of every support label under its own assignment.
+        """``(B,S,C)`` log probabilities of every support label under its own routing.
 
-        The slots and the assignment come from the *labelled* pass: only the row
-        representation is blinded.  ``a[i,k]`` is the mixture weight, so the
-        decoder's own mask channel is deliberately discarded here.
+        The slots come from the *labelled* pass; only the row representation is
+        blinded.  What weights each slot's contribution is
+        ``reconstruction_mixture``:
+
+        ``"attention"``  ``a[i,k]``, slot attention's assignment, and the
+        decoder's mask channel is discarded.
+
+        ``"alpha"``  the softmax of that mask channel, which is what Locatello
+        composites with.  The query side already gates on exactly this
+        quantity, so under ``"alpha"`` the reconstruction and the query mixture
+        stop being two mechanisms that merely share weights and become one
+        expression evaluated on rows that do and do not carry a target.
+
+        The mask is decoded either way -- it is a channel of the same output --
+        so the agreement between the two routings is recorded for free.
         """
-        support_logits, _ = self.decoder(blind_state.pooled_rows[:, :split], state.slots)
-        log_assignment = state.support_attention.clamp_min(1e-12).log()
-        return torch.logsumexp(log_assignment[..., None] + F.log_softmax(support_logits, -1), dim=2)
+        support_logits, support_masks = self.decoder(blind_state.pooled_rows[:, :split], state.slots)
+        log_alpha = F.log_softmax(support_masks, dim=-1)
+        # Diagnostic, never a loss unless `gate_consistency_weight` asks for it:
+        # how far the decoder's alpha is from the competition's assignment on
+        # the same rows.  Under "attention" these were never forced to agree and
+        # nothing measured whether they did.
+        self.last_gate_agreement = F.kl_div(
+            log_alpha, state.support_attention.detach(), reduction="batchmean"
+        ).detach()
+        self.last_support_alpha_for_loss = log_alpha
+        log_weight = log_alpha if self.reconstruction_mixture == "alpha" else state.support_attention.clamp_min(1e-12).log()
+        return torch.logsumexp(log_weight[..., None] + F.log_softmax(support_logits, -1), dim=2)
 
     def _similarity_gate(self, state: TableSlotState, blind_state: TableSlotState, split: int) -> torch.Tensor:
         """``(B,Q,K)`` log routing weights from blind-embedding cosine similarity.
@@ -591,6 +652,11 @@ class TableSlotModel(nn.Module):
                 ref.feature_attention,
                 (weights[:, None, None, None] * attentions).sum(0),
             )
+        # Cleared rather than left standing: these are set only by a
+        # reconstructing pass, and a stale value read off the model after an
+        # ordinary one would report an agreement this call never measured.
+        self.last_gate_agreement = None
+        self.last_support_alpha_for_loss = None
         # The blind pass is needed for support reconstruction and for either
         # blind query-routing mode; computed once and shared, so a run using
         # more than one of these still pays for it only once.

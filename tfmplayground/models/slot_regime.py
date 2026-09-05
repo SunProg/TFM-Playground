@@ -295,12 +295,18 @@ def support_reconstruction_loss(prediction: SlotRegimePrediction, support_y: tor
     the same ``a[i,k]`` that routes support row ``i`` to slot ``k`` also weights
     slot ``k``'s contribution to explaining that row's label,
 
-    ``L_rec = mean_i -log sum_k a[i,k] p_k(y_i | x_i, s_k)``.
+    ``L_rec = mean_i -log sum_k w[i,k] p_k(y_i | x_i, s_k)``, where ``w`` is
+    ``a[i,k]`` or the decoder's alpha depending on the model's
+    ``reconstruction_mixture``.
 
-    Without it the support competition carries no gradient at all -- the query
-    mixture NLL reads only ``slot_logits`` and ``log_gate`` -- so one slot
-    taking every row costs nothing.  This is the term that makes it cost
-    something.
+    Without this term nothing rewards a *sharp, balanced* assignment: the query
+    mixture NLL reads only ``slot_logits`` and ``log_gate``, so one slot taking
+    every row costs nothing.  It is not true that the competition carries no
+    gradient without it -- slots are built as ``weights.T @ v``
+    (``slot_attention.py:214-217``) and go straight into the decoder, so
+    gradient reaches the competition in every configuration, exactly as it does
+    in Locatello, where the attention never appears in the loss either.  What
+    the term adds is a *cost* on the assignment, not the only path to it.
     """
     log_probabilities = prediction.support_reconstruction_log_probabilities
     if log_probabilities is None:
@@ -476,6 +482,10 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             # Checkpoints written before this axis existed used the historical
             # learned-gate-on-the-labelled-embedding design.
             query_routing_mode=architecture.get("query_routing_mode", "decoder"),
+            # Checkpoints written before this axis existed weighted the
+            # reconstruction by the competition's assignment rather than by the
+            # decoder's alpha.
+            reconstruction_mixture=architecture.get("reconstruction_mixture", "attention"),
         )
         model.load_state_dict(state["model"])
         return SlotLogitsAdapter(model).to(device).eval()

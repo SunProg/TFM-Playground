@@ -41,6 +41,7 @@ from tfmplayground.experiments.slot_tabpfn_sweep import (
     LEARNABLE_DESIGN,
     MULTIREGIME_SHARE,
     PRIOR_MODES_READABLE,
+    COMPOSITING_ROUTING_MODES,
     QUERY_ROUTING_MODES_SCREENED,
     READABLE_DESIGN,
     READABLE_MICRO_BATCH,
@@ -142,8 +143,12 @@ class SweepTests(unittest.TestCase):
         # so every later append shifts them.  Rebasing onto the slice that
         # precedes the newest block keeps that arithmetic correct without
         # renumbering four offsets each time.
+        # The compositing block and its matched baseline, appended newest.
+        compositing_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(PRIOR_MODES_READABLE)
+        before_compositing = configurations[:-compositing_cells]
+
         routing_cells = len(QUERY_ROUTING_MODES_SCREENED) * len(TABLE_SLOT_SCOPES_READABLE) * len(PRIOR_MODES_READABLE)
-        before_routing = configurations[:-routing_cells]
+        before_routing = before_compositing[:-routing_cells]
 
         closure_cells = len(CLOSURE_WEIGHTS) * len(PRIOR_MODES_READABLE)
         before_closure = before_routing[:-closure_cells]
@@ -245,6 +250,10 @@ class SweepTests(unittest.TestCase):
             # The readable-design block shares the class count but not the
             # support size, features or contamination; it is its own block.
             and "support_size" not in c
+            # The compositing block reuses this design deliberately -- it is
+            # the only one whose numbers can be read -- but it is a separate
+            # block, asserted on its own below.
+            and not c.get("support_reconstruction_weight")
         ]
         self.assertEqual(len(learnable), 4 * len(PRIOR_MODES))
         self.assertEqual(
@@ -414,7 +423,7 @@ class SweepTests(unittest.TestCase):
         # passing configuration and vary only the routing mechanism, crossed
         # with every scope since a fix's value could depend on which
         # competition produced the slots it routes against.
-        routing = configurations[-routing_cells:]
+        routing = before_compositing[-routing_cells:]
         self.assertEqual(
             [(c["query_routing_mode"], c["slot_scope"], c["prior_mode"]) for c in routing],
             [
@@ -462,6 +471,52 @@ class SweepTests(unittest.TestCase):
             self.assertEqual(
                 configuration_label(cell), f"{configuration_label(twin)}-{cell['query_routing_mode']}"
             )
+
+        # The compositing block and its matched baseline, appended newest.
+        # Every cell before these weights the support reconstruction by
+        # `a[i,k]` and discards the decoder's alpha -- the same alpha the query
+        # side gates on -- so the model runs two routings and trains one.
+        # `reconstruction_mixture="alpha"` composites the way Locatello does,
+        # which makes `L_rec` and the query mixture one expression.
+        compositing = configurations[-compositing_cells:]
+        alpha, baseline = compositing[: compositing_cells // 2], compositing[compositing_cells // 2 :]
+        self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in alpha))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in baseline))
+        # No earlier cell may carry the axis, or a resubmission of the closure
+        # or routing blocks would land somewhere new.
+        self.assertTrue(all("reconstruction_mixture" not in c for c in before_compositing))
+        for half in (alpha, baseline):
+            self.assertEqual(
+                [(c["query_routing_mode"], c["prior_mode"]) for c in half],
+                [(mode, prior) for mode in COMPOSITING_ROUTING_MODES for prior in PRIOR_MODES_READABLE],
+            )
+            self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in half))
+            self.assertTrue(all(c["num_slots"] == 4 for c in half))
+            self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in half))
+            # Fixed at the passing closure configuration, not re-swept: this
+            # block varies the compositing rule, not the support-side weights.
+            self.assertTrue(
+                all(
+                    c["support_reconstruction_weight"] == CLOSURE_WEIGHTS[1][0]
+                    and c["slot_mi_weight"] == CLOSURE_WEIGHTS[1][1]
+                    for c in half
+                )
+            )
+            # On the learnable design, unlike every block above.
+            # `detection_ceiling` puts the coherence-2.0 design at ~0.505
+            # achievable, so a flat number there cannot be read at all.
+            self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in half))
+            self.assertNotIn("multiregime", {c["prior_mode"] for c in half})
+        # `blind_similarity` is deliberately absent: it replaces the learned
+        # alpha with a cosine similarity, which is the one property the shared
+        # decoder exists to preserve, so it cannot be the arm a compositing fix
+        # is screened with.
+        self.assertNotIn("blind_similarity", {c["query_routing_mode"] for c in compositing})
+        # Each alpha cell differs from its baseline twin in exactly the
+        # compositing rule, so only the suffix keeps it out of that directory.
+        for cell, twin in zip(alpha, baseline, strict=True):
+            self.assertEqual({k: v for k, v in cell.items() if k != "reconstruction_mixture"}, twin)
+            self.assertEqual(configuration_label(cell), f"{configuration_label(twin)}-alpha")
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
@@ -547,6 +602,10 @@ class SweepTests(unittest.TestCase):
                 # reason: a routing cell matches its closure twin in every
                 # flag but this one.
                 configuration.get("query_routing_mode", "decoder"),
+                # And the compositing rule, for the same reason again: a
+                # compositing cell matches its baseline twin in every flag but
+                # this one.
+                configuration.get("reconstruction_mixture", "attention"),
             )
 
         def without_axes(flags: str, configuration: dict) -> str:

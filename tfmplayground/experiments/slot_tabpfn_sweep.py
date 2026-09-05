@@ -142,9 +142,9 @@ LEARNABLE_DESIGN = {
 
 #: The two closure objectives screened against the matched baseline at indices
 #: 114/116/117.  Every earlier cell trains ``table_slot_head`` on the query
-#: mixture NLL alone, which reads only the slot logits and the query gate: the
-#: support competition carries no gradient, so one slot taking every row costs
-#: nothing and `purity - base` has been exactly zero throughout.  These add the
+#: mixture NLL alone, which reads only the slot logits and the query gate, so
+#: nothing puts a *cost* on the assignment and one slot taking every row is
+#: free -- `purity - base` has been exactly zero throughout.  These add the
 #: tabular reading of Slot Attention's mask-weighted reconstruction -- the
 #: assignment must explain the labels it claims -- alone and with a
 #: balanced-sharpness term.  ``(reconstruction weight, MI weight)``.
@@ -159,6 +159,14 @@ CLOSURE_WEIGHTS = ((1.0, 0.0), (1.0, 0.05))
 #: The two query-routing fixes screened against the current gate, per the
 #: module comment where they are used below.
 QUERY_ROUTING_MODES_SCREENED = ("blind_decoder", "blind_similarity")
+
+#: The gates the compositing block is crossed with.  ``blind_decoder`` is the
+#: faithful arm -- both sides read the same label-blind embedding, so the gate
+#: is one function everywhere -- and ``decoder`` isolates how much of any gain
+#: is the shared weight rather than the shared input.  ``blind_similarity`` is
+#: excluded on purpose: it replaces the learned alpha with a cosine similarity,
+#: which is exactly the property compositing by alpha exists to exploit.
+COMPOSITING_ROUTING_MODES = ("blind_decoder", "decoder")
 
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
@@ -502,6 +510,73 @@ def screening_configurations() -> list[dict[str, Any]]:
         for scope in TABLE_SLOT_SCOPES_READABLE
         for prior_mode in PRIOR_MODES_READABLE
     ]
+    # The compositing block.  Every cell above -- closure and routing alike --
+    # weights the support reconstruction by `a[i,k]` and discards the decoder's
+    # alpha channel, while the query side gates on that discarded channel and
+    # never sees `a`.  So the model runs two routing quantities and the
+    # reconstruction trains only one of them, which is why the closure arms
+    # sharpen the support side without moving query CE.
+    #
+    # Locatello has no such split: the decoder emits content and an
+    # unnormalized alpha from one pathway, the alphas are softmaxed across
+    # slots, and that softmax *is* the mixture weight the reconstruction is
+    # scored through.  `reconstruction_mixture="alpha"` composites that way, so
+    # `L_rec` and the query mixture become the same expression evaluated on
+    # rows that do and do not carry a target.
+    #
+    # Crossed with `blind_decoder` and the historical `decoder` gate, because
+    # the two answer different questions: under `blind_decoder` both sides read
+    # the same label-blind embedding and the gate is one function everywhere,
+    # which is the faithful arm; under `decoder` only the weight is shared and
+    # the query alpha still comes from the labelled pass, which isolates how
+    # much of any gain is the shared weight rather than the shared input.
+    # `blind_similarity` is deliberately absent: it replaces the learned alpha
+    # with a cosine similarity, which is the one property `_SlotDecoder` exists
+    # to preserve, so it cannot be the arm a compositing fix is screened with.
+    #
+    # On `LEARNABLE_DESIGN`, not the coherence-2.0 design every block above
+    # uses.  `detection_ceiling` puts that design at ~0.505 achievable, so a
+    # flat number on it is unreadable -- "the fix did nothing" and "nothing
+    # could have worked here" produce the same value.  This is the correction
+    # 9d3dc39 recorded, and screening a routing fix against an unmeasurable
+    # task would repeat exactly the mistake it fixed.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "reconstruction_mixture": "alpha",
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
+    # The matched baseline for the block above: identical in every respect but
+    # the compositing rule, so "alpha" has something on the same task and the
+    # same budget to be better or worse than.  Without these the block would be
+    # scored against closure cells that ran on a different design.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
     return grid
 
 
@@ -561,6 +636,11 @@ def configuration_label(configuration: dict[str, Any]) -> str:
     routing_mode = configuration.get("query_routing_mode", "decoder")
     if routing_mode != "decoder":
         suffix += f"-{routing_mode}"
+    # Compositing the reconstruction by the decoder's alpha rather than by the
+    # competition's assignment is a different objective again, so it needs its
+    # own directory for the same reason a routing mode does.
+    if configuration.get("reconstruction_mixture", "attention") != "attention":
+        suffix += f"-{configuration['reconstruction_mixture']}"
     position = configuration.get("slot_position", "after_datapoint")
     position_suffix = {
         "after_datapoint": "",
@@ -619,6 +699,11 @@ def configuration_flags(index: int, *, final: bool = False, seed: int | None = N
     routing_mode = configuration.get("query_routing_mode", "decoder")
     if routing_mode != "decoder":
         flags.append(f"--query-routing-mode {routing_mode}")
+    # Same reasoning again: `a[i,k]` weighting is the trainer's default, so only
+    # the appended compositing cells name the alternative.
+    mixture = configuration.get("reconstruction_mixture", "attention")
+    if mixture != "attention":
+        flags.append(f"--reconstruction-mixture {mixture}")
     # The dump fixes the episodes and everything about them: coherence 0, two
     # classes, twelve features, 30% contamination.  Any cell that departs from
     # that has to generate its own, or it trains on the dump's task while

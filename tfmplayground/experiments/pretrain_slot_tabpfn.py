@@ -65,7 +65,12 @@ from tfmplayground.models.slot_regime import (
     slot_utilization_scores,
     support_reconstruction_loss,
 )
-from tfmplayground.models.table_slot import QUERY_ROUTING_MODES, SLOT_SCOPES, TableSlotModel
+from tfmplayground.models.table_slot import (
+    QUERY_ROUTING_MODES,
+    RECONSTRUCTION_MIXTURES,
+    SLOT_SCOPES,
+    TableSlotModel,
+)
 from tfmplayground.utils import set_randomness_seed
 
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
@@ -169,6 +174,13 @@ class SlotPretrainingConfig:
     #: How a ``table_slot_head`` query row is routed to slots.  See
     #: ``table_slot.QueryRoutingMode`` for what each value means.
     query_routing_mode: Literal["decoder", "blind_decoder", "blind_similarity"] = "decoder"
+    #: What weights a slot in the support reconstruction.  "attention" is the
+    #: historical design, which weights by ``a[i,k]`` and discards the decoder's
+    #: alpha -- the same alpha the query side gates on, so the two sides route
+    #: by different quantities and only one is trained.  "alpha" composites the
+    #: way Locatello does, which makes the reconstruction train the query gate.
+    #: See ``table_slot.ReconstructionMixture``.
+    reconstruction_mixture: Literal["attention", "alpha"] = "attention"
     competitive_slots: bool = True
     #: What a slot's claim on a support row is scored by, for ``slot_backbone``.
     #: "dot" is Locatello's own compatibility; "likelihood" scores
@@ -266,6 +278,23 @@ def validate_config(config: SlotPretrainingConfig) -> None:
             f"query_routing_mode={config.query_routing_mode!r} needs model_kind=table_slot_head, "
             f"not {config.model_kind!r}."
         )
+    if config.reconstruction_mixture not in RECONSTRUCTION_MIXTURES:
+        raise ValueError(
+            f"reconstruction_mixture must be one of {RECONSTRUCTION_MIXTURES}, got {config.reconstruction_mixture!r}."
+        )
+    if config.reconstruction_mixture != "attention":
+        if config.model_kind != "table_slot_head":
+            raise ValueError(
+                f"reconstruction_mixture={config.reconstruction_mixture!r} needs model_kind=table_slot_head, "
+                f"not {config.model_kind!r}."
+            )
+        if not config.support_reconstruction_weight:
+            # The setting only changes the reconstruction, so at weight zero it
+            # would name an objective the run never applies.
+            raise ValueError(
+                f"reconstruction_mixture={config.reconstruction_mixture!r} needs a nonzero "
+                "support_reconstruction_weight."
+            )
     for name in ("support_reconstruction_weight", "slot_mi_weight"):
         weight = getattr(config, name)
         if weight < 0.0:
@@ -521,6 +550,7 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         binding: dict[str, list[float]] = {}
         utilization: dict[str, list[float]] = {}
         reconstruction: list[float] = []
+        gate_agreements: list[float] = []
         for _ in range(config.validation_episodes):
             episode = multiregime_batch(config, episode_rng)
             loss = slot_batch_loss(model, episode)
@@ -550,6 +580,15 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             )
             if reconstructing:
                 reconstruction.append(float(support_reconstruction_loss(prediction, episode.support_y)))
+                # How far the decoder's alpha sits from the competition's own
+                # assignment on the same rows.  Under "attention" the two
+                # routings were never forced to agree and nothing measured
+                # whether they did; under "alpha" they are one quantity on the
+                # reconstruction side, so this reads how much the competition
+                # has moved away from it.
+                agreement = getattr(model, "last_gate_agreement", None)
+                if agreement is not None and torch.isfinite(agreement):
+                    gate_agreements.append(float(agreement))
             # Sharpness and balance need no regime tag, so unlike the binding
             # scores below they are reported for every slot arm and would still
             # be reported on a real table.
@@ -566,6 +605,16 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             ).items():
                 binding.setdefault(key, []).append(value)
     model.train()
+    # Read once after the loop: these are parameters, not per-episode samples,
+    # so `summarize_samples` would report a zero-width interval over repeats of
+    # the same number.  A single-element list keeps them in the same shape as
+    # every other metric without claiming a dispersion they do not have.
+    mix_gates: dict[str, list[float]] = {}
+    for adapter in getattr(model, "adapters", []):
+        for name in ("feature_mix", "row_mix"):
+            gate = getattr(adapter, name, None)
+            if gate is not None:
+                mix_gates.setdefault(name, []).append(float(gate.detach().sigmoid()))
     metrics: dict[str, float] = {"validation_batches": len(ordinary_losses)}
     # Every metric carries its own dispersion: these are means over a handful of
     # episodes, and without an interval there is no way to tell a real movement
@@ -593,6 +642,13 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         # Sharpness, balance and the reconstruction NLL: what the closure pilot
         # is screened on.  Absent for every arm that requests neither.
         "support_reconstruction_nll": reconstruction,
+        # `KL(a || alpha)` between the two routings, and the convex blends that
+        # decide whether the slot write reaches the table at all.  A run whose
+        # `feature_mix`/`row_mix` have collapsed toward zero has silently
+        # reduced to the plain backbone, in which case no routing change can
+        # matter -- which nothing in this trainer could previously see.
+        "support_gate_agreement": gate_agreements,
+        **mix_gates,
         **utilization,
     }
     for name, values in samples.items():
@@ -702,6 +758,7 @@ def build_model(config: SlotPretrainingConfig):
             max_classes=config.max_classes,
             scope=config.table_slot_scope,
             query_routing_mode=config.query_routing_mode,
+            reconstruction_mixture=config.reconstruction_mixture,
         ).to(config.device)
     if config.model_kind in _SLOT_LAYER_KINDS:
         install_slot_layers(
@@ -750,6 +807,7 @@ def _checkpoint(
                 "support_reconstruction_weight": config.support_reconstruction_weight,
                 "slot_mi_weight": config.slot_mi_weight,
                 "query_routing_mode": config.query_routing_mode,
+                "reconstruction_mixture": config.reconstruction_mixture,
             },
             "model": model.state_dict(),
             "training_config": asdict(config),
@@ -964,6 +1022,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--table-slot-scope", choices=SLOT_SCOPES, default=defaults.table_slot_scope)
     parser.add_argument(
         "--query-routing-mode", choices=QUERY_ROUTING_MODES, default=defaults.query_routing_mode
+    )
+    parser.add_argument(
+        "--reconstruction-mixture", choices=RECONSTRUCTION_MIXTURES, default=defaults.reconstruction_mixture
     )
     parser.add_argument("--tabarena-max-predictors", type=int, default=defaults.tabarena_max_predictors)
     parser.add_argument("--tabarena-max-classes", type=int, default=defaults.tabarena_max_classes)

@@ -444,3 +444,180 @@ def test_query_routing_mode_checkpoint_round_trips_and_defaults_to_decoder():
         restored = load_checkpoint_for_inference(historical).eval()
         assert restored.model.query_routing_mode == "decoder"
 
+
+def test_attention_mixture_reproduces_the_historical_reconstruction_exactly():
+    """The default compositing rule must be bit-identical to what ran before.
+
+    ``_reconstruct_support`` now always decodes the mask channel, because the
+    agreement between the two routings is worth recording and the mask is a
+    channel of an output the decoder already produced.  Selecting the historical
+    weight afterwards must leave the returned tensor untouched: the grid indices
+    are append-only and the closure cells at 180-185 have to stay comparable
+    with anything scored against them.
+    """
+    model, episode = _head_model_and_episode()
+    assert model.reconstruction_mixture == "attention"
+    support_x, support_y, query_x = episode.latent_inputs()
+    split = support_x.shape[1]
+    table = torch.cat((support_x, query_x), 1)
+    with torch.no_grad():
+        state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
+        blind = model._blind_pass(table, support_y, split, 1, state)
+        # The expression as it stood before the compositing axis existed.
+        logits, _ = model.decoder(blind.pooled_rows[:, :split], state.slots)
+        expected = torch.logsumexp(
+            state.support_attention.clamp_min(1e-12).log()[..., None] + torch.log_softmax(logits, -1), dim=2
+        )
+        torch.testing.assert_close(model._reconstruct_support(state, blind, split), expected, atol=0, rtol=0)
+
+
+def test_alpha_mixture_composites_by_the_decoder_mask_and_stays_a_distribution():
+    """Locatello's rule: softmax the alpha across slots and composite with it.
+
+    The point of the axis is that this is the *same* quantity the query side
+    gates on, so the reconstruction now trains the query gate rather than a
+    second routing nothing scores.
+    """
+    model, episode = _head_model_and_episode()
+    model.reconstruction_mixture = "alpha"
+    support_x, support_y, query_x = episode.latent_inputs()
+    split = support_x.shape[1]
+    table = torch.cat((support_x, query_x), 1)
+    with torch.no_grad():
+        state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
+        blind = model._blind_pass(table, support_y, split, 1, state)
+        logits, masks = model.decoder(blind.pooled_rows[:, :split], state.slots)
+        expected = torch.logsumexp(
+            torch.log_softmax(masks, -1)[..., None] + torch.log_softmax(logits, -1), dim=2
+        )
+        actual = model._reconstruct_support(state, blind, split)
+    torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+    torch.testing.assert_close(actual.exp().sum(-1), torch.ones(1, split))
+    # And it is genuinely a different objective, not a renamed one.
+    model.reconstruction_mixture = "attention"
+    with torch.no_grad():
+        assert not torch.allclose(model._reconstruct_support(state, blind, split), actual)
+
+
+def test_alpha_with_blind_decoder_routes_support_and_query_rows_by_one_function():
+    """The property the whole change exists to create.
+
+    Under ``reconstruction_mixture="alpha"`` and
+    ``query_routing_mode="blind_decoder"`` the mixture weight is
+    ``softmax_k(decoder_mask(blind row, slot k))`` on both sides, so moving a
+    row from the support side to the query side must not change the routing it
+    receives.  That identity is what makes ``L_rec`` train the query gate:
+    before it, the reconstruction weighted by ``a[i,k]`` and the query gated on
+    an alpha nothing scored.
+
+    Only the *gate* is shared, deliberately.  The query's class logits still
+    come from the labelled pass, because a query row's attended state carries
+    the in-context label signal that makes prediction work at all; blinding
+    that too would connect the two branches by destroying one of them.
+    """
+    model, episode = _head_model_and_episode()
+    model.reconstruction_mixture = "alpha"
+    model.query_routing_mode = "blind_decoder"
+    support_x, support_y, query_x = episode.latent_inputs()
+    split = support_x.shape[1]
+    table = torch.cat((support_x, query_x), 1)
+    with torch.no_grad():
+        state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
+        blind = model._blind_pass(table, support_y, split, 1, state)
+        # Every row's gate, computed by the one function, support and query alike.
+        _, all_masks = model.decoder(blind.pooled_rows, state.slots)
+        every_gate = torch.log_softmax(all_masks, -1)
+        # The gate the query side actually applies.
+        prediction = model(support_x, support_y, query_x, reconstruct_support=True)
+    # Default float32 tolerances rather than exact: the model decodes the
+    # support and query rows in two calls and this decodes all of them in one,
+    # so the matmul reduction order differs by an ulp.  The claim is that the
+    # two sides apply the same function, not that they were computed together.
+    torch.testing.assert_close(prediction.log_gate, every_gate[:, split:])
+    # And the weight the reconstruction actually composites with.
+    torch.testing.assert_close(model.last_support_alpha_for_loss, every_gate[:, :split])
+
+
+def test_alpha_reconstruction_gradients_reach_the_mask_head_and_the_slots():
+    """Under "alpha" the loss trains the routing head, which "attention" never did.
+
+    ``a[i,k]`` leaves the loss expression, and that is correct: Locatello's
+    attention never appears in the reconstruction loss either.  Gradient still
+    reaches the competition, because slots are built as ``weights.T @ v`` and go
+    straight into the decoder.
+    """
+    model, episode = _head_model_and_episode()
+    model.reconstruction_mixture = "alpha"
+    model.train()
+    support_x, support_y, query_x = episode.latent_inputs()
+    support_reconstruction_loss(
+        model(support_x, support_y, query_x, reconstruct_support=True), support_y
+    ).backward()
+    names = dict(model.named_parameters())
+    for name in (
+        # The mask channel is the last row of the decoder's output layer, and
+        # it is the query gate: this is the connection the axis exists to make.
+        "decoder.body.2.weight",
+        # Still the competition and its slots, reached through slot construction
+        # rather than through the mixture weight.
+        "adapters.0.datapoint_slots.project_q.weight",
+        "adapters.0.datapoint_slots.slots_mu",
+        "adapters.0.datapoint_slots.gru.weight_ih",
+        "backbone.target_encoder.linear_layer.weight",
+    ):
+        assert names[name].grad is not None, name
+        assert torch.isfinite(names[name].grad).all(), name
+    mask_row = names["decoder.body.2.weight"].grad[-1]
+    assert mask_row.abs().sum() > 0, "the alpha channel took no gradient"
+
+
+def test_reconstruction_mixture_is_a_head_setting_only():
+    for kind, mode in (("table_slot_backbone", "backbone"), ("table_slot_mufasa", "mufasa")):
+        model = build_model(_config(kind))
+        with pytest.raises(ValueError, match="mode='head'"):
+            TableSlotModel(
+                model.backbone, mode=mode, num_slots=4, max_classes=2, reconstruction_mixture="alpha"
+            )
+
+
+def test_reconstruction_mixture_checkpoint_round_trips_and_defaults_to_attention():
+    config, episode = _config("table_slot_head"), _episode()
+    model = build_model(config).eval()
+    model.reconstruction_mixture = "alpha"
+    optimizer = torch.optim.AdamW(model.parameters())
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
+    payload = _checkpoint(model, optimizer, scheduler, config, 0, np.random.default_rng(1), None)
+    payload["architecture"]["reconstruction_mixture"] = "alpha"
+    expected = model(*episode.latent_inputs()).marginal_log_probabilities()
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "checkpoint.pth"
+        torch.save(payload, path)
+        restored = load_checkpoint_for_inference(path).eval()
+        assert restored.model.reconstruction_mixture == "alpha"
+        torch.testing.assert_close(restored(*episode.latent_inputs()), expected)
+        # A checkpoint written before this axis existed carries no key and must
+        # restore as the historical `a[i,k]` weighting.
+        del payload["architecture"]["reconstruction_mixture"]
+        historical = Path(directory) / "historical.pth"
+        torch.save(payload, historical)
+        assert load_checkpoint_for_inference(historical).eval().model.reconstruction_mixture == "attention"
+
+
+def test_alpha_mixture_requires_a_reconstruction_weight_to_apply_it():
+    """Naming a compositing rule at weight zero would report an unapplied objective."""
+    from tfmplayground.experiments.pretrain_slot_tabpfn import validate_config as validate_slot_config
+
+    base = dict(device="cpu", model_kind="table_slot_head", num_slots=4, reconstruction_mixture="alpha")
+    with pytest.raises(ValueError, match="nonzero"):
+        validate_slot_config(SlotPretrainingConfig(**base))
+    validate_slot_config(SlotPretrainingConfig(**base, support_reconstruction_weight=1.0))
+    with pytest.raises(ValueError, match="table_slot_head"):
+        validate_slot_config(
+            SlotPretrainingConfig(
+                device="cpu",
+                model_kind="table_slot_backbone",
+                num_slots=4,
+                reconstruction_mixture="alpha",
+                support_reconstruction_weight=1.0,
+            )
+        )
