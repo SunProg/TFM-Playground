@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-215
+#SBATCH --array=0-211
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -49,8 +49,9 @@
 #     blind_decoder    186-194, blind_similarity 195-203
 #     (cell_and_data / cell / data, three priors each, in that order)
 #   compositing rule, on the learnable design -- see the note at the bottom
-#     alpha    blind_decoder 204-206, decoder 207-209
-#     baseline blind_decoder 210-212, decoder 213-215
+#     alpha    blind_decoder 204-205, decoder 206-207
+#     baseline blind_decoder 208-209, decoder 210-211
+#     (mixed / curriculum only; `plain` never trains on a mixture)
 #
 #   compatibility (coherence 2.0, 10 epochs) -- what a slot's claim is scored by
 #     likelihood    K=2       56         57           58             59
@@ -99,7 +100,7 @@
 # ordinary self-attention before the competition runs, so a query can be
 # predicted well without the slots contributing anything.
 #
-# 204-215 change the compositing rule.  Every cell above -- closure and routing
+# 204-211 change the compositing rule.  Every cell above -- closure and routing
 # alike -- weights the support reconstruction by `a[i,k]` and discards the
 # decoder's alpha channel, while the query side gates on that discarded channel
 # and never sees `a`: two routing quantities, one of them trained.  Locatello
@@ -108,8 +109,13 @@
 # mixture weight the reconstruction is scored through.  `--reconstruction-mixture
 # alpha` composites that way, so `L_rec` and the query mixture become the same
 # expression evaluated on rows that do and do not carry a target.  Their
-# directories carry an `-alpha` suffix and 210-215 are the matched baseline at
+# directories carry an `-alpha` suffix and 208-211 are the matched baseline at
 # identical settings.
+#
+# They run on `mixed` and `curriculum` only.  `plain`'s multiregime share is
+# 0.00 at every step, so a `plain` cell never trains on a mixture -- and the
+# compositing rule decides how slots split a mixture, so there the manipulated
+# variable has nothing to act on.
 #
 # These are the only cells after 103 that run on the learnable design, and that
 # is deliberate: `detection_ceiling` puts the coherence-2.0 design every block

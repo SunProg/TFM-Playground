@@ -168,6 +168,16 @@ QUERY_ROUTING_MODES_SCREENED = ("blind_decoder", "blind_similarity")
 #: which is exactly the property compositing by alpha exists to exploit.
 COMPOSITING_ROUTING_MODES = ("blind_decoder", "decoder")
 
+#: The priors the compositing block runs on.  `plain` is excluded, unlike every
+#: earlier block: its multiregime share is 0.00 at every step, so a `plain` cell
+#: never sees a mixture during training.  The compositing rule decides how slots
+#: split a mixture, so on `plain` the manipulated variable has nothing to act on
+#: and the pair would differ only in held-out transfer of a mechanism that was
+#: never trained.  `multiregime` is excluded for the reason every block above
+#: excludes it: at share 1.00 every run of it sat at chance, which measures a
+#: collapsed model rather than an objective.
+COMPOSITING_PRIOR_MODES = ("mixed", "curriculum")
+
 #: The trainer's own default budget.  20 epochs of 500 steps.
 SCREENING_STEPS = 10_000
 #: Short budget for the coherent-regime block: 10 epochs, enough to see whether
@@ -533,6 +543,9 @@ def screening_configurations() -> list[dict[str, Any]]:
     # `blind_similarity` is deliberately absent: it replaces the learned alpha
     # with a cosine similarity, which is the one property `_SlotDecoder` exists
     # to preserve, so it cannot be the arm a compositing fix is screened with.
+    # `plain` is absent too, unlike every block above -- its multiregime share
+    # is 0.00 at every step, so the cells never train on a mixture and the
+    # compositing rule has nothing to act on.
     #
     # On `LEARNABLE_DESIGN`, not the coherence-2.0 design every block above
     # uses.  `detection_ceiling` puts that design at ~0.505 achievable, so a
@@ -555,7 +568,7 @@ def screening_configurations() -> list[dict[str, Any]]:
             **LEARNABLE_DESIGN,
         }
         for routing_mode in COMPOSITING_ROUTING_MODES
-        for prior_mode in PRIOR_MODES_READABLE
+        for prior_mode in COMPOSITING_PRIOR_MODES
     ]
     # The matched baseline for the block above: identical in every respect but
     # the compositing rule, so "alpha" has something on the same task and the
@@ -575,7 +588,7 @@ def screening_configurations() -> list[dict[str, Any]]:
             **LEARNABLE_DESIGN,
         }
         for routing_mode in COMPOSITING_ROUTING_MODES
-        for prior_mode in PRIOR_MODES_READABLE
+        for prior_mode in COMPOSITING_PRIOR_MODES
     ]
     return grid
 

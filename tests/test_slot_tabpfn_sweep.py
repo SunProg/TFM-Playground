@@ -41,6 +41,7 @@ from tfmplayground.experiments.slot_tabpfn_sweep import (
     LEARNABLE_DESIGN,
     MULTIREGIME_SHARE,
     PRIOR_MODES_READABLE,
+    COMPOSITING_PRIOR_MODES,
     COMPOSITING_ROUTING_MODES,
     QUERY_ROUTING_MODES_SCREENED,
     READABLE_DESIGN,
@@ -144,7 +145,7 @@ class SweepTests(unittest.TestCase):
         # precedes the newest block keeps that arithmetic correct without
         # renumbering four offsets each time.
         # The compositing block and its matched baseline, appended newest.
-        compositing_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(PRIOR_MODES_READABLE)
+        compositing_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
         before_compositing = configurations[:-compositing_cells]
 
         routing_cells = len(QUERY_ROUTING_MODES_SCREENED) * len(TABLE_SLOT_SCOPES_READABLE) * len(PRIOR_MODES_READABLE)
@@ -488,7 +489,7 @@ class SweepTests(unittest.TestCase):
         for half in (alpha, baseline):
             self.assertEqual(
                 [(c["query_routing_mode"], c["prior_mode"]) for c in half],
-                [(mode, prior) for mode in COMPOSITING_ROUTING_MODES for prior in PRIOR_MODES_READABLE],
+                [(mode, prior) for mode in COMPOSITING_ROUTING_MODES for prior in COMPOSITING_PRIOR_MODES],
             )
             self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in half))
             self.assertTrue(all(c["num_slots"] == 4 for c in half))
@@ -507,6 +508,10 @@ class SweepTests(unittest.TestCase):
             # achievable, so a flat number there cannot be read at all.
             self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in half))
             self.assertNotIn("multiregime", {c["prior_mode"] for c in half})
+            # And `plain`, whose multiregime share is 0.00 at every step: those
+            # cells never train on a mixture, so the compositing rule they vary
+            # has nothing to act on.
+            self.assertNotIn("plain", {c["prior_mode"] for c in half})
         # `blind_similarity` is deliberately absent: it replaces the learned
         # alpha with a cosine similarity, which is the one property the shared
         # decoder exists to preserve, so it cannot be the arm a compositing fix
