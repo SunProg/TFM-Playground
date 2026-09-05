@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-224
+#SBATCH --array=0-227
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -139,6 +139,13 @@
 # 219-224 add the other two scopes, giving the gate the same three-scope
 # crossing 195-203 have on the coherence-2.0 design but on one whose numbers can
 # be read.  195-203 are superseded by these and should not be run.
+#
+# 225-227 is the vanilla baseline 204-224 never had matched: same task, same
+# coherence, same 15-dataset TabArena breadth.  88-91 share the feature design
+# but train at regime_coherence=0 and score the narrower 10-predictor slice;
+# 177-179 share the coherence and TabArena breadth but run on READABLE_DESIGN
+# (12 features, support 512) instead.  Nothing in the trainer needed to change
+# for this -- the combination was simply never submitted.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

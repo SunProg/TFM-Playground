@@ -676,6 +676,26 @@ def screening_configurations() -> list[dict[str, Any]]:
         for scope in ("cell", "data")
         for prior_mode in PRIOR_MODES_READABLE
     ]
+    # The vanilla baseline the compositing block needed and never had: same task
+    # (LEARNABLE_DESIGN), same regime coherence, same TabArena breadth as 204-224.
+    # No existing vanilla arm matches all three at once -- 88-91 share the feature
+    # design but train at regime_coherence=0 and score the narrower 10-predictor
+    # slice; 177-179 share the coherence and TabArena breadth but run on
+    # READABLE_DESIGN (12 features, support 512), not this one.  No architecture
+    # or evaluation change was needed for this -- the trainer already accepts the
+    # combination, nothing had submitted it.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 2,
+            "model_kind": "vanilla",
+            "regime_coherence": REGIME_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
     return grid
 
 

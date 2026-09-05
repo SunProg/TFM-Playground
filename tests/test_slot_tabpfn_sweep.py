@@ -147,8 +147,12 @@ class SweepTests(unittest.TestCase):
         # renumbering four offsets each time.
         # The learnable-design similarity block: `cell_and_data` first, then the
         # other two scopes appended after 36996446 was already submitted.
+        # The matched vanilla baseline, appended newest of all.
+        matched_vanilla_count = len(PRIOR_MODES_READABLE)
+        before_vanilla = configurations[:-matched_vanilla_count]
+
         similarity_scope_cells = 2 * len(PRIOR_MODES_READABLE)
-        before_similarity_scopes = configurations[:-similarity_scope_cells]
+        before_similarity_scopes = before_vanilla[:-similarity_scope_cells]
         similarity_cells = len(PRIOR_MODES_READABLE)
         before_similarity = before_similarity_scopes[:-similarity_cells]
 
@@ -267,6 +271,9 @@ class SweepTests(unittest.TestCase):
             # the only one whose numbers can be read -- but it is a separate
             # block, asserted on its own below.
             and not c.get("support_reconstruction_weight")
+            # So does the matched vanilla baseline, at REGIME_COHERENCE rather
+            # than this block's unset (0) coherence -- also asserted on its own.
+            and c.get("regime_coherence") is None
         ]
         self.assertEqual(len(learnable), 4 * len(PRIOR_MODES))
         self.assertEqual(
@@ -578,7 +585,7 @@ class SweepTests(unittest.TestCase):
         # The other two scopes for that block, so the gate gets the same
         # three-scope crossing on the learnable design that 195-203 have on the
         # unreadable one.
-        scoped = configurations[-similarity_scope_cells:]
+        scoped = before_vanilla[-similarity_scope_cells:]
         self.assertEqual(
             [(c["slot_scope"], c["prior_mode"]) for c in scoped],
             [(scope, prior) for scope in ("cell", "data") for prior in PRIOR_MODES_READABLE],
@@ -590,6 +597,27 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(
             {(c.get("slot_scope", "cell_and_data"), c["prior_mode"]) for c in similarity + scoped},
             {(s_, p_) for s_ in TABLE_SLOT_SCOPES_READABLE for p_ in PRIOR_MODES_READABLE},
+        )
+
+        # The matched vanilla baseline, appended last: same task and TabArena
+        # breadth as the compositing block, which no earlier vanilla arm has all
+        # of at once.
+        matched_vanilla = configurations[-matched_vanilla_count:]
+        self.assertEqual([c["prior_mode"] for c in matched_vanilla], list(PRIOR_MODES_READABLE))
+        self.assertTrue(all(c["model_kind"] == "vanilla" for c in matched_vanilla))
+        self.assertTrue(all(c["regime_coherence"] == REGIME_COHERENCE for c in matched_vanilla))
+        self.assertTrue(all(c["tabarena_max_predictors"] == 30 for c in matched_vanilla))
+        self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in matched_vanilla))
+        # No earlier cell -- including the two other LEARNABLE_DESIGN vanilla
+        # arms (88-91, 177-179) -- shares this exact (coherence, breadth) pair.
+        self.assertFalse(
+            any(
+                c.get("model_kind") == "vanilla"
+                and c.get("regime_coherence") == REGIME_COHERENCE
+                and c.get("tabarena_max_predictors") == 30
+                and all(c.get(k) == v for k, v in LEARNABLE_DESIGN.items())
+                for c in before_vanilla
+            )
         )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
@@ -663,6 +691,12 @@ class SweepTests(unittest.TestCase):
                 configuration.get("regime_coherence", 0.0),
                 configuration.get("slot_compatibility", "dot"),
                 configuration.get("max_classes", 2),
+                # READABLE_DESIGN and LEARNABLE_DESIGN both set max_classes=3,
+                # so a vanilla cell on one can otherwise collide with a vanilla
+                # cell on the other -- they are different tasks, not the same
+                # arm with different flags.  min_features is the value that
+                # actually distinguishes them (12 vs 4).
+                configuration.get("min_features", 2),
                 configuration.get("slot_position", "after_datapoint"),
                 # Scope is a between-block axis for the same reason
                 # compatibility is: it names a different model, not a different
