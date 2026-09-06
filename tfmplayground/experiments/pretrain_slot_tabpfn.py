@@ -790,6 +790,9 @@ def _checkpoint(
     step: int,
     validation: dict[str, float] | None,
     episode_rng: np.random.Generator,
+    *,
+    best_query_ce: float | None = None,
+    best_multiregime_ce: float | None = None,
 ) -> dict[str, Any]:
     if config.model_kind.startswith("table_slot_"):
         checkpoint = {
@@ -855,6 +858,11 @@ def _checkpoint(
             "validation": validation,
             "rng_state": _serializable_rng_state(),
             "episode_rng_state": episode_rng.bit_generator.state,
+            # Carried in every checkpoint, not just the dedicated best-* files,
+            # so resuming from any of them (rolling, step, final) preserves the
+            # best-so-far bar rather than silently resetting it to infinity.
+            "best_query_ce": best_query_ce,
+            "best_multiregime_ce": best_multiregime_ce,
         }
     )
     return checkpoint
@@ -878,6 +886,8 @@ def run_pretraining(
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, _scheduler_lambda(config))
     start_step = 0
     state = None
+    best_query_ce = math.inf
+    best_multiregime_ce = math.inf
     if resume_checkpoint is not None:
         state = torch.load(resume_checkpoint, map_location=config.device, weights_only=False)
         model.load_state_dict(state["model"])
@@ -888,6 +898,13 @@ def run_pretraining(
         if rng_state is None:
             raise ValueError("Resume checkpoint is missing RNG state and cannot resume reproducibly.")
         _restore_rng_state(rng_state)
+        # Older checkpoints predate this tracking and carry no such field;
+        # falling back to infinity just means the next validation becomes the
+        # new best, which is correct rather than silently losing the bar.
+        if state.get("best_query_ce") is not None:
+            best_query_ce = float(state["best_query_ce"])
+        if state.get("best_multiregime_ce") is not None:
+            best_multiregime_ce = float(state["best_multiregime_ce"])
 
     prior = make_prior(config, batches=1) if config.prior_mode != "multiregime" else None
     multiregime_source = None
@@ -955,11 +972,34 @@ def run_pretraining(
             validation = None
             if step % config.validation_interval == 0 or step == config.max_steps:
                 validation = validate(model, config)
+                query_ce = validation.get("query_cross_entropy")
+                if query_ce is not None and query_ce < best_query_ce:
+                    best_query_ce = query_ce
+                    torch.save(
+                        _checkpoint(
+                            model, optimizer, scheduler, config, step, validation, episode_rng,
+                            best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+                        ),
+                        output / "best_query_ce_checkpoint.pth",
+                    )
+                multiregime_ce = validation.get("multiregime_cross_entropy")
+                if multiregime_ce is not None and multiregime_ce < best_multiregime_ce:
+                    best_multiregime_ce = multiregime_ce
+                    torch.save(
+                        _checkpoint(
+                            model, optimizer, scheduler, config, step, validation, episode_rng,
+                            best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+                        ),
+                        output / "best_multiregime_ce_checkpoint.pth",
+                    )
 
             tabarena = None
             if config.epoch_steps and step % config.epoch_steps == 0:
                 epoch = step // config.epoch_steps
-                snapshot = _checkpoint(model, optimizer, scheduler, config, step, validation, episode_rng)
+                snapshot = _checkpoint(
+                    model, optimizer, scheduler, config, step, validation, episode_rng,
+                    best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+                )
                 # A single rolling file every epoch, so a 500-step TabArena
                 # cadence costs one checkpoint of disk rather than one per epoch.
                 rolling_path = output / "epoch-latest-checkpoint.pth"
@@ -994,9 +1034,32 @@ def run_pretraining(
             print(json.dumps(row, sort_keys=True), flush=True)
 
     final_validation = validate(model, config)
+    final_query_ce = final_validation.get("query_cross_entropy")
+    if final_query_ce is not None and final_query_ce < best_query_ce:
+        best_query_ce = final_query_ce
+        torch.save(
+            _checkpoint(
+                model, optimizer, scheduler, config, config.max_steps, final_validation, episode_rng,
+                best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+            ),
+            output / "best_query_ce_checkpoint.pth",
+        )
+    final_multiregime_ce = final_validation.get("multiregime_cross_entropy")
+    if final_multiregime_ce is not None and final_multiregime_ce < best_multiregime_ce:
+        best_multiregime_ce = final_multiregime_ce
+        torch.save(
+            _checkpoint(
+                model, optimizer, scheduler, config, config.max_steps, final_validation, episode_rng,
+                best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+            ),
+            output / "best_multiregime_ce_checkpoint.pth",
+        )
     final_path = output / "final_checkpoint.pth"
     torch.save(
-        _checkpoint(model, optimizer, scheduler, config, config.max_steps, final_validation, episode_rng),
+        _checkpoint(
+            model, optimizer, scheduler, config, config.max_steps, final_validation, episode_rng,
+            best_query_ce=best_query_ce, best_multiregime_ce=best_multiregime_ce,
+        ),
         final_path,
     )
     (output / "selection.json").write_text(json.dumps(final_validation, indent=2, sort_keys=True) + "\n")
