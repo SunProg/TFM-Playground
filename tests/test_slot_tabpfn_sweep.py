@@ -148,9 +148,12 @@ class SweepTests(unittest.TestCase):
         # The learnable-design similarity block: `cell_and_data` first, then the
         # other two scopes appended after 36996446 was already submitted.
         # The matched vanilla baseline, then the compositing block's own
-        # other-two-scopes cells, appended newest of all.
+        # other-two-scopes cells, then the compositing block repeated at
+        # `CONTROL_COHERENCE`, appended newest of all.
+        coherent_control_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
+        before_coherent_control = configurations[:-coherent_control_cells]
         compositing_scope_cells = 2 * 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
-        before_compositing_scopes = configurations[:-compositing_scope_cells]
+        before_compositing_scopes = before_coherent_control[:-compositing_scope_cells]
         matched_vanilla_count = len(PRIOR_MODES_READABLE)
         before_vanilla = before_compositing_scopes[:-matched_vanilla_count]
 
@@ -303,6 +306,11 @@ class SweepTests(unittest.TestCase):
             for c in configurations
             if c.get("regime_coherence", 0.0) == CONTROL_COHERENCE
             and c.get("slot_position", "after_datapoint") == "after_datapoint"
+            # Excludes the compositing block's own `CONTROL_COHERENCE` repeat,
+            # appended far later: that block asks a different question (does
+            # compositing work at all once the regime is this easy to find) and
+            # is asserted on its own below, not folded into this one.
+            and c["model_kind"] != "table_slot_head"
         ]
         self.assertEqual(len(control), 6)
         self.assertEqual(before_table[-10:-4], control)
@@ -627,7 +635,7 @@ class SweepTests(unittest.TestCase):
         # `blind_decoder` the same three-scope crossing `blind_similarity`
         # already has, so a compositing gain that only shows up under one
         # competition is not mistaken for one that holds everywhere.
-        compositing_scopes = configurations[-compositing_scope_cells:]
+        compositing_scopes = before_coherent_control[-compositing_scope_cells:]
         scoped_alpha = compositing_scopes[: compositing_scope_cells // 2]
         scoped_baseline = compositing_scopes[compositing_scope_cells // 2 :]
         self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in scoped_alpha))
@@ -672,6 +680,49 @@ class SweepTests(unittest.TestCase):
             twin = {k: v for k, v in cell.items() if k != "slot_scope"}
             self.assertIn(twin, compositing)
             self.assertIn(f"-learnable-{cell['slot_scope']}-", configuration_label(cell))
+
+        # The compositing block and its matched baseline, repeated at
+        # `CONTROL_COHERENCE` -- appended last of all.  Matched to 204-211 on
+        # everything except coherence, so only the `-coh8` suffix (in place of
+        # `-coh2`) keeps it out of those cells' run directories.
+        coherent_control = configurations[-coherent_control_cells:]
+        cc_alpha = coherent_control[: coherent_control_cells // 2]
+        cc_baseline = coherent_control[coherent_control_cells // 2 :]
+        self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in cc_alpha))
+        self.assertTrue(all("reconstruction_mixture" not in c for c in cc_baseline))
+        self.assertTrue(all(c["regime_coherence"] == CONTROL_COHERENCE for c in coherent_control))
+        # No earlier compositing-block cell runs at this coherence, or a
+        # resubmission of 204-211 would land somewhere new.
+        self.assertTrue(
+            all(
+                c.get("regime_coherence") != CONTROL_COHERENCE
+                for c in before_coherent_control
+                if c.get("reconstruction_mixture") == "alpha" or c.get("model_kind") == "table_slot_head"
+            )
+        )
+        for half in (cc_alpha, cc_baseline):
+            self.assertEqual(
+                [(c["query_routing_mode"], c["prior_mode"]) for c in half],
+                [(mode, prior) for mode in COMPOSITING_ROUTING_MODES for prior in COMPOSITING_PRIOR_MODES],
+            )
+            self.assertTrue(all(c["model_kind"] == "table_slot_head" for c in half))
+            self.assertTrue(all(c["num_slots"] == 4 for c in half))
+            self.assertTrue(all(c["max_steps"] == COHERENT_STEPS for c in half))
+            self.assertTrue(
+                all(
+                    c["support_reconstruction_weight"] == CLOSURE_WEIGHTS[1][0]
+                    and c["slot_mi_weight"] == CLOSURE_WEIGHTS[1][1]
+                    for c in half
+                )
+            )
+            self.assertTrue(all(all(c[k] == v for k, v in LEARNABLE_DESIGN.items()) for c in half))
+            self.assertTrue(all("slot_scope" not in c for c in half))
+        # Each cell shares every other setting with its `REGIME_COHERENCE` twin
+        # from 204-211, so only the coherence -- and hence the label's `-coh8`
+        # vs `-coh2` -- differs.
+        for cell in cc_alpha + cc_baseline:
+            self.assertIn("-coh8-", configuration_label(cell))
+            self.assertNotIn("-coh2-", configuration_label(cell))
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()

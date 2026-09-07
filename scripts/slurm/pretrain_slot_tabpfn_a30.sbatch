@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-243
+#SBATCH --array=0-251
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -156,6 +156,18 @@
 # scoped.  The negative control (212-215) is not re-scoped: it already
 # establishes that a gap survives on a prior with nothing to composite, and
 # doubling it per scope would not sharpen that reading.
+#
+# 244-251 repeat the compositing block and its matched baseline (204-211) at
+# `CONTROL_COHERENCE` (8.0) instead of `REGIME_COHERENCE` (2.0). Not a second
+# point on the compositing question -- at 8.0 the contaminated rows are all
+# but a deterministic half-space (measured supervised x -> tag AUC 0.980), so
+# a single piecewise boundary fits the task and no mixture-of-experts
+# structure is actually needed to solve it, the same reason coherence 8.0
+# exists only as the positive control at 90-101. This asks whether the
+# mechanism works at all once the regime is trivially easy to find, before
+# asking whether alpha compositing helps at the harder, genuinely latent
+# coherence the rest of this block runs at. 244-247 are alpha compositing,
+# 248-251 the matched baseline -- same layout as 204-211, just at coh8.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

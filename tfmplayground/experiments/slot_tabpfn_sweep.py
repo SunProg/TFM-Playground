@@ -744,6 +744,50 @@ def screening_configurations() -> list[dict[str, Any]]:
         for routing_mode in COMPOSITING_ROUTING_MODES
         for prior_mode in COMPOSITING_PRIOR_MODES
     ]
+    # The compositing block and its matched baseline, repeated at
+    # `CONTROL_COHERENCE` instead of `REGIME_COHERENCE`.  Not a second point on
+    # the compositing question: at 8.0 the contaminated rows are all but a
+    # deterministic half-space (measured supervised `x -> tag` AUC 0.980, see
+    # `CONTROL_COHERENCE`), so a single piecewise boundary fits the task and no
+    # mixture-of-experts structure is actually needed to solve it -- the same
+    # reason that coherence exists only as the positive control at indices
+    # 90-101.  This block asks the same question at the compositing block's
+    # design: does the mechanism work at all once the regime is this easy to
+    # find, before asking whether alpha compositing helps at the harder,
+    # genuinely latent coherence the rest of this block runs at.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "reconstruction_mixture": "alpha",
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
     return grid
 
 
