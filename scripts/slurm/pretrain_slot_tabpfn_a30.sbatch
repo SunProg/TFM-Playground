@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
-#SBATCH --array=0-251
+#SBATCH --array=0-283
 #SBATCH --output=slurm-%x-%A_%a.out
 #SBATCH --error=slurm-%x-%A_%a.err
 
@@ -168,6 +168,13 @@
 # asking whether alpha compositing helps at the harder, genuinely latent
 # coherence the rest of this block runs at. 244-247 are alpha compositing,
 # 248-251 the matched baseline -- same layout as 204-211, just at coh8.
+#
+# 252-283 repeat the rest of the learnable-design block (212-243) at
+# `CONTROL_COHERENCE` too, same reasoning as 244-251: 252-255 are the negative
+# control, 256-258 `blind_similarity` at `cell_and_data`, 259-264 the same at
+# `cell`/`data`, 265-267 the matched vanilla baseline, and 268-283 the
+# compositing block's own `cell`/`data` extension (alpha then baseline, 8
+# each). Same layout as 212-243, every `regime_coherence` swapped to 8.0.
 #
 # Run a subset with `sbatch --array=<range>`, which overrides the directive
 # above; the log below prints the array count against the grid size so a partial

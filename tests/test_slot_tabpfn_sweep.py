@@ -149,9 +149,12 @@ class SweepTests(unittest.TestCase):
         # other two scopes appended after 36996446 was already submitted.
         # The matched vanilla baseline, then the compositing block's own
         # other-two-scopes cells, then the compositing block repeated at
-        # `CONTROL_COHERENCE`, appended newest of all.
+        # `CONTROL_COHERENCE`, then the rest of the learnable-design block
+        # (212-243) repeated at `CONTROL_COHERENCE` too, appended newest of all.
+        rest_cells = 4 + 3 + 6 + 3 + 8 + 8
+        before_rest = configurations[:-rest_cells]
         coherent_control_cells = 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
-        before_coherent_control = configurations[:-coherent_control_cells]
+        before_coherent_control = before_rest[:-coherent_control_cells]
         compositing_scope_cells = 2 * 2 * len(COMPOSITING_ROUTING_MODES) * len(COMPOSITING_PRIOR_MODES)
         before_compositing_scopes = before_coherent_control[:-compositing_scope_cells]
         matched_vanilla_count = len(PRIOR_MODES_READABLE)
@@ -306,11 +309,14 @@ class SweepTests(unittest.TestCase):
             for c in configurations
             if c.get("regime_coherence", 0.0) == CONTROL_COHERENCE
             and c.get("slot_position", "after_datapoint") == "after_datapoint"
-            # Excludes the compositing block's own `CONTROL_COHERENCE` repeat,
+            # Excludes the compositing block's own `CONTROL_COHERENCE` repeat
+            # (both the `table_slot_head` arms and their matched `vanilla`),
             # appended far later: that block asks a different question (does
             # compositing work at all once the regime is this easy to find) and
-            # is asserted on its own below, not folded into this one.
-            and c["model_kind"] != "table_slot_head"
+            # is asserted on its own below, not folded into this one.  Vanilla
+            # was "absent by design" here before that block existed -- it had
+            # no matching cell at this coherence at all, not just no slots.
+            and c["model_kind"] not in ("table_slot_head", "vanilla")
         ]
         self.assertEqual(len(control), 6)
         self.assertEqual(before_table[-10:-4], control)
@@ -685,7 +691,7 @@ class SweepTests(unittest.TestCase):
         # `CONTROL_COHERENCE` -- appended last of all.  Matched to 204-211 on
         # everything except coherence, so only the `-coh8` suffix (in place of
         # `-coh2`) keeps it out of those cells' run directories.
-        coherent_control = configurations[-coherent_control_cells:]
+        coherent_control = before_rest[-coherent_control_cells:]
         cc_alpha = coherent_control[: coherent_control_cells // 2]
         cc_baseline = coherent_control[coherent_control_cells // 2 :]
         self.assertTrue(all(c["reconstruction_mixture"] == "alpha" for c in cc_alpha))
@@ -723,6 +729,56 @@ class SweepTests(unittest.TestCase):
         for cell in cc_alpha + cc_baseline:
             self.assertIn("-coh8-", configuration_label(cell))
             self.assertNotIn("-coh2-", configuration_label(cell))
+
+        # The rest of the learnable-design block (212-243), repeated at
+        # `CONTROL_COHERENCE`, appended last of all: the negative control (4),
+        # `blind_similarity` at `cell_and_data` (3), `blind_similarity` at
+        # `cell`/`data` (6), the matched vanilla baseline (3), and the
+        # compositing block's own `cell`/`data` extension (8 + 8) -- 32 cells,
+        # same layout as 212-243 with every `regime_coherence` swapped.
+        rest = configurations[-rest_cells:]
+        self.assertEqual(len(rest), rest_cells)
+        self.assertTrue(all(c["regime_coherence"] == CONTROL_COHERENCE for c in rest))
+        self.assertTrue(all("-coh8-" in configuration_label(c) for c in rest))
+
+        cc_control = rest[:4]
+        self.assertEqual({c["prior_mode"] for c in cc_control}, set(COMPOSITING_CONTROL_PRIORS))
+        cc_control_alpha = [c for c in cc_control if c.get("reconstruction_mixture") == "alpha"]
+        self.assertEqual(len(cc_control_alpha), 2)
+
+        cc_similarity_both = rest[4:7]
+        self.assertEqual([c["prior_mode"] for c in cc_similarity_both], list(PRIOR_MODES_READABLE))
+        self.assertTrue(all(c["query_routing_mode"] == "blind_similarity" for c in cc_similarity_both))
+        self.assertTrue(all(c.get("slot_scope", "cell_and_data") == "cell_and_data" for c in cc_similarity_both))
+
+        cc_similarity_scoped = rest[7:13]
+        self.assertEqual(
+            [(c["slot_scope"], c["prior_mode"]) for c in cc_similarity_scoped],
+            [(scope, prior) for scope in ("cell", "data") for prior in PRIOR_MODES_READABLE],
+        )
+
+        cc_vanilla = rest[13:16]
+        self.assertTrue(all(c["model_kind"] == "vanilla" for c in cc_vanilla))
+        self.assertEqual([c["prior_mode"] for c in cc_vanilla], list(PRIOR_MODES_READABLE))
+
+        cc_scoped_compositing = rest[16:]
+        self.assertEqual(len(cc_scoped_compositing), 16)
+        self.assertTrue(all(c["slot_scope"] in ("cell", "data") for c in cc_scoped_compositing))
+        self.assertEqual(
+            len([c for c in cc_scoped_compositing if c.get("reconstruction_mixture") == "alpha"]), 8
+        )
+        # No earlier `CONTROL_COHERENCE` cell may carry a scope, `blind_similarity`,
+        # or be a vanilla arm at this coherence -- or a resubmission of 244-283
+        # would land somewhere new.
+        self.assertTrue(
+            all(
+                "slot_scope" not in c
+                and c.get("query_routing_mode") != "blind_similarity"
+                and not (c.get("model_kind") == "vanilla" and c.get("regime_coherence") == CONTROL_COHERENCE)
+                for c in before_coherent_control
+                if c.get("regime_coherence") == CONTROL_COHERENCE
+            )
+        )
 
     def test_flags_carry_the_arm_and_hold_everything_else_fixed(self):
         configurations = screening_configurations()
@@ -818,6 +874,13 @@ class SweepTests(unittest.TestCase):
                 # compositing cell matches its baseline twin in every flag but
                 # this one.
                 configuration.get("reconstruction_mixture", "attention"),
+                # And TabArena breadth, for the same reason once more: the
+                # `CONTROL_COHERENCE` vanilla arm shares every other axis in
+                # this tuple with the pre-existing positive-control block
+                # (104-109, `model_kind` is deliberately not part of this key)
+                # but widens TabArena to match its compositing-block siblings,
+                # which that block never does.
+                configuration.get("tabarena_max_predictors"),
             )
 
         def without_axes(flags: str, configuration: dict) -> str:

@@ -788,6 +788,123 @@ def screening_configurations() -> list[dict[str, Any]]:
         for routing_mode in COMPOSITING_ROUTING_MODES
         for prior_mode in COMPOSITING_PRIOR_MODES
     ]
+    # The rest of the learnable-design block (212-243), repeated at
+    # `CONTROL_COHERENCE` for the same reason 244-251 repeats 204-211: not a
+    # second data point on any of the questions those cells were built to
+    # answer, but a check that each mechanism still does *something* once the
+    # regime is trivially easy to find, before trusting a null at the harder
+    # coherence those cells actually run at.
+    #
+    # The negative control (212-215's mirror).  Its logic is coherence-
+    # independent -- a gap that survives on a prior with no mixture to split
+    # is still not about splitting regimes, whatever the coherence -- so the
+    # same matched pair on `plain` is worth having here too.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            **({"reconstruction_mixture": "alpha"} if mixture == "alpha" else {}),
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for mixture in ("alpha", "attention")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_CONTROL_PRIORS
+    ]
+    # `blind_similarity` at `cell_and_data` (216-218's mirror).
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": "blind_similarity",
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
+    # `blind_similarity` at `cell`/`data` (219-224's mirror).
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": "blind_similarity",
+            "slot_scope": scope,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
+    # The matched vanilla baseline (225-227's mirror) -- so the slot arms above
+    # have something to be better or worse than at this coherence too.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 2,
+            "model_kind": "vanilla",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "tabarena_max_predictors": 30,
+            **LEARNABLE_DESIGN,
+        }
+        for prior_mode in PRIOR_MODES_READABLE
+    ]
+    # The compositing block's `cell`/`data` scope extension (228-243's
+    # mirror).  244-251 above only ran `cell_and_data`; this gives it the same
+    # three-scope crossing its `REGIME_COHERENCE` counterpart has.
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "reconstruction_mixture": "alpha",
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            "slot_scope": scope,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
+    grid += [
+        {
+            "prior_mode": prior_mode,
+            "num_slots": 4,
+            "model_kind": "table_slot_head",
+            "regime_coherence": CONTROL_COHERENCE,
+            "max_steps": COHERENT_STEPS,
+            "support_reconstruction_weight": CLOSURE_WEIGHTS[1][0],
+            "slot_mi_weight": CLOSURE_WEIGHTS[1][1],
+            "query_routing_mode": routing_mode,
+            "tabarena_max_predictors": 30,
+            "slot_scope": scope,
+            **LEARNABLE_DESIGN,
+        }
+        for scope in ("cell", "data")
+        for routing_mode in COMPOSITING_ROUTING_MODES
+        for prior_mode in COMPOSITING_PRIOR_MODES
+    ]
     return grid
 
 
