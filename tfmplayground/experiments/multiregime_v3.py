@@ -153,9 +153,21 @@ def _model_x(x, groups, config, code_permutation):
     return torch.from_numpy(padded)[None]
 
 
-def sample_episode(config: V3Config, *, family: str, seed: int) -> V3Episode:
+def sample_episode(config: V3Config, *, family: str, seed: int, active_groups: int | None = None) -> V3Episode:
+    """``active_groups`` is the realized number of distinct group identities,
+    independent of ``config.num_groups`` (the fixed one-hot code width). This
+    lets a caller sample the task's group count per episode -- e.g. to see
+    how identifiability degrades as groups get smaller -- without changing
+    the input tensor's feature dimension, which every episode in a batch
+    must share. Defaults to ``config.num_groups`` (full width, one group per
+    code), matching every caller that predates this parameter.
+    """
     if family not in FAMILIES[1:]:
         raise ValueError("Use OriginalPrior for original episodes; unknown v3 family.")
+    if active_groups is None:
+        active_groups = config.num_groups
+    if not 1 <= active_groups <= config.num_groups:
+        raise ValueError("active_groups must be between 1 and config.num_groups.")
     # The support stream and mechanism do not depend on query count. Each
     # random stream has one role; row count changes cannot move another stream.
     streams = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(9)]
@@ -208,9 +220,9 @@ def sample_episode(config: V3Config, *, family: str, seed: int) -> V3Episode:
         scores = (_basis(x) @ gate_weights - gate_center) / gate_scale
         return softmax(config.gate_strength * scores + np.log(prior), axis=-1)
 
-    sg = _codes(sg_rng, config.support_size, config.num_groups)
-    qg = _codes(qg_rng, config.query_size, config.num_groups)
-    group_z = z_rng.choice(k, size=config.num_groups, p=prior)
+    sg = _codes(sg_rng, config.support_size, active_groups)
+    qg = _codes(qg_rng, config.query_size, active_groups)
+    group_z = z_rng.choice(k, size=active_groups, p=prior)
     sp, qp = probabilities(support), probabilities(query)
     spi, qpi = gate(support), gate(query)
 
@@ -247,7 +259,8 @@ def sample_episode(config: V3Config, *, family: str, seed: int) -> V3Episode:
             "seed": seed,
             "num_regimes": k,
             "features": d,
-            "num_groups": config.num_groups,
+            "num_groups": active_groups,
+            "group_code_width": config.num_groups,
             "weights": prior.tolist(),
             "separation": alpha,
             "gate_strength": config.gate_strength,

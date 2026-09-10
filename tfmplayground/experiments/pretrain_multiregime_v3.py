@@ -48,12 +48,15 @@ class PilotConfig:
     support_size: int = 128
     query_size: int = 32
     max_features: int = 12
-    num_groups: int = 8
+    # Fixed one-hot code width; the realized per-episode group count is
+    # sampled uniformly from 1..num_groups by ``task_config`` so batches stay
+    # a consistent feature width while identifiability difficulty varies.
+    num_groups: int = 5
     width: int = 192
     hidden: int = 768
     layers: int = 6
     heads: int = 6
-    num_slots: int = 2
+    num_slots: int = 4
     learning_rate: float = 1e-4
     min_learning_rate: float = 1e-6
     warmup_steps: int = 2_000
@@ -134,13 +137,15 @@ def mixture_probability(mode, step, steps):
 
 def task_config(config, seed):
     rng = np.random.default_rng(seed)
-    return replace(
+    generator = replace(
         config.generator(),
         num_regimes=int(rng.choice((2, 3, 4), p=(0.5, 0.3, 0.2))),
         separation=float(rng.choice((0.0, 0.5, 1.0, 2.0, 3.0), p=(0.05, 0.15, 0.3, 0.3, 0.2))),
         gate_strength=float(rng.choice((0.25, 1.0, 2.5))),
         imbalance_ratio=float(rng.choice((0.15, 0.5, 1.0))),
     )
+    active_groups = int(rng.integers(1, config.num_groups + 1))
+    return generator, active_groups
 
 
 def training_episode(config, original, mode, step, micro, within_batch):
@@ -151,7 +156,8 @@ def training_episode(config, original, mode, step, micro, within_batch):
     if rng.random() >= mixture_probability(mode, step, config.steps):
         return original.sample(seed)
     family = str(rng.choice(FAMILIES[1:], p=(0.2, 0.3, 0.2, 0.3)))
-    return sample_episode(task_config(config, seed), family=family, seed=seed)
+    generator, active_groups = task_config(config, seed)
+    return sample_episode(generator, family=family, seed=seed, active_groups=active_groups)
 
 
 def metrics(y, probability):
@@ -181,7 +187,8 @@ def evaluation_bank(config, original):
                 # NumPy's legacy seed used by TabICL is a uint32.
                 episode = original.sample(seed % (2**32 - 1))
             else:
-                episode = sample_episode(task_config(config, seed), family=family, seed=seed)
+                generator, active_groups = task_config(config, seed)
+                episode = sample_episode(generator, family=family, seed=seed, active_groups=active_groups)
             bank[family].append(episode)
     return bank
 
