@@ -19,7 +19,11 @@ def init_model_from_state_dict_file(file_path):
     """
     reads model architecture from state dict, instantiates the architecture and loads the weights
     """
-    state_dict = torch.load(file_path, map_location=torch.device("cpu"))
+    # weights_only=False: matches load_checkpoint_for_inference in slot_regime.py,
+    # which this function is the fallback path for. A checkpoint carrying more than
+    # a bare model (optimizer state, a torch.__version__ TorchVersion, etc.) is not
+    # unpicklable under the weights_only=True default.
+    state_dict = torch.load(file_path, map_location=torch.device("cpu"), weights_only=False)
     model = NanoTabPFNModel(
         num_attention_heads=state_dict["architecture"]["num_attention_heads"],
         embedding_size=state_dict["architecture"]["embedding_size"],

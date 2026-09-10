@@ -32,7 +32,7 @@ from tfmplayground.experiments.multiregime_v3 import (
     support_responsibilities,
 )
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
-from tfmplayground.models.slot_regime import NanoTabPFNSlotRegimeModel, SlotRegimePrediction
+from tfmplayground.models.slot_regime import NanoTabPFNSlotRegimeModel, SlotRegimePrediction, slot_regime_checkpoint
 
 
 @dataclass(frozen=True)
@@ -111,6 +111,26 @@ def build_model(config, kind):
             )
         )
     return model.to(config.device), initial_hash
+
+
+def inference_architecture(model, kind, config):
+    """The ``architecture`` block ``load_checkpoint_for_inference`` needs.
+
+    v3 episodes pad inputs to ``max_features + num_groups`` columns for the
+    nuisance group codes, but ``NanoTabPFNModel``'s feature encoder embeds
+    each column independently and attends across whatever count is present,
+    so it is not tied to that width -- real TabArena tables, with none of
+    those nuisance columns, are a different but valid input.
+    """
+    if kind == "slot":
+        return slot_regime_checkpoint(model)["architecture"]
+    return {
+        "num_attention_heads": config.heads,
+        "embedding_size": config.width,
+        "mlp_hidden_size": config.hidden,
+        "num_layers": config.layers,
+        "num_outputs": 2,
+    }
 
 
 def log_predictions(model, episodes, device):
@@ -485,6 +505,7 @@ def run(config, *, index, output, gate_path):
                 validation = evaluate(model, bank, config, step=step, output=output)
                 checkpoint = {
                     "model": model.state_dict(),
+                    "architecture": inference_architecture(model, kind, config),
                     "optimizer": optimizer.state_dict(),
                     "scheduler": scheduler.state_dict(),
                     "step": step,
