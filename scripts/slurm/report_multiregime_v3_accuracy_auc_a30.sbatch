@@ -13,7 +13,7 @@
 set -euo pipefail
 
 readonly PROJECT_DIR="${SLURM_SUBMIT_DIR}"
-readonly RUN_ROOT="${RUN_ROOT:?Set RUN_ROOT to the pilot's runs/<STUDY_ID> directory}"
+readonly RUN_ROOT="${RUN_ROOT:?Set RUN_ROOT to the pilot run under runs/STUDY_ID}"
 
 cd "${PROJECT_DIR}"
 export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

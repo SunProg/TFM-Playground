@@ -13,7 +13,7 @@
 set -euo pipefail
 
 readonly PROJECT_DIR="${SLURM_SUBMIT_DIR}"
-readonly RUN_ROOT="${RUN_ROOT:?Set RUN_ROOT to the completed pilot's runs/<STUDY_ID> directory}"
+readonly RUN_ROOT="${RUN_ROOT:?Set RUN_ROOT to the completed pilot run under runs/STUDY_ID}"
 readonly CHECKPOINT_ROOT="${PROJECT_DIR}/${RUN_ROOT}/tabarena_checkpoints"
 readonly OUTPUT_DIR="${PROJECT_DIR}/results/multiregime_v3_tabarena15/${SLURM_JOB_ID}"
 
