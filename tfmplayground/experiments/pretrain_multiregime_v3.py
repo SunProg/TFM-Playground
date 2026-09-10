@@ -32,7 +32,8 @@ from tfmplayground.experiments.multiregime_v3 import (
     support_responsibilities,
 )
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
-from tfmplayground.models.slot_regime import NanoTabPFNSlotRegimeModel, SlotRegimePrediction, slot_regime_checkpoint
+from tfmplayground.models.slot_regime import SlotRegimePrediction
+from tfmplayground.models.table_slot import TableSlotModel
 
 
 @dataclass(frozen=True)
@@ -106,8 +107,18 @@ def build_model(config, kind):
         model = (
             backbone
             if kind == "plain"
-            else NanoTabPFNSlotRegimeModel(
-                backbone, num_slots=config.num_slots, max_classes=2, num_slot_iterations=3, competitive_slots=True
+            # table_slot's mixture decoder, not slot_regime's NanoTabPFNSlotRegimeModel:
+            # both return SlotRegimePrediction, so the rest of this file (log_predictions,
+            # evaluate, recovery_metrics) is unaffected by which one produced it.
+            else TableSlotModel(
+                backbone,
+                mode="head",
+                num_slots=config.num_slots,
+                num_slot_iterations=3,
+                max_classes=2,
+                scope="cell_and_data",
+                query_routing_mode="decoder",
+                reconstruction_mixture="attention",
             )
         )
     return model.to(config.device), initial_hash
@@ -122,14 +133,24 @@ def inference_architecture(model, kind, config):
     so it is not tied to that width -- real TabArena tables, with none of
     those nuisance columns, are a different but valid input.
     """
-    if kind == "slot":
-        return slot_regime_checkpoint(model)["architecture"]
-    return {
+    base = {
         "num_attention_heads": config.heads,
         "embedding_size": config.width,
         "mlp_hidden_size": config.hidden,
         "num_layers": config.layers,
         "num_outputs": 2,
+    }
+    if kind != "slot":
+        return base
+    return {
+        **base,
+        "model_kind": "table_slot_head",
+        "num_slots": config.num_slots,
+        "max_classes": 2,
+        "num_slot_iterations": 3,
+        "table_slot_scope": "cell_and_data",
+        "query_routing_mode": "decoder",
+        "reconstruction_mixture": "attention",
     }
 
 
