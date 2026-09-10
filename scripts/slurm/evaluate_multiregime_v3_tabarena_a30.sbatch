@@ -51,7 +51,7 @@ srun uv run --project "${PROJECT_DIR}" python -m tfmplayground.experiments.evalu
     --subsample 2048 \
     --folds 5 \
     --repeats 10 \
-    --no-include-sklearn \
+    --include-sklearn \
     --no-include-tabpfn \
     --label-source real \
     --contamination 0.0 \
