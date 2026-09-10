@@ -153,6 +153,20 @@ def _model_x(x, groups, config, code_permutation):
     return torch.from_numpy(padded)[None]
 
 
+def _model_x_unpadded(x, config):
+    """Zero-pad to ``max_features`` only -- no nuisance group-code block.
+
+    For pure original-mode training, where no other family is ever
+    interleaved: there is nothing for a code block to leak family identity
+    against, so appending one only costs the model a real-valued mismatch
+    against genuinely clean data (e.g. real TabArena tables) it must
+    otherwise learn to ignore for no benefit.
+    """
+    padded = np.zeros((len(x), config.max_features), dtype=np.float32)
+    padded[:, : x.shape[1]] = x
+    return torch.from_numpy(padded)[None]
+
+
 def sample_episode(config: V3Config, *, family: str, seed: int, active_groups: int | None = None) -> V3Episode:
     """``active_groups`` is the realized number of distinct group identities,
     independent of ``config.num_groups`` (the fixed one-hot code width). This
@@ -316,7 +330,13 @@ class OriginalPrior:
             )
         self.loader.pd.prior.n_jobs = 1
 
-    def sample(self, seed: int) -> V3Episode:
+    def sample(self, seed: int, *, pad_groups: bool = True) -> V3Episode:
+        """``pad_groups=False`` drops the nuisance group-code block entirely.
+
+        Only sound when no other family is ever interleaved with this one in
+        the same run (pure original-mode training) -- otherwise the block's
+        absence would itself leak family identity. See ``_model_x_unpadded``.
+        """
         config = self.config
         for attempt in range(32):
             with preserved_cpu_rng(seed + attempt * 10_000_019), torch.no_grad():
@@ -330,13 +350,21 @@ class OriginalPrior:
             raise ValueError("Original prior violated the requested binary label/split contract.")
         split = config.support_size
         rng = np.random.default_rng(seed)
-        sg = _codes(rng, split, config.num_groups)
-        qg = _codes(rng, config.query_size, config.num_groups)
-        permutation = rng.permutation(config.num_groups)
+        if pad_groups:
+            sg = _codes(rng, split, config.num_groups)
+            qg = _codes(rng, config.query_size, config.num_groups)
+            permutation = rng.permutation(config.num_groups)
+            support_x = _model_x(x[:split], sg, config, permutation)
+            query_x = _model_x(x[split:], qg, config, permutation)
+        else:
+            sg = np.zeros(split, dtype=int)
+            qg = np.zeros(config.query_size, dtype=int)
+            support_x = _model_x_unpadded(x[:split], config)
+            query_x = _model_x_unpadded(x[split:], config)
         episode = V3Episode(
-            _model_x(x[:split], sg, config, permutation),
+            support_x,
             torch.from_numpy(y[:split].astype(np.float32))[None],
-            _model_x(x[split:], qg, config, permutation),
+            query_x,
             torch.from_numpy(y[split:].astype(np.int64))[None],
             np.zeros(split, dtype=int),
             np.zeros(config.query_size, dtype=int),
@@ -354,7 +382,7 @@ class OriginalPrior:
                 "num_groups": config.num_groups,
                 "nonfinite_retries": attempt,
                 "prior_type": "mix_scm",
-                "group_codes": "independent_nuisance",
+                "group_codes": "independent_nuisance" if pad_groups else "none",
                 "oracle_available": False,
             },
         )

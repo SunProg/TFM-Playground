@@ -222,7 +222,11 @@ def training_episode(config, original, mode, step, micro, within_batch):
     seed = int(config.seed * 1_000_000 + step * episodes_per_step + offset)
     rng = np.random.default_rng(seed)
     if rng.random() >= mixture_probability(mode, step, config.steps):
-        return original.sample(seed)
+        # Only original-mode training ever consists entirely of this family;
+        # fixed/curriculum interleave it with the other four, where the
+        # nuisance code block must stay (its absence would itself leak that
+        # this episode is "original"). See OriginalPrior.sample.
+        return original.sample(seed, pad_groups=mode != "original")
     family = str(rng.choice(FAMILIES[1:], p=(0.2, 0.3, 0.2, 0.3)))
     generator, active_groups = task_config(config, seed)
     return sample_episode(generator, family=family, seed=seed, active_groups=active_groups)
