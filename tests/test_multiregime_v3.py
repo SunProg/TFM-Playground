@@ -16,6 +16,7 @@ from tfmplayground.experiments.multiregime_v3 import (
     sample_episode,
 )
 from tfmplayground.experiments.pretrain_multiregime_v3 import (
+    KINDS,
     PilotConfig,
     build_model,
     log_predictions,
@@ -123,7 +124,7 @@ class TrainingTests(unittest.TestCase):
         config = self.config()
         episode = sample_episode(config.generator(), family="persistent", seed=77)
         hashes = []
-        for kind in ("plain", "slot"):
+        for kind in KINDS:
             model, fingerprint = build_model(config, kind)
             hashes.append(fingerprint)
             model.eval()
@@ -139,7 +140,7 @@ class TrainingTests(unittest.TestCase):
                 )
                 second, _ = log_predictions(model, [altered], "cpu")
             torch.testing.assert_close(first, second, atol=0, rtol=0)
-        self.assertEqual(*hashes)
+        self.assertEqual(len(set(hashes)), 1)
 
     def test_end_to_end_matched_stream_checkpoints_and_source_gate(self):
         config = self.config()
@@ -147,16 +148,21 @@ class TrainingTests(unittest.TestCase):
             root = Path(directory)
             preflight(config, root / "gate")
             gate_path = root / "gate" / "execution_gate.json"
-            results = [run(config, index=i, output=root / str(i), gate_path=gate_path) for i in (2, 3)]
+            # index 0 and 3 share mode="original" (index // len(MODES) selects
+            # kind, index % len(MODES) selects mode) but differ in kind
+            # (plain vs. the first table_slot condition) -- training_episode's
+            # seed formula and mixture_probability(mode, ...) never read kind,
+            # so the two cells' training streams must still match.
+            results = [run(config, index=i, output=root / str(i), gate_path=gate_path) for i in (0, 3)]
             self.assertEqual(results[0]["training_stream_hash"], results[1]["training_stream_hash"])
             self.assertEqual(results[0]["evaluation_bank_hashes"], results[1]["evaluation_bank_hashes"])
-            for i in (2, 3):
+            for i in (0, 3):
                 checkpoint = torch.load(root / str(i) / "checkpoint.pth", weights_only=False)
                 self.assertEqual(checkpoint["step"], 2)
                 backbone = {
                     k.removeprefix("backbone."): v
                     for k, v in checkpoint["model"].items()
-                    if i == 2 or k.startswith("backbone.")
+                    if i == 0 or k.startswith("backbone.")
                 }
                 self.assertNotEqual(state_hash(backbone), checkpoint["metadata"]["initial_backbone_hash"])
             gate = json.loads(gate_path.read_text())

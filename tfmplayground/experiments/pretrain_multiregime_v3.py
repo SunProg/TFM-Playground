@@ -1,7 +1,9 @@
 """Matched, bounded v3 prior pilot and implementation preflight.
 
-Six cells: original/fixed/curriculum crossed with plain/slot. No Z supervision.
-Run --preflight before --index; the gate is tied to source and architecture.
+21 cells: original/fixed/curriculum crossed with plain and the six table_slot
+variants (four mode="head" routing/reconstruction conditions, plus
+mode="backbone" and mode="mufasa"). No Z supervision. Run --preflight before
+--index; the gate is tied to source and architecture.
 """
 
 from __future__ import annotations
@@ -34,6 +36,21 @@ from tfmplayground.experiments.multiregime_v3 import (
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_regime import SlotRegimePrediction
 from tfmplayground.models.table_slot import TableSlotModel
+
+# The four routing/reconstruction conditions scm_table_slot_head_sweep.py
+# runs at mode="head", plus the two other slot placements. query_routing_mode
+# and reconstruction_mixture are only configurable at mode="head" --
+# TableSlotModel rejects a non-default value at "backbone"/"mufasa".
+TABLE_SLOT_CONDITIONS = {
+    "table_slot_head_decoder_baseline": dict(mode="head", query_routing_mode="decoder", reconstruction_mixture="attention"),
+    "table_slot_head_decoder_alpha": dict(mode="head", query_routing_mode="decoder", reconstruction_mixture="alpha"),
+    "table_slot_head_blind_decoder": dict(mode="head", query_routing_mode="blind_decoder", reconstruction_mixture="attention"),
+    "table_slot_head_blind_similarity": dict(mode="head", query_routing_mode="blind_similarity", reconstruction_mixture="attention"),
+    "table_slot_backbone": dict(mode="backbone", query_routing_mode="decoder", reconstruction_mixture="attention"),
+    "table_slot_mufasa": dict(mode="mufasa", query_routing_mode="decoder", reconstruction_mixture="attention"),
+}
+KINDS = ("plain", *TABLE_SLOT_CONDITIONS)
+MODES = ("original", "fixed", "curriculum")
 
 
 @dataclass(frozen=True)
@@ -100,27 +117,35 @@ def state_hash(state):
     return digest.hexdigest()
 
 
+def table_slot_layer_indices(config):
+    """Last three backbone blocks, or fewer if the backbone is shallower.
+
+    TableSlotModel's own default, (3, 4, 5), assumes a >=6-layer backbone
+    (true of the real pilot's width=192/layers=6 config) but is out of range
+    for shallow smoke-test configs, so this scales with config.layers instead.
+    """
+    return tuple(range(max(0, config.layers - 3), config.layers))
+
+
 def build_model(config, kind):
     with preserved_cpu_rng(config.seed):
         backbone = NanoTabPFNModel(**config.architecture())
         initial_hash = state_hash(backbone.state_dict())
-        model = (
-            backbone
-            if kind == "plain"
+        if kind == "plain":
+            model = backbone
+        else:
             # table_slot's mixture decoder, not slot_regime's NanoTabPFNSlotRegimeModel:
             # both return SlotRegimePrediction, so the rest of this file (log_predictions,
             # evaluate, recovery_metrics) is unaffected by which one produced it.
-            else TableSlotModel(
+            model = TableSlotModel(
                 backbone,
-                mode="head",
                 num_slots=config.num_slots,
                 num_slot_iterations=3,
                 max_classes=2,
                 scope="cell_and_data",
-                query_routing_mode="decoder",
-                reconstruction_mixture="attention",
+                layer_indices=table_slot_layer_indices(config),
+                **TABLE_SLOT_CONDITIONS[kind],
             )
-        )
     return model.to(config.device), initial_hash
 
 
@@ -140,17 +165,19 @@ def inference_architecture(model, kind, config):
         "num_layers": config.layers,
         "num_outputs": 2,
     }
-    if kind != "slot":
+    if kind == "plain":
         return base
+    settings = TABLE_SLOT_CONDITIONS[kind]
     return {
         **base,
-        "model_kind": "table_slot_head",
+        "model_kind": f"table_slot_{settings['mode']}",
         "num_slots": config.num_slots,
         "max_classes": 2,
         "num_slot_iterations": 3,
+        "slot_layer_indices": table_slot_layer_indices(config),
         "table_slot_scope": "cell_and_data",
-        "query_routing_mode": "decoder",
-        "reconstruction_mixture": "attention",
+        "query_routing_mode": settings["query_routing_mode"],
+        "reconstruction_mixture": settings["reconstruction_mixture"],
     }
 
 
@@ -377,7 +404,7 @@ def preflight(config, output):
     first, second = original.sample(109), original.sample(109)
     checks["original_reproducible"] = first.tensor_hash() == second.tensor_hash()
     numerical = {}
-    for kind in ("plain", "slot"):
+    for kind in KINDS:
         model, backbone_hash = build_model(config, kind)
         examples = [first, sample_episode(generator, family="persistent", seed=11)]
         model.train()
@@ -398,7 +425,7 @@ def preflight(config, output):
             "parameters": sum(p.numel() for p in model.parameters()),
         }
         del model
-    checks["matched_initial_backbone"] = numerical["plain"]["backbone_hash"] == numerical["slot"]["backbone_hash"]
+    checks["matched_initial_backbone"] = len({numerical[kind]["backbone_hash"] for kind in KINDS}) == 1
     bank = evaluation_bank(config, original)
     oracle_headroom = {}
     for family, episodes in bank.items():
@@ -428,8 +455,9 @@ def preflight(config, output):
 
 
 def run(config, *, index, output, gate_path):
-    if index not in range(6):
-        raise ValueError("Pilot index must be 0-5.")
+    total_cells = len(KINDS) * len(MODES)
+    if index not in range(total_cells):
+        raise ValueError(f"Pilot index must be 0-{total_cells - 1}.")
     if (
         config.steps < 1
         or config.micro_batch_size < 1
@@ -449,8 +477,8 @@ def run(config, *, index, output, gate_path):
     if config.device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError("CUDA requested but unavailable; no silent CPU fallback.")
     output.mkdir(parents=True, exist_ok=False)
-    kind = ("plain", "slot")[index % 2]
-    mode = ("original", "fixed", "curriculum")[index // 2]
+    kind = KINDS[index // len(MODES)]
+    mode = MODES[index % len(MODES)]
     model, initial_hash = build_model(config, kind)
     torch.manual_seed(config.seed + 31)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=0.01)
