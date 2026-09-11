@@ -37,9 +37,10 @@ from tfmplayground.experiments.pretrain_multiregime_v3 import PilotConfig, evalu
 from tfmplayground.experiments.pretrain_multiregime_v3 import metrics as pilot_metrics
 
 # v2.6/v3 need an explicit local checkpoint to bypass the gated hosted-weights
-# download, which fails non-interactively; v2.2's default resolves through a
-# cache that is already warm on this host (confirmed interactively).
-CHECKPOINTS = {
+# download, which fails non-interactively; on CREATE, v2.2's default resolves
+# through a cache that is already warm on that host. Overridable per-host via
+# --checkpoint-v22/--checkpoint-v26/--checkpoint-v3 (see build_tabpfn).
+DEFAULT_CHECKPOINTS = {
     "v2.2": None,
     "v2.6": "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
     "v3": "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v3-classifier-v3_default.ckpt",
@@ -80,7 +81,7 @@ def build_tabpfn(version: str, *, device: str, finetune: bool, args):
     from tabpfn.constants import ModelVersion
 
     model_version = {"v2.2": ModelVersion.V2, "v2.6": ModelVersion.V2_6, "v3": ModelVersion.V3}[version]
-    checkpoint = CHECKPOINTS[version]
+    checkpoint = args.checkpoints[version]
     if not finetune:
         from tabpfn import TabPFNClassifier
 
@@ -137,13 +138,16 @@ def build_tabpfn(version: str, *, device: str, finetune: bool, args):
 
 
 def run(args) -> dict:
-    config = PilotConfig(device="cpu")  # generator/eval-bank config only; no torch device needed here
+    # generator/eval-bank config only; no torch device needed here. Overriding
+    # validation_episodes departs from the pilot's own bank (smoke-testing
+    # only) -- the real comparison run must leave it at the PilotConfig default.
+    config = PilotConfig(device="cpu", validation_episodes=args.validation_episodes)
     original = OriginalPrior(config.generator())
     bank = evaluation_bank(config, original)
     families = FAMILIES if not args.families else tuple(args.families)
 
     sklearn_models = build_sklearn_models(config.seed)
-    tabpfn_versions = ("v2.2", "v2.6", "v3")
+    tabpfn_versions = tuple(args.versions) if args.versions else ("v2.2", "v2.6", "v3")
 
     rows = []
     started = time.monotonic()
@@ -218,6 +222,13 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--families", nargs="*", choices=FAMILIES, default=None)
+    parser.add_argument("--versions", nargs="*", choices=("v2.2", "v2.6", "v3"), default=None)
+    parser.add_argument(
+        "--validation-episodes",
+        type=int,
+        default=PilotConfig().validation_episodes,
+        help="Overrides the pilot's own eval-bank size; only for smoke-testing, not the real comparison run.",
+    )
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--validation-split-ratio", type=float, default=0.2)
@@ -225,7 +236,11 @@ def main() -> None:
     parser.add_argument("--n-estimators-finetune", type=int, default=2)
     parser.add_argument("--n-estimators-validation", type=int, default=2)
     parser.add_argument("--n-estimators-final-inference", type=int, default=8)
+    parser.add_argument("--checkpoint-v22", default=DEFAULT_CHECKPOINTS["v2.2"])
+    parser.add_argument("--checkpoint-v26", default=DEFAULT_CHECKPOINTS["v2.6"])
+    parser.add_argument("--checkpoint-v3", default=DEFAULT_CHECKPOINTS["v3"])
     args = parser.parse_args()
+    args.checkpoints = {"v2.2": args.checkpoint_v22, "v2.6": args.checkpoint_v26, "v3": args.checkpoint_v3}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(run(args), indent=2) + "\n")
 
