@@ -149,6 +149,20 @@ def run(args) -> dict:
     sklearn_models = build_sklearn_models(config.seed)
     tabpfn_versions = tuple(args.versions) if args.versions else ("v2.2", "v2.6", "v3")
 
+    def evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y):
+        t0 = time.monotonic()
+        row = {"model": name, "family": family, "episode": episode_index}
+        try:
+            probability = fit_predict(support_x, support_y, query_x)
+            row.update(full_metrics(query_y, probability))
+        except Exception as error:  # one bad episode (e.g. a too-imbalanced support
+            # set collapsing a finetuning validation split) must not lose every
+            # other already-computed result -- record it and keep going.
+            row["error"] = f"{type(error).__name__}: {error}"
+        row["fit_seconds"] = time.monotonic() - t0
+        print(json.dumps(row), flush=True)
+        return row
+
     rows = []
     started = time.monotonic()
     for family in families:
@@ -156,50 +170,53 @@ def run(args) -> dict:
             support_x, support_y, query_x, query_y = episode_arrays(episode)
 
             for name, model in sklearn_models.items():
-                t0 = time.monotonic()
-                model.fit(support_x, support_y)
-                probability = positive_probability(model, query_x)
-                row = {
-                    "model": name,
-                    "family": family,
-                    "episode": episode_index,
-                    "fit_seconds": time.monotonic() - t0,
-                    **full_metrics(query_y, probability),
-                }
-                rows.append(row)
-                print(json.dumps(row), flush=True)
+                def fit_predict(sx, sy, qx, model=model):
+                    model.fit(sx, sy)
+                    return positive_probability(model, qx)
+
+                rows.append(evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y))
 
             for version in tabpfn_versions:
                 for finetune in (False, True):
                     name = f"tabpfn-{version}" + ("-finetuned" if finetune else "")
-                    t0 = time.monotonic()
-                    classifier = build_tabpfn(version, device=args.device, finetune=finetune, args=args)
-                    classifier.fit(support_x, support_y)
-                    probability = positive_probability(classifier, query_x)
-                    row = {
-                        "model": name,
-                        "family": family,
-                        "episode": episode_index,
-                        "fit_seconds": time.monotonic() - t0,
-                        **full_metrics(query_y, probability),
-                    }
-                    rows.append(row)
-                    print(json.dumps(row), flush=True)
-                    del classifier
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
+
+                    def fit_predict(sx, sy, qx, version=version, finetune=finetune):
+                        classifier = build_tabpfn(version, device=args.device, finetune=finetune, args=args)
+                        classifier.fit(sx, sy)
+                        probability = positive_probability(classifier, qx)
+                        del classifier
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        return probability
+
+                    rows.append(evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y))
+
+            # Incremental checkpoint: a crash or kill partway through must not
+            # lose every episode already computed, given how long this run is.
+            args.output.write_text(
+                json.dumps({"rows": rows, "elapsed_seconds": time.monotonic() - started, "complete": False}, indent=2)
+                + "\n"
+            )
 
     summary = {}
     for model_name in sorted({row["model"] for row in rows}):
         summary[model_name] = {}
         for family in families:
-            family_rows = [row for row in rows if row["model"] == model_name and row["family"] == family]
+            family_rows = [
+                row for row in rows if row["model"] == model_name and row["family"] == family and "error" not in row
+            ]
+            failures = sum(
+                1 for row in rows if row["model"] == model_name and row["family"] == family and "error" in row
+            )
             if not family_rows:
                 continue
             summary[model_name][family] = {
                 metric: float(np.mean([row[metric] for row in family_rows]))
                 for metric in ("log_loss", "brier", "accuracy", "ece_10", "auc")
             }
+            summary[model_name][family]["episodes"] = len(family_rows)
+            if failures:
+                summary[model_name][family]["failed_episodes"] = failures
 
     return {
         "config": {key: value for key, value in vars(args).items() if key != "output"},
@@ -214,6 +231,7 @@ def run(args) -> dict:
         "rows": rows,
         "summary": summary,
         "elapsed_seconds": time.monotonic() - started,
+        "complete": True,
     }
 
 
