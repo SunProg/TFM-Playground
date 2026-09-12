@@ -25,22 +25,35 @@ from tfmplayground.experiments.pretrain_multiregime_v3 import (
     log_predictions,
 )
 
-CELL_KIND = {0: "plain", 1: "slot", 2: "plain", 3: "slot", 4: "plain", 5: "slot"}
-CELL_MODE = {0: "original", 1: "original", 2: "fixed", 3: "fixed", 4: "curriculum", 5: "curriculum"}
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--indices",
+        type=int,
+        nargs="*",
+        default=None,
+        help="Cell indices to process; defaults to every cell-* directory with a checkpoint under --run-root.",
+    )
     args = parser.parse_args()
 
+    if args.indices is not None:
+        indices = args.indices
+    else:
+        indices = sorted(
+            int(p.name.removeprefix("cell-"))
+            for p in args.run_root.glob("cell-*")
+            if (p / "checkpoint.pth").exists()
+        )
+
     rows = []
-    for index in range(6):
+    for index in indices:
         cell_dir = args.run_root / f"cell-{index}"
-        config_data = json.loads((cell_dir / "config.json").read_text())["config"]
-        config = PilotConfig(**{**config_data, "device": args.device})
-        kind, mode = CELL_KIND[index], CELL_MODE[index]
+        metadata = json.loads((cell_dir / "config.json").read_text())
+        config = PilotConfig(**{**metadata["config"], "device": args.device})
+        kind, mode = metadata["kind"], metadata["mode"]
 
         model, _ = build_model(config, kind)
         state = torch.load(cell_dir / "checkpoint.pth", map_location=args.device, weights_only=False)
