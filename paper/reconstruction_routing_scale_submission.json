@@ -1,0 +1,21 @@
+{
+  "status": "submitted_pending",
+  "cluster": "create",
+  "partition": "biomed_a30_gpu",
+  "tasks": 26,
+  "concurrency": 4,
+  "steps": 20000,
+  "layers": 6,
+  "width": 192,
+  "hidden": 768,
+  "heads": 6,
+  "source_archive": "/tmp/slot-routing-scale-20260908.tar.gz",
+  "source_sha256": "d9ce630f16b1fe102ad19f22e7bbedddc0a11c57951ca8ec2d6727e2e0bc5f5e",
+  "tests_passed": 30,
+  "full_width_forward_backward": "5 representative configurations, finite losses and gradients",
+  "ssh_outcome": "Connected after user completed MFA; source checksum verified; array accepted",
+  "intended_remote_snapshot": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/routing-scale-20260908",
+  "job_id": "37078586",
+  "queue_reason": "QOSMaxGRESPerUser",
+  "remote_snapshot": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/routing-scale-20260908"
+}

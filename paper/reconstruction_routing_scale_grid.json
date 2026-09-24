@@ -1,0 +1,198 @@
+[
+  {
+    "index": 0,
+    "seed": 11,
+    "scope": "data",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 1,
+    "seed": 11,
+    "scope": "data",
+    "arm": "embedding_mse",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 2,
+    "seed": 11,
+    "scope": "data",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 3,
+    "seed": 11,
+    "scope": "data",
+    "arm": "embedding_mse",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 4,
+    "seed": 11,
+    "scope": "data",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 5,
+    "seed": 11,
+    "scope": "cell_and_data",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 6,
+    "seed": 11,
+    "scope": "cell_and_data",
+    "arm": "embedding_mse",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 7,
+    "seed": 11,
+    "scope": "cell_and_data",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 8,
+    "seed": 11,
+    "scope": "cell_and_data",
+    "arm": "embedding_mse",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 9,
+    "seed": 11,
+    "scope": "cell_and_data",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 10,
+    "seed": 11,
+    "scope": "cell",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 11,
+    "seed": 11,
+    "scope": "cell",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 12,
+    "seed": 11,
+    "scope": "cell",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 13,
+    "seed": 12,
+    "scope": "data",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 14,
+    "seed": 12,
+    "scope": "data",
+    "arm": "embedding_mse",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 15,
+    "seed": 12,
+    "scope": "data",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 16,
+    "seed": 12,
+    "scope": "data",
+    "arm": "embedding_mse",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 17,
+    "seed": 12,
+    "scope": "data",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 18,
+    "seed": 12,
+    "scope": "cell_and_data",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 19,
+    "seed": 12,
+    "scope": "cell_and_data",
+    "arm": "embedding_mse",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 20,
+    "seed": 12,
+    "scope": "cell_and_data",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 21,
+    "seed": 12,
+    "scope": "cell_and_data",
+    "arm": "embedding_mse",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 22,
+    "seed": 12,
+    "scope": "cell_and_data",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 23,
+    "seed": 12,
+    "scope": "cell",
+    "arm": "label_alpha",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 24,
+    "seed": 12,
+    "scope": "cell",
+    "arm": "values",
+    "embedding_weight": 0.1
+  },
+  {
+    "index": 25,
+    "seed": 12,
+    "scope": "cell",
+    "arm": "values",
+    "embedding_weight": 1.0
+  },
+  {
+    "index": 26,
+    "seed": 11,
+    "scope": "vanilla",
+    "arm": "vanilla",
+    "embedding_weight": 0.0
+  },
+  {
+    "index": 27,
+    "seed": 12,
+    "scope": "vanilla",
+    "arm": "vanilla",
+    "embedding_weight": 0.0
+  }
+]

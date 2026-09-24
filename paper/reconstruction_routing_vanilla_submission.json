@@ -1,0 +1,18 @@
+{
+  "status": "submitted_running",
+  "cluster": "create",
+  "partition": "biomed_a30_gpu",
+  "tasks": 2,
+  "array_indices": [26, 27],
+  "concurrency": 2,
+  "steps": 20000,
+  "layers": 6,
+  "width": 192,
+  "hidden": 768,
+  "heads": 6,
+  "source_archive": "/tmp/slot-routing-vanilla-scale-20260909.tar.gz",
+  "source_sha256": "d1c1436be2a92209045f4c1718038702e3b4e225bed9e6935d92ae6b2f63f025",
+  "tests_passed": 16,
+  "job_id": "37084299",
+  "remote_snapshot": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/routing-scale-vanilla-20260909"
+}
