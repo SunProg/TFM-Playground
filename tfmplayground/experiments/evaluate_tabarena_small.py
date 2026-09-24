@@ -96,6 +96,10 @@ class SmallTabArenaConfig:
     num_mem_chunks: int = 1
     include_sklearn: bool = True
     include_tabpfn: bool = False
+    #: Local checkpoint file for real TabPFN. Package default ('auto') resolves
+    #: through PriorLabs' hosted-weights license/download flow, which fails
+    #: outright in a non-interactive job; pass a local .ckpt to bypass it.
+    tabpfn_model_path: str | None = None
     label_source: str = "real"
     synthetic_hidden: int = 16
     synthetic_depth: int = 2
@@ -177,7 +181,10 @@ def _build_tabpfn(config: SmallTabArenaConfig):
         raise ImportError(
             "--include-tabpfn requires the optional 'tabpfn' extra: uv sync --extra tabpfn"
         ) from error
-    return TabPFNClassifier(device=config.device)
+    kwargs = {"device": config.device}
+    if config.tabpfn_model_path:
+        kwargs["model_path"] = config.tabpfn_model_path
+    return TabPFNClassifier(**kwargs)
 
 
 def load_backbone_checkpoint(path: str, *, reference_checkpoint: str):
@@ -797,6 +804,14 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Evaluate real TabPFN (requires: uv sync --extra tabpfn). Off by default so "
             "existing runs stay reproducible."
+        ),
+    )
+    parser.add_argument(
+        "--tabpfn-model-path",
+        default=None,
+        help=(
+            "Local TabPFN .ckpt file to load instead of the package's hosted-weights "
+            "license/download flow, which fails non-interactively."
         ),
     )
     parser.add_argument(
