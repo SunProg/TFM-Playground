@@ -414,3 +414,23 @@ pip install -e '.[beyondarena]'
 python -m tfmplayground.experiments.evaluate_particle_regime_beyondarena \
   runs/particle_regime_comparison/full/2402/scratch/selected_checkpoint.pth
 ```
+
+## Multiregime-v4 NanoTabPFN ranking on BeyondArena
+
+The v4 evaluator uses every eligible official BeyondArena outer fold with the complete
+training fold as NanoTabPFN context. It discovers only checkpoints carrying explicit v4
+provenance metadata, and writes `task_manifest.csv`, `fold_metrics.csv`, `rankings.csv`,
+and `ranking_summary.md` (plus a checkpoint audit) under the requested output directory.
+Oversized full-fold inference is recorded as unsupported rather than being silently
+subsampled. Run one task first with `--smoke-task` when bringing up a new checkpoint root:
+
+```bash
+pip install -e '.[beyondarena]'
+python -m tfmplayground.experiments.evaluate_multiregime_v4_beyondarena \
+  --run-roots runs/multiregime-v4 \
+  --smoke-task blood_transfusion \
+  --output-dir results/beyondarena-v4-smoke
+python -m tfmplayground.experiments.evaluate_multiregime_v4_beyondarena \
+  --run-roots runs/multiregime-v4 \
+  --output-dir results/beyondarena-v4
+```
