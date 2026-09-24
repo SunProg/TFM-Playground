@@ -19,14 +19,21 @@ from tfmplayground.experiments.pretrain_slot_tabpfn import (
     slot_batch_loss,
     slot_training_loss,
 )
-from tfmplayground.experiments.pretrain_slot_tabpfn import build_model as build_slot_model
-from tfmplayground.models.table_slot import TableSlotModel
+from tfmplayground.experiments.pretrain_slot_tabpfn import (
+    build_model as build_slot_model,
+)
+from tfmplayground.experiments.pretrain_slot_tabpfn import (
+    validate_config as validate_slot_config,
+)
+from tfmplayground.models.nanotabpfn import NanoTabPFNModel
 from tfmplayground.models.slot_regime import (
+    crossfit_gate_loss,
     load_checkpoint_for_inference,
     slot_mi_loss,
     slot_utilization_scores,
     support_reconstruction_loss,
 )
+from tfmplayground.models.table_slot import TableSlotAdapter, TableSlotModel
 
 
 def _config(kind: str, scope: str = "cell_and_data") -> V2TrainingConfig:
@@ -94,6 +101,175 @@ def test_single_scope_variants_run_only_their_own_competition():
             # Competitive attention sums to one over slots per cell, so the
             # cell scope's column-mean is a distribution without rescaling.
             assert model.last_support_attention.sum(-1).allclose(torch.ones(1, 4))
+
+
+def test_datapoint_path_binds_slots_from_support_cells_only():
+    model = build_slot_model(
+        SlotPretrainingConfig(
+            device="cpu",
+            model_kind="table_slot_head",
+            table_slot_scope="data",
+            embedding_size=12,
+            num_attention_heads=3,
+            mlp_hidden_size=24,
+            num_layers=2,
+            num_slots=2,
+            slot_attention_heads=3,
+            support_size=4,
+            query_size=3,
+            min_features=2,
+            max_features=2,
+        )
+    )
+    episode = _episode()
+    calls = []
+    adapter = model.adapters[0]
+    def record(_, args):
+        calls.append(tuple(args[0].shape))
+
+    handle = adapter.datapoint_slots.register_forward_pre_hook(record)
+    model(*episode.latent_inputs())
+    handle.remove()
+    assert calls == [(3, 4, 12)]
+
+
+def test_direct_slot_routing_reads_support_slots_into_query_cells_without_final_attention():
+    """The in-backbone query route is cell-to-slot, never final Q-to-support attention."""
+    config = SlotPretrainingConfig(
+        device="cpu",
+        model_kind="table_slot_backbone",
+        query_routing_mode="direct_slot",
+        table_slot_scope="cell_and_data",
+        embedding_size=12,
+        num_attention_heads=3,
+        mlp_hidden_size=24,
+        num_layers=6,
+        num_slots=2,
+        slot_attention_heads=3,
+        table_slot_layer_indices=(3, 4, 5),
+        support_size=4,
+        query_size=3,
+        min_features=2,
+        max_features=2,
+    )
+    episode = _episode()
+    model = build_slot_model(config).train()
+    prediction = model(*episode.latent_inputs())
+
+    assignment = model.last_query_slot_attention_by_column
+    assert assignment is not None
+    assert assignment.shape == (1, 3, 3, 2)
+    torch.testing.assert_close(assignment.sum(-1), torch.ones(1, 3, 3), atol=1e-5, rtol=0)
+    torch.testing.assert_close(prediction.gate(), assignment.mean(2), atol=1e-6, rtol=1e-6)
+
+    final_block = model.backbone.transformer_blocks[-1]
+    assert final_block.capture_query_support_attention is False
+    assert final_block.last_query_support_attention is None
+
+    last_slot_layer = model.backbone.transformer_blocks[5]
+    state = last_slot_layer.table_slots.last_state
+    assert state is not None and state.datapoint_input_table is not None
+    # The direct residual changes query cells only; support cells remain the
+    # exact input from which the layer formed its support-only slots.
+    torch.testing.assert_close(state.table[:, :4], state.datapoint_input_table[:, :4])
+    assert not torch.allclose(state.table[:, 4:], state.datapoint_input_table[:, 4:])
+
+    loss = torch.nn.functional.nll_loss(
+        prediction.marginal_log_probabilities().flatten(0, 1), episode.query_y.reshape(-1).long()
+    )
+    loss.backward()
+    names = dict(model.named_parameters())
+    assert names["backbone.transformer_blocks.5.table_slots.direct_query_slot_write.0.weight"].grad is not None
+    assert names["backbone.transformer_blocks.5.table_slots.datapoint_slots.project_q.weight"].grad is not None
+
+
+def test_slot_replacement_removes_both_axial_attention_paths_and_uses_native_decoder():
+    """Slots must be the actual support-to-query path, not an added residual.
+
+    This arm deliberately returns native NanoTabPFN logits.  A separate mixture
+    decoder or final query-to-support attention would turn the test into the
+    disconnected-gate experiment again.
+    """
+    config = SlotPretrainingConfig(
+        device="cpu",
+        model_kind="table_slot_replace",
+        table_slot_attention_replacement="both",
+        table_slot_scope="cell_and_data",
+        embedding_size=12,
+        num_attention_heads=3,
+        mlp_hidden_size=24,
+        num_layers=6,
+        num_slots=2,
+        slot_attention_heads=3,
+        # Replacing only later layers leaves an ordinary TabPFN support-to-query
+        # path in the early layers.  This test is specifically about the
+        # causal slot-only route, so replace both axial attentions everywhere.
+        table_slot_layer_indices=(0, 1, 2, 3, 4, 5),
+        support_size=4,
+        query_size=3,
+        min_features=2,
+        max_features=2,
+    )
+    validate_slot_config(config)
+    episode = _episode()
+    model = build_slot_model(config).train()
+    calls = []
+    handles = []
+    for index in config.table_slot_layer_indices:
+        layer = model.transformer_blocks[index]
+        handles.extend(
+            (
+                layer.self_attention_between_features.register_forward_hook(lambda *_: calls.append("feature")),
+                layer.self_attention_between_datapoints.register_forward_hook(lambda *_: calls.append("datapoint")),
+            )
+        )
+    support_x, _support_y, query_x = episode.latent_inputs()
+    # Keep the query target pad fixed: NanoTabPFN pads it with mean(support_y),
+    # hence this position swap changes only the labelled support cells.
+    support_y = torch.tensor([[0.0, 1.0, 0.0, 1.0]], device=support_x.device)
+    logits = model(support_x, support_y, query_x)
+    for handle in handles:
+        handle.remove()
+
+    assert logits.shape == (1, 3, 2)
+    assert calls == []
+    layer = model.transformer_blocks[-1]
+    state = layer.table_slots.last_state
+    assert state is not None and state.datapoint_input_table is not None
+    assert state.feature_attention.shape == (1, 7, 3, 2)
+    assert state.query_slot_attention_by_column.shape == (1, 3, 3, 2)
+    torch.testing.assert_close(state.query_slot_attention_by_column.sum(-1), torch.ones(1, 3, 3), atol=1e-5, rtol=0)
+    assert not torch.allclose(state.table[:, :4], state.datapoint_input_table[:, :4])
+    assert not torch.allclose(state.table[:, 4:], state.datapoint_input_table[:, 4:])
+
+    # With every native axial attention disabled, this is a causal check rather
+    # than merely a gradient-flow check: support-label information reaches a
+    # query only via support-derived slots and the query-slot read.
+    with torch.no_grad():
+        relabelled_logits = model(support_x, support_y.flip(1), query_x)
+    assert not torch.allclose(logits.detach(), relabelled_logits)
+
+    torch.nn.functional.cross_entropy(logits.flatten(0, 1), episode.query_y.reshape(-1).long()).backward()
+    names = dict(model.named_parameters())
+    for name in (
+        "transformer_blocks.5.table_slots.feature_slots.project_q.weight",
+        "transformer_blocks.5.table_slots.datapoint_slots.project_q.weight",
+        "transformer_blocks.5.table_slots.feature_write.0.weight",
+        "transformer_blocks.5.table_slots.datapoint_slot_write.0.weight",
+        "decoder.linear2.weight",
+    ):
+        assert names[name].grad is not None, name
+        assert torch.isfinite(names[name].grad).all(), name
+
+
+def test_datapoint_column_alignment_removes_anonymous_slot_flip_before_pooling():
+    reference_slots = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+    reference_attention = torch.tensor([[0.9, 0.1], [0.8, 0.2], [0.7, 0.3]])
+    slots = torch.stack((reference_slots, reference_slots.flip(0)), dim=0)[None]
+    attention = torch.stack((reference_attention, reference_attention.flip(-1)), dim=1)[None]
+    aligned_slots, aligned_attention = TableSlotAdapter._align_datapoint_columns(slots, attention)
+    torch.testing.assert_close(aligned_slots[:, 0], aligned_slots[:, 1])
+    torch.testing.assert_close(aligned_attention[:, :, 0], aligned_attention[:, :, 1])
 
 
 def test_cell_scope_keeps_feature_attention_and_data_scope_has_none():
@@ -405,13 +581,187 @@ def test_similarity_gate_routes_a_query_toward_its_nearest_slot_centroid():
     with torch.no_grad():
         prediction = model(support_x, support_y, query_x)
     torch.testing.assert_close(prediction.gate().sum(-1), torch.ones(1, 3), atol=1e-5, rtol=0)
-    # A query identical to a support row should route toward whatever that
-    # support row's own slot competition favoured most.
+    # The datapoint path now contextualizes support rows before using them as
+    # the query memory, so an identical raw row is not required to reproduce
+    # the support row's pre-context slot index.  The gate remains a valid
+    # normalized prediction for that probe.
     with torch.no_grad():
         support_as_query = model(support_x, support_y, support_x)
-    top_support_slot = model.last_support_attention.argmax(-1)
-    top_query_slot = support_as_query.gate().argmax(-1)
-    assert (top_support_slot == top_query_slot).float().mean() > 0.5
+    assert torch.isfinite(support_as_query.gate()).all()
+    torch.testing.assert_close(
+        support_as_query.gate().sum(-1), torch.ones(1, support_x.shape[1]), atol=1e-5, rtol=0
+    )
+
+
+@pytest.mark.parametrize("interaction, input_size", (("full", 36), ("product", 12)))
+def test_tabpfn_attention_routes_support_values_through_query_slots(interaction, input_size):
+    config, episode = _config("table_slot_head"), _episode()
+    backbone = NanoTabPFNModel(**config.architecture())
+    model = TableSlotModel(
+        backbone,
+        mode="head",
+        num_slots=config.num_slots,
+        layer_indices=config.slot_layer_indices,
+        max_classes=config.num_outputs,
+        scope=config.table_slot_scope,
+        query_routing_mode="tabpfn_attention",
+        decoder_interaction=interaction,
+    )
+    support_x, support_y, query_x = episode.latent_inputs()
+    prediction = model(support_x, support_y, query_x)
+    assert model.last_query_support_attention.shape == (1, episode.query_x.shape[1], episode.support_x.shape[1])
+    torch.testing.assert_close(
+        model.last_query_support_attention.sum(-1),
+        torch.ones(1, episode.query_x.shape[1]),
+        atol=1e-5,
+        rtol=0,
+    )
+    assert prediction.slot_logits.shape == (1, episode.query_x.shape[1], config.num_slots, config.num_outputs)
+    assert model.decoder.body[0].in_features == input_size
+    loss = torch.nn.functional.nll_loss(
+        prediction.marginal_log_probabilities().flatten(0, 1), episode.query_y.reshape(-1).long()
+    )
+    loss.backward()
+    assert model.support_context_projection[0].weight.grad is not None
+
+
+def test_posterior_attention_transports_support_label_evidence_to_the_query_gate():
+    """The posterior gate is the displayed ``sum_i A[q,i] rho[i,k]`` equation."""
+    config, episode = _config("table_slot_head"), _episode()
+    model = TableSlotModel(
+        NanoTabPFNModel(**config.architecture()),
+        mode="head",
+        num_slots=config.num_slots,
+        max_classes=config.num_outputs,
+        scope="data",
+        query_routing_mode="posterior_attention",
+    ).eval()
+    with torch.no_grad():
+        prediction = model(*episode.latent_inputs())
+    assert model.last_query_support_attention is not None
+    assert model.last_query_support_attention_by_column is not None
+    assert model.last_support_posterior is not None
+    expected = torch.einsum(
+        "bqci,bick->bqk", model.last_query_support_attention_by_column, model.last_support_posterior
+    ) / model.last_query_support_attention_by_column.shape[2]
+    torch.testing.assert_close(prediction.gate(), expected, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(
+        model.last_support_posterior.sum(-1), torch.ones_like(model.last_support_posterior[..., 0])
+    )
+    torch.testing.assert_close(prediction.gate().sum(-1), torch.ones_like(prediction.gate()[..., 0]))
+
+
+def test_crossfit_posterior_target_is_detached_and_keeps_the_full_prediction_path_trainable():
+    config, episode = _config("table_slot_head"), _episode()
+    model = TableSlotModel(
+        NanoTabPFNModel(**config.architecture()),
+        mode="head",
+        num_slots=config.num_slots,
+        max_classes=config.num_outputs,
+        scope="data",
+        query_routing_mode="posterior_attention",
+    ).train()
+    prediction = model(*episode.latent_inputs(), crossfit_posterior_gate=True, crossfit_folds=2)
+    assert prediction.crossfit_log_gate is not None
+    assert not prediction.crossfit_log_gate.requires_grad
+    torch.testing.assert_close(
+        prediction.crossfit_log_gate.exp().sum(-1), torch.ones_like(prediction.crossfit_log_gate[..., 0])
+    )
+    (slot_mi_loss(prediction.support_attention) + crossfit_gate_loss(prediction)).backward()
+    assert model.decoder.body[2].weight.grad is not None
+    assert model.adapters[0].datapoint_slots.project_q.weight.grad is not None
+
+
+def test_slot_decoder_reads_the_backbone_target_token():
+    model, episode = _head_model_and_episode()
+    support_x, support_y, query_x = episode.latent_inputs()
+    captured = {}
+    decoder_forward = model.decoder.forward
+
+    def capture(rows, slots):
+        captured["rows"] = rows.detach()
+        return decoder_forward(rows, slots)
+
+    model.decoder.forward = capture
+    with torch.no_grad():
+        model(support_x, support_y, query_x)
+    state = model.adapters[0].last_state
+    assert state is not None
+    torch.testing.assert_close(captured["rows"], state.table[:, support_x.shape[1] :, -1, :])
+
+
+def test_factorized_composition_keeps_feature_and_support_axes_until_gate():
+    """The NanoTabPFN cell and row axes both reach the query mixture."""
+    torch.manual_seed(3)
+    episode = _episode()
+    backbone = NanoTabPFNModel(
+        num_layers=2,
+        embedding_size=12,
+        num_attention_heads=3,
+        mlp_hidden_size=24,
+        num_outputs=2,
+    )
+    model = TableSlotModel(
+        backbone,
+        mode="head",
+        num_slots=2,
+        max_classes=2,
+        scope="cell_and_data",
+        query_routing_mode="tabpfn_attention",
+        slot_composition="factorized",
+    )
+    prediction = model(*episode.latent_inputs())
+    split = episode.support_x.shape[1]
+    assert model.adapters[0].last_state is not None
+    state = model.adapters[0].last_state
+    assert state.feature_slots is not None
+    assert not hasattr(model.adapters[0], "row_write")
+    assert state.feature_slots.shape == (1, split + episode.query_x.shape[1], 2, 12)
+    assert state.datapoint_slots_by_column is not None
+    assert state.datapoint_slots_by_column.shape == (1, 3, 2, 12)
+    assert state.support_attention_by_column is not None
+    assert state.support_attention_by_column.shape == (1, split, 3, 2)
+    assert model.last_query_support_attention_by_column is not None
+    assert model.last_query_support_attention_by_column.shape == (1, episode.query_x.shape[1], 3, split)
+    # K_feature x K_data experts; the direct outer-product gate is normalized.
+    assert prediction.slot_logits.shape == (1, episode.query_x.shape[1], 4, 2)
+    assert prediction.log_gate.shape == (1, episode.query_x.shape[1], 4)
+    torch.testing.assert_close(prediction.gate().sum(-1), torch.ones(1, episode.query_x.shape[1]))
+    loss = torch.nn.functional.nll_loss(
+        prediction.marginal_log_probabilities().flatten(0, 1), episode.query_y.reshape(-1).long()
+    )
+    loss.backward()
+    assert model.factorized_pair_projection[0].weight.grad is not None
+    assert model.adapters[0].feature_slots.project_q.weight.grad is not None
+    assert model.adapters[0].datapoint_slots.project_q.weight.grad is not None
+    assert model.support_context_projection[0].weight.grad is not None
+
+
+def test_factorized_composition_reuses_the_same_route_for_reconstruction():
+    episode = _episode()
+    backbone = NanoTabPFNModel(
+        num_layers=2,
+        embedding_size=12,
+        num_attention_heads=3,
+        mlp_hidden_size=24,
+        num_outputs=2,
+    )
+    model = TableSlotModel(
+        backbone,
+        mode="head",
+        num_slots=2,
+        max_classes=2,
+        scope="cell_and_data",
+        query_routing_mode="tabpfn_attention",
+        slot_composition="factorized",
+        reconstruction_mixture="alpha",
+    )
+    prediction = model(*episode.latent_inputs(), reconstruct_support=True)
+    assert prediction.support_reconstruction_log_probabilities.shape == (1, episode.support_x.shape[1], 2)
+    torch.testing.assert_close(
+        prediction.support_reconstruction_log_probabilities.exp().sum(-1),
+        torch.ones(1, episode.support_x.shape[1]),
+    )
 
 
 def test_query_routing_mode_is_a_head_setting_only():
@@ -464,7 +814,7 @@ def test_attention_mixture_reproduces_the_historical_reconstruction_exactly():
         state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
         blind = model._blind_pass(table, support_y, split, 1, state)
         # The expression as it stood before the compositing axis existed.
-        logits, _ = model.decoder(blind.pooled_rows[:, :split], state.slots)
+        logits, _ = model.decoder(model._decoder_rows(blind, split, support=True), state.slots)
         expected = torch.logsumexp(
             state.support_attention.clamp_min(1e-12).log()[..., None] + torch.log_softmax(logits, -1), dim=2
         )
@@ -486,7 +836,7 @@ def test_alpha_mixture_composites_by_the_decoder_mask_and_stays_a_distribution()
     with torch.no_grad():
         state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
         blind = model._blind_pass(table, support_y, split, 1, state)
-        logits, masks = model.decoder(blind.pooled_rows[:, :split], state.slots)
+        logits, masks = model.decoder(model._decoder_rows(blind, split, support=True), state.slots)
         expected = torch.logsumexp(
             torch.log_softmax(masks, -1)[..., None] + torch.log_softmax(logits, -1), dim=2
         )
@@ -525,7 +875,10 @@ def test_alpha_with_blind_decoder_routes_support_and_query_rows_by_one_function(
         state = model.adapters[0](model.backbone.encode_table((table, support_y.float()), split, 1), split)
         blind = model._blind_pass(table, support_y, split, 1, state)
         # Every row's gate, computed by the one function, support and query alike.
-        _, all_masks = model.decoder(blind.pooled_rows, state.slots)
+        blind_rows = torch.cat(
+            (model._decoder_rows(blind, split, support=True), model._decoder_rows(blind, split, support=False)), dim=1
+        )
+        _, all_masks = model.decoder(blind_rows, state.slots)
         every_gate = torch.log_softmax(all_masks, -1)
         # The gate the query side actually applies.
         prediction = model(support_x, support_y, query_x, reconstruct_support=True)
