@@ -37,6 +37,9 @@ class SlotAttention(nn.Module):
         slot_size: Slot and projection width ``E``; must match the input width.
         mlp_hidden_size: Hidden width of the per-slot residual MLP.
         num_iterations: Number of competition rounds ``T``.
+        num_heads: Number of independent attention heads.  Each head receives
+            ``slot_size // num_heads`` features and the merged update is
+            projected back to ``slot_size``.
         epsilon: Offset added to the attention before the weighted-mean
             normalization, so an unclaimed slot cannot divide by zero.
         competitive: Normalize the attention over slots (the real mechanism).
@@ -51,6 +54,7 @@ class SlotAttention(nn.Module):
         slot_size: int,
         mlp_hidden_size: int,
         num_iterations: int = 3,
+        num_heads: int = 4,
         epsilon: float = 1e-8,
         competitive: bool = True,
         eval_seed: int = 0,
@@ -65,12 +69,18 @@ class SlotAttention(nn.Module):
             raise ValueError("mlp_hidden_size must be positive.")
         if num_iterations < 1:
             raise ValueError("num_iterations must be at least one.")
+        if num_heads < 1:
+            raise ValueError("num_heads must be positive.")
+        if slot_size % num_heads != 0:
+            raise ValueError("slot_size must be divisible by num_heads for multi-head slot attention.")
         if epsilon <= 0:
             raise ValueError("epsilon must be positive.")
         self.num_slots = num_slots
         self.slot_size = slot_size
         self.mlp_hidden_size = mlp_hidden_size
         self.num_iterations = num_iterations
+        self.num_heads = num_heads
+        self.head_dim = slot_size // num_heads
         self.epsilon = epsilon
         self.competitive = competitive
         self.eval_seed = eval_seed
@@ -90,9 +100,15 @@ class SlotAttention(nn.Module):
         nn.init.xavier_uniform_(self.slots_mu)
         nn.init.xavier_uniform_(self.slots_log_sigma)
 
-        self.project_q = nn.Linear(slot_size, slot_size, bias=False)
-        self.project_k = nn.Linear(slot_size, slot_size, bias=False)
-        self.project_v = nn.Linear(slot_size, slot_size, bias=False)
+        # Keep the historical projection names because several slot heads use
+        # them for label-aware compatibility scores.  Their output is split
+        # into ``num_heads`` heads below, exactly like the attached
+        # MultiHeadSlotAttention block.
+        inner_size = self.num_heads * self.head_dim
+        self.project_q = nn.Linear(slot_size, inner_size)
+        self.project_k = nn.Linear(slot_size, inner_size)
+        self.project_v = nn.Linear(slot_size, inner_size)
+        self.combine_heads = nn.Linear(inner_size, slot_size)
 
         self.gru = nn.GRUCell(slot_size, slot_size)
         self.mlp = nn.Sequential(
@@ -133,6 +149,33 @@ class SlotAttention(nn.Module):
         if self.max_log_sigma is not None:
             log_sigma = log_sigma.clamp(max=self.max_log_sigma)
         return self.slots_mu + log_sigma.exp() * noise
+
+    def assignment(self, inputs: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
+        """Assign inputs to an already-built set of slots.
+
+        This is one competitive compatibility pass; it does not update the
+        supplied slots.  It is useful when a row was deliberately withheld
+        while constructing the slots but must subsequently be scored by them.
+        In particular, it lets a cross-fitted support row obtain ``a[i,k]``
+        without letting its own label alter ``s[k]``.
+        """
+        if inputs.ndim != 3:
+            raise ValueError("inputs must have shape (batch, num_inputs, slot_size).")
+        if slots.shape != (inputs.shape[0], self.num_slots, self.slot_size):
+            raise ValueError("slots must have shape (batch, num_slots, slot_size).")
+        if inputs.shape[-1] != self.slot_size:
+            raise ValueError(f"inputs must have width {self.slot_size}, got {inputs.shape[-1]}.")
+        batch_size, num_inputs = inputs.shape[:2]
+        keys = self.project_k(self.norm_inputs(inputs)).reshape(
+            batch_size, num_inputs, self.num_heads, self.head_dim
+        )
+        keys = keys.transpose(1, 2)
+        queries = self.project_q(self.norm_slots(slots)).reshape(
+            batch_size, self.num_slots, self.num_heads, self.head_dim
+        )
+        queries = queries.transpose(1, 2)
+        logits = torch.einsum("bhkd,bhnd->bhkn", queries, keys) * self.head_dim**-0.5
+        return logits.softmax(dim=-2).mean(dim=1).transpose(1, 2)
 
     def forward(
         self,
@@ -184,8 +227,11 @@ class SlotAttention(nn.Module):
             raise ValueError("inputs must contain at least one element.")
 
         normalized = self.norm_inputs(inputs)
-        k = self.project_k(normalized)
-        v = self.project_v(normalized)
+        batch_size, num_inputs = inputs.shape[:2]
+        k = self.project_k(normalized).reshape(batch_size, num_inputs, self.num_heads, self.head_dim)
+        k = k.transpose(1, 2)  # (B, H, N, D_head)
+        v = self.project_v(normalized).reshape(batch_size, num_inputs, self.num_heads, self.head_dim)
+        v = v.transpose(1, 2)  # (B, H, N, D_head)
 
         if slots is None:
             slots = self.initial_slots(inputs.shape[0], generator=generator)
@@ -197,35 +243,49 @@ class SlotAttention(nn.Module):
             slots_previous = slots
             normalized_slots = self.norm_slots(slots)
             if compatibility is None:
-                q = self.project_q(normalized_slots) * self.slot_size**-0.5
-                # (batch, num_inputs, num_slots)
-                logits = torch.matmul(k, q.transpose(-1, -2))
+                q = self.project_q(normalized_slots).reshape(
+                    batch_size, self.num_slots, self.num_heads, self.head_dim
+                )
+                q = q.transpose(1, 2)  # (B, H, K, D_head)
+                logits = torch.einsum("bhkd,bhnd->bhkn", q, k) * self.head_dim**-0.5
             else:
-                logits = compatibility(normalized_slots)
-                if logits.shape != (inputs.shape[0], inputs.shape[1], self.num_slots):
+                compatibility_logits = compatibility(normalized_slots)
+                if compatibility_logits.shape != (inputs.shape[0], inputs.shape[1], self.num_slots):
                     raise ValueError(
-                        f"compatibility must return (batch, num_inputs, num_slots), got {tuple(logits.shape)}."
+                        "compatibility must return (batch, num_inputs, num_slots), "
+                        f"got {tuple(compatibility_logits.shape)}."
                     )
-            # dim=-1 makes the slots compete for each input row; dim=-2 is the
-            # ordinary cross-attention this module exists to replace.
-            attention = logits.softmax(dim=-1 if self.competitive else -2)
+                # Label-aware compatibility callbacks expose one score per
+                # input/slot pair.  Reuse that score in every head while the
+                # value projections remain genuinely multi-head.
+                logits = compatibility_logits.transpose(1, 2)[:, None].expand(
+                    batch_size, self.num_heads, self.num_slots, num_inputs
+                )
+            # In ``(B, H, K, N)`` layout, dim=-2 makes the slots compete for
+            # each input row; dim=-1 is the ordinary input-normalized ablation.
+            attention = logits.softmax(dim=-2 if self.competitive else -1)
             weights = attention + self.epsilon
-            weights = weights / weights.sum(dim=-2, keepdim=True)
-            updates = torch.matmul(weights.transpose(-1, -2), v)
+            weights = weights / weights.sum(dim=-1, keepdim=True)
+            updates = torch.einsum("bhkn,bhnd->bhkd", weights, v)
+            updates = self.combine_heads(updates.transpose(1, 2).reshape(batch_size, self.num_slots, -1))
 
-            batch_size = inputs.shape[0]
             slots = self.gru(
                 updates.reshape(batch_size * self.num_slots, self.slot_size),
                 slots_previous.reshape(batch_size * self.num_slots, self.slot_size),
             ).reshape(batch_size, self.num_slots, self.slot_size)
             slots = slots + self.mlp(self.norm_mlp(slots))
 
+        # Public callers historically consume one ``(B, N, K)`` assignment
+        # tensor.  Average the per-head assignments; normalization is retained
+        # because every head uses the same slot/input axis convention.
+        attention = attention.mean(dim=1).transpose(1, 2)
         return slots, attention
 
     def extra_repr(self) -> str:
         return (
             f"num_slots={self.num_slots}, slot_size={self.slot_size}, "
-            f"num_iterations={self.num_iterations}, competitive={self.competitive}"
+            f"num_iterations={self.num_iterations}, num_heads={self.num_heads}, "
+            f"competitive={self.competitive}"
         )
 
 

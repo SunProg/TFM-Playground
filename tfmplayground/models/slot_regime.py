@@ -58,6 +58,13 @@ class SlotRegimePrediction:
     #: in ``benchmark_multiregime_v2.py``.
     support_reconstruction_log_probabilities: torch.Tensor | None = None
 
+    support_embedding_reconstruction: torch.Tensor | None = None
+    support_embedding_target: torch.Tensor | None = None
+    #: Detached cross-fitted target for the posterior query gate.  It is
+    #: requested only during training; ordinary prediction never needs the
+    #: extra support-only passes that construct it.
+    crossfit_log_gate: torch.Tensor | None = None
+
     @property
     def num_slots(self) -> int:
         return self.slot_logits.shape[2]
@@ -129,21 +136,42 @@ class _SlotDecoder(nn.Module):
     because both come from the same weights.
     """
 
-    def __init__(self, embedding_size: int, hidden_size: int, num_classes: int):
+    def __init__(self, embedding_size: int, hidden_size: int, num_classes: int, *, interaction: str = "full"):
         super().__init__()
+        if interaction not in ("full", "product"):
+            raise ValueError("interaction must be 'full' or 'product'.")
         self.num_classes = num_classes
+        self.interaction = interaction
+        input_size = embedding_size * 3 if interaction == "full" else embedding_size
         self.body = nn.Sequential(
-            nn.Linear(embedding_size * 3, hidden_size),
+            nn.Linear(input_size, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, num_classes + 1),
         )
 
     def forward(self, rows: torch.Tensor, slots: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return ``(class logits, mask logits)`` of shapes ``(B,Q,K,C)`` and ``(B,Q,K)``."""
-        row_count, slot_count = rows.shape[1], slots.shape[1]
+        """Return ``(class logits, mask logits)`` of shapes ``(B,Q,K,C)`` and ``(B,Q,K)``.
+
+        ``slots`` may be shared across queries with shape ``(B,K,E)`` or
+        query-conditioned with shape ``(B,Q,K,E)``.
+        """
+        row_count = rows.shape[1]
+        if slots.ndim == 3:
+            slot_count = slots.shape[1]
+        elif slots.ndim == 4:
+            if slots.shape[1] != row_count:
+                raise ValueError("query-conditioned slots must match the query row count.")
+            slot_count = slots.shape[2]
+        else:
+            raise ValueError("slots must have shape (B,K,E) or (B,Q,K,E).")
         expanded_rows = rows[:, :, None].expand(-1, -1, slot_count, -1)
-        expanded_slots = slots[:, None].expand(-1, row_count, -1, -1)
-        features = torch.cat((expanded_rows, expanded_slots, expanded_rows * expanded_slots), dim=-1)
+        expanded_slots = slots[:, None].expand(-1, row_count, -1, -1) if slots.ndim == 3 else slots
+        product = expanded_rows * expanded_slots
+        features = (
+            torch.cat((expanded_rows, expanded_slots, product), dim=-1)
+            if self.interaction == "full"
+            else product
+        )
         decoded = self.body(features)
         return decoded[..., : self.num_classes], decoded[..., self.num_classes]
 
@@ -288,6 +316,16 @@ def slot_regime_loss(prediction: SlotRegimePrediction, target_y: torch.Tensor) -
     return F.nll_loss(log_probabilities.flatten(0, 1), target_y.reshape(-1).long())
 
 
+def embedding_reconstruction_loss(prediction: SlotRegimePrediction) -> torch.Tensor:
+    """Mean squared error over batch, support rows and embedding coordinates."""
+    reconstructed, target = prediction.support_embedding_reconstruction, prediction.support_embedding_target
+    if reconstructed is None or target is None:
+        raise ValueError("Call the model with reconstruct_embeddings=True.")
+    if reconstructed.shape != target.shape:
+        raise ValueError("Embedding reconstruction and target shapes must match.")
+    return F.mse_loss(reconstructed, target.detach())
+
+
 def support_reconstruction_loss(prediction: SlotRegimePrediction, support_y: torch.Tensor) -> torch.Tensor:
     """Negative log likelihood of the support labels under their own assignment.
 
@@ -312,10 +350,25 @@ def support_reconstruction_loss(prediction: SlotRegimePrediction, support_y: tor
     if log_probabilities is None:
         # A silent zero here would leave a mis-wired arm reporting a
         # reconstruction weight it never applied.
-        raise ValueError("The prediction carries no support reconstruction; call the model with reconstruct_support=True.")
+        raise ValueError(
+            "The prediction carries no support reconstruction; call the model with reconstruct_support=True."
+        )
     if support_y.shape != log_probabilities.shape[:2]:
         raise ValueError("support_y must have shape (batch, support rows).")
     return F.nll_loss(log_probabilities.flatten(0, 1), support_y.reshape(-1).long())
+
+
+def crossfit_gate_loss(prediction: SlotRegimePrediction) -> torch.Tensor:
+    """KL from detached cross-fitted support evidence to the live query gate."""
+    target = prediction.crossfit_log_gate
+    if target is None:
+        raise ValueError("Call the model with crossfit_posterior_gate=True.")
+    if target.shape != prediction.log_gate.shape:
+        raise ValueError("Cross-fitted and live query gates must have the same shape.")
+    # ``target`` is constructed under ``no_grad``.  Spell the KL out rather
+    # than use batchmean so its weight is invariant to the query-set size.
+    probability = target.exp()
+    return (probability * (target - prediction.log_gate)).sum(-1).mean()
 
 
 def slot_mi_loss(support_attention: torch.Tensor) -> torch.Tensor:
@@ -460,6 +513,27 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
         model = build_mufasa_model(architecture)
         model.load_state_dict(state["model"])
         return SlotLogitsAdapter(model).to(device).eval()
+    if architecture.get("model_kind") == "table_slot_replace":
+        from tfmplayground.models.table_slot import install_table_slot_layers
+
+        model = NanoTabPFNModel(
+            num_layers=architecture["num_layers"],
+            embedding_size=architecture["embedding_size"],
+            num_attention_heads=architecture["num_attention_heads"],
+            mlp_hidden_size=architecture["mlp_hidden_size"],
+            num_outputs=architecture["num_outputs"],
+        )
+        install_table_slot_layers(
+            model,
+            layer_indices=architecture.get("slot_layer_indices", (3, 4, 5)),
+            num_slots=architecture["num_slots"],
+            num_slot_iterations=architecture.get("num_slot_iterations", 3),
+            num_heads=architecture.get("slot_attention_heads", 4),
+            scope=architecture.get("table_slot_scope", "cell_and_data"),
+            attention_replacement=architecture.get("table_slot_attention_replacement", "both"),
+        )
+        model.load_state_dict(state["model"])
+        return model.to(device).eval()
     if architecture.get("model_kind") in ("table_slot_head", "table_slot_backbone", "table_slot_mufasa"):
         from tfmplayground.models.table_slot import TableSlotModel
 
@@ -476,6 +550,7 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             num_slots=architecture["num_slots"],
             layer_indices=architecture.get("slot_layer_indices", (3, 4, 5)),
             num_slot_iterations=architecture.get("num_slot_iterations", 3),
+            num_slot_heads=architecture.get("slot_attention_heads", 4),
             max_classes=architecture.get("max_classes", 2),
             # Checkpoints written before the scope ablation ran both paths.
             scope=architecture.get("table_slot_scope", "cell_and_data"),
@@ -486,6 +561,10 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
             # reconstruction by the competition's assignment rather than by the
             # decoder's alpha.
             reconstruction_mixture=architecture.get("reconstruction_mixture", "attention"),
+            embedding_reconstruction=architecture.get("embedding_reconstruction", False),
+            query_content_mode=architecture.get("query_content_mode", "labelled"),
+            decoder_interaction=architecture.get("decoder_interaction", "full"),
+            slot_composition=architecture.get("slot_composition", "shared"),
         )
         model.load_state_dict(state["model"])
         return SlotLogitsAdapter(model).to(device).eval()
@@ -524,6 +603,38 @@ def load_checkpoint_for_inference(path: str | Path, device: str | torch.device =
         mixture = SlotBackboneMixtureModel(backbone, max_classes=architecture.get("max_classes", 2))
         mixture.load_state_dict(state["model"])
         return SlotLogitsAdapter(mixture).to(device).eval()
+    if architecture.get("model_kind") == "attention_slot_router":
+        from tfmplayground.models.attention_slot_router_tabarena import build_attention_slot_router_inference
+
+        adapter = build_attention_slot_router_inference(architecture)
+        adapter.model.load_state_dict(state["model"])
+        return adapter.to(device).eval()
+    if architecture.get("model_kind") == "attention_slot_router_frozen_tabpfn":
+        from tfmplayground.models.attention_slot_router_tabarena import (
+            build_attention_slot_router_frozen_tabpfn_inference,
+        )
+
+        adapter = build_attention_slot_router_frozen_tabpfn_inference(architecture)
+        # No key remapping needed: FrozenTabPFNBackbone contributes nothing to
+        # state_dict() (it's a plain object, not an nn.Module submodule), so
+        # the saved dict already only has adapter/row_query/slot_key keys,
+        # matching this freshly-built model exactly.
+        adapter.model.load_state_dict(state["model"])
+        return adapter.to(device).eval()
+    if architecture.get("model_kind") == "reconstruction_inference":
+        from tfmplayground.models.reconstruction_tabarena import build_reconstruction_inference
+
+        adapter = build_reconstruction_inference(architecture)
+        model_state = state["model"]
+        # The training wrappers prefix their inner model keys (PlainControl
+        # uses ``backbone.`` and PreviousControl uses ``model.``), while the
+        # values router stores its keys directly.  Accept either form so the
+        # TabArena wrapper remains compatible with all reconstruction arms.
+        prefix = "backbone." if architecture.get("arm") == "vanilla" else "model."
+        if model_state and all(key.startswith(prefix) for key in model_state):
+            model_state = {key[len(prefix) :]: value for key, value in model_state.items()}
+        adapter.model.load_state_dict(model_state)
+        return adapter.to(device).eval()
     if is_slot_regime_checkpoint(state):
         model = build_slot_regime_model(state["architecture"])
         model.load_state_dict(state["model"])
@@ -556,6 +667,7 @@ __all__ = [
     "SlotLogitsAdapter",
     "SlotRegimePrediction",
     "build_slot_regime_model",
+    "crossfit_gate_loss",
     "is_slot_regime_checkpoint",
     "load_checkpoint_for_inference",
     "load_slot_regime_checkpoint",

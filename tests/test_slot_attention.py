@@ -50,13 +50,17 @@ class SlotAttentionTests(unittest.TestCase):
         slots, _ = module(self.inputs, slots=slots_init.clone())
 
         normalized = module.norm_inputs(self.inputs)
-        k = module.project_k(normalized)
-        v = module.project_v(normalized)
-        q = module.project_q(module.norm_slots(slots_init)) * WIDTH**-0.5
-        attention = torch.matmul(k, q.transpose(-1, -2)).softmax(dim=-2)
+        k = module.project_k(normalized).reshape(BATCH, INPUTS, module.num_heads, module.head_dim).transpose(1, 2)
+        v = module.project_v(normalized).reshape(BATCH, INPUTS, module.num_heads, module.head_dim).transpose(1, 2)
+        q = module.project_q(module.norm_slots(slots_init)).reshape(
+            BATCH, SLOTS, module.num_heads, module.head_dim
+        ).transpose(1, 2)
+        attention = torch.einsum("bhkd,bhnd->bhkn", q, k) * module.head_dim**-0.5
+        attention = attention.softmax(dim=-1)
         weights = attention + module.epsilon
-        weights = weights / weights.sum(dim=-2, keepdim=True)
-        updates = torch.matmul(weights.transpose(-1, -2), v)
+        weights = weights / weights.sum(dim=-1, keepdim=True)
+        updates = torch.einsum("bhkn,bhnd->bhkd", weights, v)
+        updates = module.combine_heads(updates.transpose(1, 2).reshape(BATCH, SLOTS, -1))
         expected = module.gru(updates.reshape(BATCH * SLOTS, WIDTH), slots_init.reshape(BATCH * SLOTS, WIDTH)).reshape(
             BATCH, SLOTS, WIDTH
         )
@@ -112,6 +116,10 @@ class SlotAttentionTests(unittest.TestCase):
                 SlotAttention(num_slots, slot_size, hidden)
         with self.assertRaises(ValueError):
             SlotAttention(SLOTS, WIDTH, HIDDEN, num_iterations=0)
+        with self.assertRaises(ValueError):
+            SlotAttention(SLOTS, WIDTH, HIDDEN, num_heads=0)
+        with self.assertRaises(ValueError):
+            SlotAttention(SLOTS, 10, HIDDEN, num_heads=4)
         with self.assertRaises(ValueError):
             SlotAttention(SLOTS, WIDTH, HIDDEN, epsilon=0.0)
         with self.assertRaises(ValueError):
