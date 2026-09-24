@@ -118,7 +118,7 @@ def test_capture_returns_the_competition_input_its_attention_and_the_query_gate(
     model = build_model(_config("table_slot_head")).eval()
     encoded = np.random.default_rng(0).normal(size=(10, 2)).astype(np.float32)
     labels = np.array([0, 1] * 5)
-    u, attention, query_gate, query_probability = capture_assignment(
+    u, attention, query_gate, query_probability, query_u = capture_assignment(
         model, captured_module_name(model), encoded, labels, 8, "cpu"
     )
     assert u.shape == (8, 12)
@@ -132,16 +132,19 @@ def test_capture_returns_the_competition_input_its_attention_and_the_query_gate(
     # The outcome metric: a real probability per query row, in [0, 1].
     assert query_probability.shape == (2,)
     assert ((query_probability >= 0) & (query_probability <= 1)).all()
+    # The query analogue of ``u`` -- same embedding size, one row per query.
+    assert query_u.shape == (2, 12)
 
 
 def test_capture_vanilla_returns_the_target_column_row_state_and_a_query_probability():
     model = NanoTabPFNModel(embedding_size=12, num_attention_heads=3, mlp_hidden_size=24, num_layers=2, num_outputs=2)
     encoded = np.random.default_rng(0).normal(size=(10, 2)).astype(np.float32)
     labels = np.array([0, 1] * 5)
-    u, query_probability = capture_vanilla(model, encoded, labels, 8, "cpu")
+    u, query_probability, query_u = capture_vanilla(model, encoded, labels, 8, "cpu")
     assert u.shape == (8, 12)
     assert query_probability.shape == (2,)
     assert ((query_probability >= 0) & (query_probability <= 1)).all()
+    assert query_u.shape == (2, 12)
 
 
 def test_run_writes_the_documented_layout():
@@ -183,6 +186,10 @@ def test_run_writes_the_documented_layout():
         assert stored["plain__baseline__u"].shape == (support, 12)
         assert stored["mixed__baseline__attention"].shape == (support, 4)
         assert stored["source_row"].shape == (support,)
+        # The query analogue of ``u`` -- same embedding size, one row per
+        # query, captured even though query rows never compete for slots.
+        query_rows_expected_early = 40 - support
+        assert stored["plain__baseline__query_u"].shape == (query_rows_expected_early, 12)
 
         # Query rows never compete for slots, so their routing is scored
         # separately: same summary row, a distinct per-row CSV.
@@ -253,6 +260,106 @@ def test_run_places_a_vanilla_checkpoint_in_the_same_grid_with_no_attention():
         assert "plain__baseline__attention" in stored.files
         assert stored["plain__vanilla__query_probability"].shape == (40 - support,)
         assert "plain__vanilla__query_gate" not in stored.files
+        # The vanilla arm has no competition, but it still has a per-row query
+        # representation -- captured off the same backbone read as its query
+        # prediction.
+        assert stored["plain__vanilla__query_u"].shape == (40 - support, 12)
+
+        index = pd.read_csv(out / "plot-index.csv")
+        for column in ("pca_path", "tsne_path"):
+            assert Path(index[column][0]).is_file()
+
+
+def _write_task_three_class(directory: Path, rows: int = 60) -> Path:
+    rng = np.random.default_rng(0)
+    frame = pd.DataFrame(
+        {
+            "a": rng.normal(size=rows),
+            "b": rng.normal(size=rows),
+            "c": rng.choice(["x", "y"], size=rows),
+            "__target__": rng.choice(["lo", "mid", "hi"], size=rows),
+        }
+    )
+    frame_path = directory / "task-3class.pkl"
+    frame.to_pickle(frame_path)
+    tasks_path = directory / "tasks_three_class.csv"
+    with tasks_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=("task_id", "dataset", "rows", "features", "path"))
+        writer.writeheader()
+        writer.writerow(
+            {"task_id": "3", "dataset": "Three Class Set", "rows": rows, "features": 3, "path": str(frame_path)}
+        )
+    return tasks_path
+
+
+def _config_three_class(kind: str) -> V2TrainingConfig:
+    return V2TrainingConfig(
+        device="cpu",
+        model_type=kind,
+        embedding_size=12,
+        num_attention_heads=3,
+        mlp_hidden_size=24,
+        num_layers=6,
+        support_size=4,
+        query_size=3,
+        min_features=2,
+        max_features=2,
+        slot_layer_indices=(3, 4, 5),
+        validation_episodes=1,
+        num_outputs=3,
+    )
+
+
+def _write_checkpoint_three_class(kind: str, directory: Path, name: str) -> Path:
+    torch.manual_seed(0)
+    model = build_model(_config_three_class(kind)).eval()
+    optimizer = torch.optim.AdamW(model.parameters())
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
+    path = directory / f"{name}.pth"
+    torch.save(
+        _checkpoint(model, optimizer, scheduler, _config_three_class(kind), 0, np.random.default_rng(1), None),
+        path,
+    )
+    return path
+
+
+def test_run_scores_a_three_class_task_with_the_full_distribution():
+    """The suite's three-class TabArena tables need the full mixture, not just
+    a positive-class column -- see ``prediction_metrics`` and the
+    ``num_classes`` slicing in ``capture_assignment``."""
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        tasks = _write_task_three_class(root)
+        config = DistributionConfig(
+            checkpoints=(
+                parse_arm(f"plain=baseline={_write_checkpoint_three_class('table_slot_head', root, 'plain3')}"),
+            ),
+            tasks_csv=tasks,
+            output_dir=root / "out",
+            sample_rows=40,
+        )
+        run(config)
+        out = root / "out"
+        support = int(40 * SUPPORT_FRACTION)
+        query_rows_expected = 40 - support
+
+        summary = pd.read_csv(out / "support-ui-summary.csv")
+        # The macro, one-vs-rest generalization of the binary numbers -- see
+        # prediction_metrics -- rather than a placeholder NaN.
+        assert summary["query_cross_entropy"].notna().all()
+        assert summary["query_roc_auc"].notna().all()
+
+        query_rows_df = pd.read_csv(out / "per-query-slot-gate-distributions.csv")
+        assert len(query_rows_df) == query_rows_expected
+        # Above two classes, one column cannot stand in for the whole
+        # distribution, so the true-class probability and the model's own top
+        # pick are both recorded.
+        assert query_rows_df["predicted_probability"].between(0, 1).all()
+        assert query_rows_df["predicted_class"].between(0, 2).all()
+        assert query_rows_df["predicted_class_probability"].between(0, 1).all()
+
+        stored = np.load(out / "representations" / "3-three-class-set-support-ui.npz")
+        assert stored["plain__baseline__query_probability"].shape == (query_rows_expected, 3)
 
         index = pd.read_csv(out / "plot-index.csv")
         for column in ("pca_path", "tsne_path"):

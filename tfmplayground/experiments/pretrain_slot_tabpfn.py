@@ -59,6 +59,8 @@ from tfmplayground.models.slot_backbone import (
 from tfmplayground.models.slot_regime import (
     NanoTabPFNSlotRegimeModel,
     SlotRegimePrediction,
+    crossfit_gate_loss,
+    embedding_reconstruction_loss,
     slot_mi_loss,
     slot_regime_checkpoint,
     slot_regime_loss,
@@ -66,14 +68,19 @@ from tfmplayground.models.slot_regime import (
     support_reconstruction_loss,
 )
 from tfmplayground.models.table_slot import (
+    ATTENTION_REPLACEMENTS,
     QUERY_ROUTING_MODES,
     RECONSTRUCTION_MIXTURES,
+    SLOT_COMPOSITIONS,
     SLOT_SCOPES,
     TableSlotModel,
+    collect_table_slot_state,
+    install_table_slot_layers,
 )
 from tfmplayground.utils import set_randomness_seed
 
 PRIOR_MODES = ("plain", "multiregime", "mixed", "curriculum")
+SUPPORT_RECONSTRUCTION_TARGETS = ("label", "embedding")
 MODEL_KINDS = (
     "slot",
     "vanilla",
@@ -82,6 +89,7 @@ MODEL_KINDS = (
     "table_slot_head",
     "table_slot_backbone",
     "table_slot_mufasa",
+    "table_slot_replace",
 )
 #: The kinds whose slots live inside the transformer layers, so the competition
 #: runs before full row attention has mixed the regimes together.  They differ
@@ -155,25 +163,44 @@ class SlotPretrainingConfig:
         "table_slot_head",
         "table_slot_backbone",
         "table_slot_mufasa",
+        "table_slot_replace",
     ] = "slot"
     num_slots: int = 2
     num_slot_iterations: int = 3
+    #: Number of independent heads inside each SlotAttention competition.
+    slot_attention_heads: int = 4
     table_slot_layer_indices: tuple[int, ...] = (3, 4, 5)
     #: Which competitions a ``table_slot_*`` model runs: over the cells of each
     #: row, over the feature-pooled rows, or both.  See
     #: ``table_slot.SLOT_SCOPES``.
     table_slot_scope: Literal["cell_and_data", "cell", "data"] = "cell_and_data"
+    #: Whether a native backbone arm substitutes feature attention, datapoint
+    #: attention, or both with the corresponding Slot Attention read.  Only
+    #: ``table_slot_replace`` consumes this setting.
+    table_slot_attention_replacement: Literal["none", "feature", "datapoint", "both"] = "none"
     #: Weight on the support-label reconstruction, the tabular reading of Slot
     #: Attention's mask-weighted image reconstruction.  0.0 reproduces every
     #: earlier run exactly: the second backbone pass it needs is skipped
     #: outright rather than run and multiplied by zero.
     support_reconstruction_weight: float = 0.0
+    #: What ``support_reconstruction_weight`` reconstructs.
+    support_reconstruction_target: Literal["label", "embedding"] = "label"
+    #: Separate optional MSE of support target-token embeddings, with a detached target.
+    embedding_reconstruction_weight: float = 0.0
     #: Weight on the balanced-sharpness term, which penalizes uniform
     #: assignments and one-slot collapse alike.
     slot_mi_weight: float = 0.0
-    #: How a ``table_slot_head`` query row is routed to slots.  See
+    #: How a table-slot query row is routed to slots.  See
     #: ``table_slot.QueryRoutingMode`` for what each value means.
-    query_routing_mode: Literal["decoder", "blind_decoder", "blind_similarity"] = "decoder"
+    query_routing_mode: Literal[
+        "decoder", "blind_decoder", "blind_similarity", "tabpfn_attention", "posterior_attention", "direct_slot"
+    ] = "decoder"
+    #: Weight of the detached cross-fitted support-evidence target.  Prediction
+    #: itself always uses all support rows; this only prevents its routing
+    #: supervision from exploiting a row's own label through its slot.
+    posterior_crossfit_weight: float = 0.0
+    #: Number of complementary support folds used for that detached target.
+    posterior_crossfit_folds: int = 2
     #: What weights a slot in the support reconstruction.  "attention" is the
     #: historical design, which weights by ``a[i,k]`` and discards the decoder's
     #: alpha -- the same alpha the query side gates on, so the two sides route
@@ -181,6 +208,13 @@ class SlotPretrainingConfig:
     #: way Locatello does, which makes the reconstruction train the query gate.
     #: See ``table_slot.ReconstructionMixture``.
     reconstruction_mixture: Literal["attention", "alpha"] = "attention"
+    #: Keep feature-axis and datapoint-axis slots separate until decoding.
+    #: The factorized route requires query-to-support attention and the
+    #: combined cell/data scope.
+    slot_composition: Literal["shared", "factorized"] = "shared"
+    #: Decoder interaction. ``product`` exposes only ``h_q * s_k`` to the
+    #: prediction head; ``full`` also exposes the two unmodified vectors.
+    decoder_interaction: Literal["full", "product"] = "full"
     competitive_slots: bool = True
     #: What a slot's claim on a support row is scored by, for ``slot_backbone``.
     #: "dot" is Locatello's own compatibility; "likelihood" scores
@@ -258,6 +292,10 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         )
     if config.num_slots < 1:
         raise ValueError("num_slots must be positive.")
+    if config.slot_attention_heads < 1:
+        raise ValueError("slot_attention_heads must be positive.")
+    if config.embedding_size % config.slot_attention_heads != 0:
+        raise ValueError("embedding_size must be divisible by slot_attention_heads.")
     if config.tabarena_max_predictors < 1:
         raise ValueError("tabarena_max_predictors must be positive.")
     if config.tabarena_max_classes < 2:
@@ -271,13 +309,50 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         raise ValueError(f"table_slot_scope must be one of {SLOT_SCOPES}, got {config.table_slot_scope!r}.")
     if config.table_slot_scope != "cell_and_data" and not config.model_kind.startswith("table_slot_"):
         raise ValueError(f"table_slot_scope is a table-slot setting, not model_kind={config.model_kind!r}.")
+    if config.decoder_interaction not in ("full", "product"):
+        raise ValueError("decoder_interaction must be 'full' or 'product'.")
+    if config.table_slot_attention_replacement not in ATTENTION_REPLACEMENTS:
+        raise ValueError(
+            "table_slot_attention_replacement must be one of "
+            f"{ATTENTION_REPLACEMENTS}, got {config.table_slot_attention_replacement!r}."
+        )
+    if config.model_kind == "table_slot_replace":
+        if config.table_slot_attention_replacement != "both":
+            raise ValueError("table_slot_replace currently requires table_slot_attention_replacement='both'.")
+        if config.table_slot_scope != "cell_and_data":
+            raise ValueError("table_slot_replace requires table_slot_scope='cell_and_data'.")
+    elif config.table_slot_attention_replacement != "none":
+        raise ValueError("table_slot_attention_replacement is only used by model_kind='table_slot_replace'.")
     if config.query_routing_mode not in QUERY_ROUTING_MODES:
         raise ValueError(f"query_routing_mode must be one of {QUERY_ROUTING_MODES}, got {config.query_routing_mode!r}.")
-    if config.query_routing_mode != "decoder" and config.model_kind != "table_slot_head":
+    if config.query_routing_mode == "direct_slot":
+        if config.model_kind != "table_slot_backbone":
+            raise ValueError("query_routing_mode='direct_slot' needs model_kind='table_slot_backbone'.")
+        if config.table_slot_scope == "cell":
+            raise ValueError("query_routing_mode='direct_slot' needs data or cell_and_data scope.")
+    elif config.query_routing_mode != "decoder" and config.model_kind != "table_slot_head":
         raise ValueError(
             f"query_routing_mode={config.query_routing_mode!r} needs model_kind=table_slot_head, "
             f"not {config.model_kind!r}."
         )
+    if config.query_routing_mode == "posterior_attention" and config.table_slot_scope == "cell":
+        raise ValueError("query_routing_mode='posterior_attention' needs data or cell_and_data scope.")
+    if config.posterior_crossfit_weight:
+        if config.query_routing_mode != "posterior_attention":
+            raise ValueError("posterior_crossfit_weight needs query_routing_mode='posterior_attention'.")
+        if not 2 <= config.posterior_crossfit_folds <= config.support_size:
+            raise ValueError("posterior_crossfit_folds must lie in [2, support_size].")
+    elif config.posterior_crossfit_folds < 2:
+        raise ValueError("posterior_crossfit_folds must be at least 2.")
+    if config.slot_composition not in SLOT_COMPOSITIONS:
+        raise ValueError(f"slot_composition must be one of {SLOT_COMPOSITIONS}, got {config.slot_composition!r}.")
+    if config.slot_composition == "factorized":
+        if config.model_kind != "table_slot_head":
+            raise ValueError("slot_composition='factorized' needs model_kind='table_slot_head'.")
+        if config.table_slot_scope != "cell_and_data":
+            raise ValueError("slot_composition='factorized' needs table_slot_scope='cell_and_data'.")
+        if config.query_routing_mode != "tabpfn_attention":
+            raise ValueError("slot_composition='factorized' needs query_routing_mode='tabpfn_attention'.")
     if config.reconstruction_mixture not in RECONSTRUCTION_MIXTURES:
         raise ValueError(
             f"reconstruction_mixture must be one of {RECONSTRUCTION_MIXTURES}, got {config.reconstruction_mixture!r}."
@@ -295,7 +370,25 @@ def validate_config(config: SlotPretrainingConfig) -> None:
                 f"reconstruction_mixture={config.reconstruction_mixture!r} needs a nonzero "
                 "support_reconstruction_weight."
             )
-    for name in ("support_reconstruction_weight", "slot_mi_weight"):
+    if config.support_reconstruction_target not in SUPPORT_RECONSTRUCTION_TARGETS:
+        raise ValueError(
+            "support_reconstruction_target must be one of "
+            f"{SUPPORT_RECONSTRUCTION_TARGETS}, got {config.support_reconstruction_target!r}."
+        )
+    if (
+        config.support_reconstruction_weight
+        and config.support_reconstruction_target == "embedding"
+        and config.table_slot_scope == "cell"
+    ):
+        raise ValueError("Embedding support reconstruction needs data or cell_and_data scope.")
+    if config.embedding_reconstruction_weight and config.table_slot_scope == "cell":
+        raise ValueError("Embedding reconstruction needs data or cell_and_data scope.")
+    for name in (
+        "support_reconstruction_weight",
+        "slot_mi_weight",
+        "embedding_reconstruction_weight",
+        "posterior_crossfit_weight",
+    ):
         weight = getattr(config, name)
         if weight < 0.0:
             raise ValueError(f"{name} must not be negative, got {weight}.")
@@ -304,11 +397,11 @@ def validate_config(config: SlotPretrainingConfig) -> None:
         # slots inside the layers instead.
         if weight and config.model_kind != "table_slot_head":
             raise ValueError(f"{name} needs model_kind=table_slot_head, not {config.model_kind!r}.")
-    if config.model_kind in ("table_slot_backbone", "table_slot_mufasa"):
-        if not config.table_slot_layer_indices or any(
-            index < 0 or index >= config.num_layers for index in config.table_slot_layer_indices
-        ):
-            raise ValueError("table_slot_layer_indices must identify transformer blocks.")
+    if config.model_kind in ("table_slot_backbone", "table_slot_mufasa", "table_slot_replace") and (
+        not config.table_slot_layer_indices
+        or any(index < 0 or index >= config.num_layers for index in config.table_slot_layer_indices)
+    ):
+        raise ValueError("table_slot_layer_indices must identify transformer blocks.")
     if config.require_cuda and not torch.cuda.is_available():
         raise RuntimeError("--require-cuda was set but no CUDA device is available.")
 
@@ -386,19 +479,44 @@ def slot_training_loss(model, batch, config: SlotPretrainingConfig) -> tuple[tor
     """
     reconstruction_weight = float(config.support_reconstruction_weight)
     mi_weight = float(config.slot_mi_weight)
-    if not reconstruction_weight and not mi_weight:
+    embedding_weight = float(config.embedding_reconstruction_weight)
+    crossfit_weight = float(config.posterior_crossfit_weight)
+    if not reconstruction_weight and not mi_weight and not embedding_weight and not crossfit_weight:
         return slot_batch_loss(model, batch), {}
     support_x, support_y, query_x, target = _batch_arguments(batch)
     # The second backbone pass is the expensive half, so it is requested only
     # when something actually reads it.
-    prediction = model(support_x, support_y, query_x, reconstruct_support=bool(reconstruction_weight))
+    reconstruct_embedding_target = config.support_reconstruction_target == "embedding" and bool(reconstruction_weight)
+    prediction = model(
+        support_x,
+        support_y,
+        query_x,
+        reconstruct_support=bool(reconstruction_weight) and not reconstruct_embedding_target,
+        reconstruct_embeddings=bool(embedding_weight) or reconstruct_embedding_target,
+        crossfit_posterior_gate=bool(crossfit_weight),
+        crossfit_folds=config.posterior_crossfit_folds,
+    )
     target_loss = slot_regime_loss(prediction, target)
     total = target_loss
     components = {"target_loss": float(target_loss.detach())}
     if reconstruction_weight:
-        reconstruction = support_reconstruction_loss(prediction, support_y)
+        reconstruction = (
+            embedding_reconstruction_loss(prediction)
+            if reconstruct_embedding_target
+            else support_reconstruction_loss(prediction, support_y)
+        )
         total = total + reconstruction_weight * reconstruction
-        components["reconstruction_nll"] = float(reconstruction.detach())
+        components[
+            "reconstruction_embedding_mse" if reconstruct_embedding_target else "reconstruction_nll"
+        ] = float(reconstruction.detach())
+    if embedding_weight:
+        embedding_mse = embedding_reconstruction_loss(prediction)
+        total = total + embedding_weight * embedding_mse
+        components["embedding_reconstruction_mse"] = float(embedding_mse.detach())
+    if crossfit_weight:
+        crossfit = crossfit_gate_loss(prediction)
+        total = total + crossfit_weight * crossfit
+        components["posterior_crossfit_gate_kl"] = float(crossfit.detach())
     if mi_weight:
         mi = slot_mi_loss(prediction.support_attention)
         total = total + mi_weight * mi
@@ -547,9 +665,12 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         multiregime_losses: list[float] = []
         gate_aucs: list[float] = []
         gate_entropies: list[float] = []
+        query_slot_assignment_entropies: list[float] = []
         binding: dict[str, list[float]] = {}
         utilization: dict[str, list[float]] = {}
         reconstruction: list[float] = []
+        reconstruction_embedding: list[float] = []
+        embedding_reconstruction: list[float] = []
         gate_agreements: list[float] = []
         for _ in range(config.validation_episodes):
             episode = multiregime_batch(config, episode_rng)
@@ -560,6 +681,24 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
             if config.model_kind == "vanilla":
                 # No slots, so the binding diagnostics do not apply; only the
                 # losses are comparable against the other arms.
+                continue
+            if config.model_kind == "table_slot_replace":
+                state = collect_table_slot_state(model)
+                if state is None:
+                    raise RuntimeError("table_slot_replace produced no table-slot state.")
+                for key, value in slot_utilization_scores(state.support_attention).items():
+                    utilization.setdefault(key, []).append(value)
+                for key, value in support_binding_scores(
+                    state.support_attention,
+                    episode.support_regime_source,
+                    identifiable_support_rows(episode.candidate_support_positive),
+                ).items():
+                    binding.setdefault(key, []).append(value)
+                # This is an assignment diagnostic rather than a mixture gate:
+                # the model is decoded by the native NanoTabPFN head.
+                if state.query_slot_attention_by_column is not None:
+                    query_assignment = state.query_slot_attention_by_column.mean(dim=2)
+                    query_slot_assignment_entropies.append(float(slot_assignment_entropy(query_assignment).mean()))
                 continue
             if config.model_kind == "slot_backbone":
                 # The competition happens inside the layers, so the attention is
@@ -575,11 +714,25 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
                         binding.setdefault(key, []).append(value)
                 continue
             reconstructing = config.model_kind == "table_slot_head" and bool(config.support_reconstruction_weight)
-            prediction = model(
-                episode.support_x, episode.support_y, episode.query_x, **({"reconstruct_support": True} if reconstructing else {})
+            reconstruct_embedding_target = (
+                reconstructing and config.support_reconstruction_target == "embedding"
             )
+            prediction = model(
+                episode.support_x, episode.support_y, episode.query_x,
+                **({"reconstruct_support": True} if reconstructing and not reconstruct_embedding_target else {}),
+                **{
+                    "reconstruct_embeddings": True
+                }
+                if config.embedding_reconstruction_weight or reconstruct_embedding_target
+                else {},
+            )
+            if config.embedding_reconstruction_weight:
+                embedding_reconstruction.append(float(embedding_reconstruction_loss(prediction)))
             if reconstructing:
-                reconstruction.append(float(support_reconstruction_loss(prediction, episode.support_y)))
+                if reconstruct_embedding_target:
+                    reconstruction_embedding.append(float(embedding_reconstruction_loss(prediction)))
+                else:
+                    reconstruction.append(float(support_reconstruction_loss(prediction, episode.support_y)))
                 # How far the decoder's alpha sits from the competition's own
                 # assignment on the same rows.  Under "attention" the two
                 # routings were never forced to agree and nothing measured
@@ -623,6 +776,10 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         "query_cross_entropy": ordinary_losses,
         "multiregime_cross_entropy": multiregime_losses,
         "gate_entropy": gate_entropies,
+        # Native-decoder replacement has no prediction mixture gate.  This is
+        # solely the entropy of the query cell's read over support-derived
+        # slots; it must never be interpreted as an expert gate.
+        "query_slot_assignment_entropy": query_slot_assignment_entropies,
         # The binding question: did a slot actually take the contaminated rows?
         # `gate_*` scores the query side, `support_*` the labelled context,
         # which is where the slots actually compete.
@@ -642,6 +799,8 @@ def validate(model: NanoTabPFNSlotRegimeModel, config: SlotPretrainingConfig) ->
         # Sharpness, balance and the reconstruction NLL: what the closure pilot
         # is screened on.  Absent for every arm that requests neither.
         "support_reconstruction_nll": reconstruction,
+        "support_reconstruction_embedding_mse": reconstruction_embedding,
+        "support_embedding_reconstruction_mse": embedding_reconstruction,
         # `KL(a || alpha)` between the two routings, and the convex blends that
         # decide whether the slot write reaches the table at all.  A run whose
         # `feature_mix`/`row_mix` have collapsed toward zero has silently
@@ -748,6 +907,17 @@ def build_model(config: SlotPretrainingConfig):
     backbone = NanoTabPFNModel(**config.architecture())
     if config.model_kind == "vanilla":
         return backbone.to(config.device)
+    if config.model_kind == "table_slot_replace":
+        install_table_slot_layers(
+            backbone,
+            layer_indices=config.table_slot_layer_indices,
+            num_slots=config.num_slots,
+            num_slot_iterations=config.num_slot_iterations,
+            num_heads=config.slot_attention_heads,
+            scope=config.table_slot_scope,
+            attention_replacement=config.table_slot_attention_replacement,
+        )
+        return backbone.to(config.device)
     if config.model_kind.startswith("table_slot_"):
         return TableSlotModel(
             backbone,
@@ -755,10 +925,17 @@ def build_model(config: SlotPretrainingConfig):
             num_slots=config.num_slots,
             layer_indices=config.table_slot_layer_indices,
             num_slot_iterations=config.num_slot_iterations,
+            num_slot_heads=config.slot_attention_heads,
             max_classes=config.max_classes,
             scope=config.table_slot_scope,
             query_routing_mode=config.query_routing_mode,
             reconstruction_mixture=config.reconstruction_mixture,
+            decoder_interaction=config.decoder_interaction,
+            slot_composition=config.slot_composition,
+            embedding_reconstruction=bool(
+                config.embedding_reconstruction_weight
+                or (config.support_reconstruction_weight and config.support_reconstruction_target == "embedding")
+            ),
         ).to(config.device)
     if config.model_kind in _SLOT_LAYER_KINDS:
         install_slot_layers(
@@ -794,23 +971,46 @@ def _checkpoint(
     best_query_ce: float | None = None,
     best_multiregime_ce: float | None = None,
 ) -> dict[str, Any]:
-    if config.model_kind.startswith("table_slot_"):
+    if config.model_kind == "table_slot_replace":
         checkpoint = {
             "architecture": {
                 **config.architecture(),
                 "model_kind": config.model_kind,
                 "num_slots": config.num_slots,
                 "num_slot_iterations": config.num_slot_iterations,
+                "slot_attention_heads": config.slot_attention_heads,
                 "slot_layer_indices": list(config.table_slot_layer_indices),
                 "table_slot_scope": config.table_slot_scope,
+                "table_slot_attention_replacement": config.table_slot_attention_replacement,
+            },
+            "model": model.state_dict(),
+            "training_config": asdict(config),
+        }
+    elif config.model_kind.startswith("table_slot_"):
+        checkpoint = {
+            "architecture": {
+                **config.architecture(),
+                "model_kind": config.model_kind,
+                "num_slots": config.num_slots,
+                "num_slot_iterations": config.num_slot_iterations,
+                "slot_attention_heads": config.slot_attention_heads,
+                "slot_layer_indices": list(config.table_slot_layer_indices),
+                "table_slot_scope": config.table_slot_scope,
+                "decoder_interaction": config.decoder_interaction,
                 "max_classes": config.max_classes,
                 "target_inclusive_routing": True,
                 # Metadata: neither weight is a constructor argument, so a
                 # checkpoint written before they existed still loads.
                 "support_reconstruction_weight": config.support_reconstruction_weight,
+                "support_reconstruction_target": config.support_reconstruction_target,
                 "slot_mi_weight": config.slot_mi_weight,
                 "query_routing_mode": config.query_routing_mode,
                 "reconstruction_mixture": config.reconstruction_mixture,
+                "slot_composition": config.slot_composition,
+                "embedding_reconstruction": bool(
+                    config.embedding_reconstruction_weight
+                    or (config.support_reconstruction_weight and config.support_reconstruction_target == "embedding")
+                ),
             },
             "model": model.state_dict(),
             "training_config": asdict(config),
@@ -1084,11 +1284,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--table-slot-layer-indices", nargs="+", type=int, default=defaults.table_slot_layer_indices)
     parser.add_argument("--table-slot-scope", choices=SLOT_SCOPES, default=defaults.table_slot_scope)
     parser.add_argument(
+        "--table-slot-attention-replacement",
+        choices=ATTENTION_REPLACEMENTS,
+        default=defaults.table_slot_attention_replacement,
+    )
+    parser.add_argument(
         "--query-routing-mode", choices=QUERY_ROUTING_MODES, default=defaults.query_routing_mode
+    )
+    parser.add_argument(
+        "--decoder-interaction",
+        choices=("full", "product"),
+        default=defaults.decoder_interaction,
+        help="decoder input: full [h,s,h*s] or product [h*s]",
     )
     parser.add_argument(
         "--reconstruction-mixture", choices=RECONSTRUCTION_MIXTURES, default=defaults.reconstruction_mixture
     )
+    parser.add_argument(
+        "--support-reconstruction-target",
+        choices=SUPPORT_RECONSTRUCTION_TARGETS,
+        default=defaults.support_reconstruction_target,
+    )
+    parser.add_argument("--slot-composition", choices=SLOT_COMPOSITIONS, default=defaults.slot_composition)
     parser.add_argument("--tabarena-max-predictors", type=int, default=defaults.tabarena_max_predictors)
     parser.add_argument("--tabarena-max-classes", type=int, default=defaults.tabarena_max_classes)
     parser.add_argument("--no-tensorboard", dest="tensorboard", action="store_false")
@@ -1123,6 +1340,8 @@ def build_parser() -> argparse.ArgumentParser:
         "num_layers",
         "num_slots",
         "num_slot_iterations",
+        "slot_attention_heads",
+        "posterior_crossfit_folds",
         "epoch_steps",
         "checkpoint_interval",
         "tabarena_folds",
@@ -1138,7 +1357,9 @@ def build_parser() -> argparse.ArgumentParser:
         "multiregime_contamination",
         "regime_coherence",
         "support_reconstruction_weight",
+        "embedding_reconstruction_weight",
         "slot_mi_weight",
+        "posterior_crossfit_weight",
     )
     for name in integer_fields:
         parser.add_argument(f"--{name.replace('_', '-')}", type=int, default=getattr(defaults, name))

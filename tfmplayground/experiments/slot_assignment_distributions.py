@@ -25,10 +25,14 @@ Outputs, per the layout the earlier artifacts already use:
 ``plot-index.csv``              task to plot and representation paths
 ``representations/``            the captured ``u_i``, attention and query
                                  gate, as ``npz``
-``plots/``                      PCA and t-SNE of the *support* ``u_i``,
-                                 coloured by hard slot (query rows have no
-                                 captured representation to project; see the
-                                 query CSV/summary columns for their routing)
+``plots/``                      PCA and t-SNE of the support *and* query
+                                 ``u_i``, projected together.  Support points
+                                 are coloured by hard slot (filled markers);
+                                 query points by hard decoder gate (hollow
+                                 markers) -- two separate legends, since the
+                                 two colourings come from different
+                                 competitions.  See ``capture_assignment`` for
+                                 where the query representation comes from.
 
 Tables are read from the cached frames named in ``--tasks-csv`` rather than
 fetched, so a regeneration is reproducible and needs no network.
@@ -66,6 +70,8 @@ from sklearn.preprocessing import LabelEncoder
 from tfmplayground.experiments.evaluate_integrated_tabarena import select_train_indices
 from tfmplayground.interface import get_feature_preprocessor
 from tfmplayground.models.nanotabpfn import NanoTabPFNModel
+from tfmplayground.models.reconstruction_routing import ReconstructionRouter
+from tfmplayground.models.reconstruction_tabarena import ReconstructionTabArenaAdapter
 from tfmplayground.models.slot_regime import SlotLogitsAdapter, load_checkpoint_for_inference
 from tfmplayground.models.table_slot import TableSlotModel
 
@@ -175,32 +181,40 @@ def capture_vanilla(
     support: int,
     device: str,
     num_mem_chunks: int = 1,
-) -> tuple[np.ndarray, np.ndarray]:
-    """``(u, query_probability)``: ``(support, E)`` row states, and each query
-    row's predicted positive-class probability, ``(query,)``.
+    num_classes: int = 2,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """``(u, query_probability, query_u)``: ``(support, E)`` and ``(query, E)``
+    row states, and each query row's predicted probability.
 
-    ``u`` is the same target-column read as ``NanoTabPFNSlotRegimeModel.forward``
-    and ``representation_probe.probe_checkpoint``: the label embedding after
-    repeated feature/row attention, so a support row's state depends on both
-    ``x_i`` and ``y_i``.  No competition means no ``a[i,k]`` to plot by, so the
-    caller colours these rows by the one thing that *is* available: the true
-    class.
+    ``u`` and ``query_u`` are the same target-column read as
+    ``NanoTabPFNSlotRegimeModel.forward`` and
+    ``representation_probe.probe_checkpoint``: the label embedding after
+    repeated feature/row attention, so a row's state depends on both ``x_i``
+    and ``y_i`` (a query row's target cell carries the training-time padding,
+    not its own label).  No competition means no ``a[i,k]`` to plot by, so the
+    caller colours both by the one thing that *is* available: the true class.
 
     ``query_probability`` reuses the same ``encode_table`` call rather than a
     second forward pass through ``model(...)``: it is exactly what
     ``NanoTabPFNModel._forward`` computes -- ``decoder`` applied to the query
     rows' target-column state -- read off manually so both outputs share one
-    pass over the backbone.
+    pass over the backbone.  Logits are truncated to ``[..., :num_classes]``
+    before the softmax, the same convention ``evaluate_integrated_tabarena.
+    predict_vanilla`` uses: the positive-class probability alone at
+    ``num_classes=2`` (bit-comparable with every binary-only caller), the full
+    distribution above it.
     """
     x = torch.as_tensor(encoded, dtype=torch.float32, device=device).unsqueeze(0)
     y = torch.as_tensor(labels[:support], dtype=torch.float32, device=device).unsqueeze(0)
     model.to(device).eval()
     encoded_table = model.encode_table((x, y), train_test_split_index=support, num_mem_chunks=num_mem_chunks)
     u = encoded_table[0, :support, -1, :].cpu().numpy()
+    query_u = encoded_table[0, support:, -1, :].cpu().numpy()
     query_state = encoded_table[:, support:, -1, :]
-    query_logits = model.decoder(query_state)
-    query_probability = query_logits.softmax(-1)[0, :, 1].cpu().numpy()
-    return u, query_probability
+    query_logits = model.decoder(query_state)[..., :num_classes]
+    distribution = query_logits.softmax(-1)[0]
+    query_probability = distribution[:, 1].cpu().numpy() if num_classes == 2 else distribution.cpu().numpy()
+    return u, query_probability, query_u
 
 
 @torch.no_grad()
@@ -212,8 +226,9 @@ def capture_assignment(
     support: int,
     device: str,
     num_mem_chunks: int = 1,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """``(u, attention, query_gate, query_probability)``.
+    num_classes: int = 2,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """``(u, attention, query_gate, query_probability, query_u)``.
 
     ``u`` and ``attention`` are ``(support, ...)``, taken off one forward hook
     rather than recomputed or read back off the model's ``last_*`` attributes.
@@ -222,26 +237,47 @@ def capture_assignment(
     that with one tap's ``u`` would plot two different things against each
     other.
 
-    ``query_gate`` is ``(query, num_slots)`` and *is* read off ``last_query_gates``
-    -- there is no hook target for it, since query rows never enter the
-    competition module at all (``table_slot.py``: "Query rows carry no label,
-    so they cannot compete for slots").  They are routed separately by the
-    shared decoder's own softmax gate, which the support hook cannot see.
+    ``query_u`` is ``(query, E)``, the same pooled row representation ``u``
+    is -- mean-over-cells of the adapter's own input table -- but for the rows
+    that do not bind slots.  ``datapoint_slots`` receives only the support
+    cells and returns the actual ``(slots, attention)`` pair; the adapter
+    wrapper supplies the corresponding table for the support/query row
+    projections.
 
-    ``query_probability`` is ``(query,)``, the positive-class probability of
-    the model's own mixture prediction -- ``SlotRegimePrediction.marginal_probabilities()``,
-    the exact quantity ``slot_regime_loss`` is trained against.  This is the
+    ``query_gate`` is ``(query, num_slots)`` and *is* read off ``last_query_gates``
+    -- it is the decoder's separate softmax gate.  Query rows read the
+    support-bound slots but never bind them, so this is distinct from the
+    captured support assignment.
+
+    ``query_probability`` is the positive-class probability of the model's own
+    mixture prediction -- ``SlotRegimePrediction.marginal_probabilities()``,
+    the exact quantity ``slot_regime_loss`` is trained against -- truncated to
+    ``[..., :num_classes]`` at the logit level before marginalizing, the same
+    convention ``evaluate_integrated_tabarena.predict_vanilla`` uses: ``(query,)``
+    at ``num_classes=2``, ``(query, num_classes)`` above it.  This is the
     ground truth answer to "did the sharpened support assignment help": a hard
     or soft statistic on the gate is a proxy, this is the outcome itself.
 
-    All four come from the one forward pass already run for the support side,
+    All five come from the one forward pass already run for the support side,
     so none of this costs anything extra.
     """
     captured: list[tuple[torch.Tensor, torch.Tensor]] = []
     module = dict(model.named_modules())[name]
-    handle = module.register_forward_hook(
-        lambda _module, inputs, output: captured.append((inputs[0].detach(), output[1].detach()))
-    )
+    def capture_binding(_module, inputs, kwargs, output):
+        if isinstance(output, tuple):
+            captured.append((inputs[0].detach(), output[1].detach()))
+
+    handle = module.register_forward_hook(capture_binding, with_kwargs=True)
+    parent_name, _, _ = name.rpartition(".")
+    parent = dict(model.named_modules())[parent_name]
+    captured_table: list[torch.Tensor] = []
+    original_datapoint_path = parent.datapoint_path
+
+    def _patched_datapoint_path(table: torch.Tensor, split: int):
+        captured_table.append(table.detach())
+        return original_datapoint_path(table, split)
+
+    parent.datapoint_path = _patched_datapoint_path
     try:
         x = torch.as_tensor(encoded, dtype=torch.float32, device=device).unsqueeze(0)
         y = torch.as_tensor(labels[:support], dtype=torch.float32, device=device).unsqueeze(0)
@@ -253,11 +289,24 @@ def capture_assignment(
         prediction = model((x, y), train_test_split_index=support, num_mem_chunks=num_mem_chunks)
     finally:
         handle.remove()
+        parent.datapoint_path = original_datapoint_path
     if not captured:
         raise RuntimeError(f"{name} never ran during the forward pass.")
+    if not captured_table:
+        raise RuntimeError(f"{parent_name}.datapoint_path never ran during the forward pass.")
     u, attention = captured[-1]
     query_gate = model.last_query_gates[0].detach().cpu().numpy()
-    query_probability = prediction.marginal_probabilities()[0, :, 1].cpu().numpy()
+    sliced_slot_log_probabilities = torch.log_softmax(prediction.slot_logits[..., :num_classes], dim=-1)
+    marginal_log_probabilities = torch.logsumexp(prediction.log_gate[..., None] + sliced_slot_log_probabilities, dim=2)
+    query_distribution = marginal_log_probabilities.exp()[0]
+    query_probability = (
+        query_distribution[:, 1].cpu().numpy() if num_classes == 2 else query_distribution.cpu().numpy()
+    )
+    # The same mean-over-cells the adapter itself computes as the first line
+    # of ``datapoint_path``, applied to the full (support+query) table it
+    # receives rather than the support-only slice ``datapoint_slots`` sees.
+    pooled_rows = captured_table[-1].mean(dim=2)
+    query_u = pooled_rows[0, support:].cpu().numpy()
     # The cell placement competes over every row's cells; only the support
     # rows' pooled states are wanted here.
     return (
@@ -265,6 +314,119 @@ def capture_assignment(
         attention[0, :support].cpu().numpy(),
         query_gate,
         query_probability,
+        query_u,
+    )
+
+
+@torch.no_grad()
+def capture_cell_assignment(
+    model: TableSlotModel,
+    encoded: np.ndarray,
+    labels: np.ndarray,
+    support: int,
+    device: str,
+    num_mem_chunks: int = 1,
+    num_classes: int = 2,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """``(u, attention, query_gate, query_probability, query_u)`` for pure cell-scope models.
+
+    Cell scope never calls ``datapoint_path``: ``TableSlotAdapter.forward`` runs
+    ``cell_state`` instead, which competes per cell, not per row, so there is no
+    module boundary at a row-level pre-competition tensor the way
+    ``capture_assignment``'s ``addressed`` is. ``u``/``query_u`` therefore fall
+    back to a mean-over-cells pooling of the table exactly as the adapter
+    received it -- captured off a forward pre-hook on the adapter itself so it
+    cannot drift from what the model actually saw, the same principle
+    ``capture_assignment`` uses, just at the adapter's own input boundary
+    instead of ``datapoint_slots``'s.
+
+    ``attention`` is still the real per-support-row responsibility the cell
+    competition produced: ``TableSlotAdapter.forward`` always stores it on
+    ``last_state.support_attention``, cell path included, so it is read
+    directly post-forward rather than hooked. No hook is needed to disambiguate
+    it from a multi-tap fusion either, since ``mode="head"`` -- the only mode
+    any of these checkpoints use -- installs exactly one adapter
+    (``adapters[0]``).
+    """
+    adapter = model.adapters[0]
+    captured_table: list[torch.Tensor] = []
+    handle = adapter.register_forward_pre_hook(lambda _module, args: captured_table.append(args[0].detach()))
+    try:
+        x = torch.as_tensor(encoded, dtype=torch.float32, device=device).unsqueeze(0)
+        y = torch.as_tensor(labels[:support], dtype=torch.float32, device=device).unsqueeze(0)
+        model.to(device).eval()
+        prediction = model((x, y), train_test_split_index=support, num_mem_chunks=num_mem_chunks)
+    finally:
+        handle.remove()
+    if not captured_table:
+        raise RuntimeError("adapters[0] never ran during the forward pass.")
+    attention = adapter.last_state.support_attention[0].detach().cpu().numpy()
+    query_gate = model.last_query_gates[0].detach().cpu().numpy()
+    sliced_slot_log_probabilities = torch.log_softmax(prediction.slot_logits[..., :num_classes], dim=-1)
+    marginal_log_probabilities = torch.logsumexp(prediction.log_gate[..., None] + sliced_slot_log_probabilities, dim=2)
+    query_distribution = marginal_log_probabilities.exp()[0]
+    query_probability = (
+        query_distribution[:, 1].cpu().numpy() if num_classes == 2 else query_distribution.cpu().numpy()
+    )
+    pooled = captured_table[0].mean(dim=2)
+    return (
+        pooled[0, :support].cpu().numpy(),
+        attention,
+        query_gate,
+        query_probability,
+        pooled[0, support:].cpu().numpy(),
+    )
+
+
+@torch.no_grad()
+def capture_router_assignment(
+    model: ReconstructionRouter,
+    encoded: np.ndarray,
+    labels: np.ndarray,
+    support: int,
+    device: str,
+    num_classes: int = 2,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """``(u, attention, query_gate, query_probability, query_u)`` for the ``values`` arm.
+
+    Unlike ``TableSlotModel``, ``ReconstructionRouter`` calls its adapter
+    directly in ``forward`` (or, for scope="cell", only the adapter's
+    ``feature_slots`` submodule -- a different call path per scope), and it
+    already returns the per-support-row responsibility as
+    ``prediction.support_attention`` for every scope: there is exactly one
+    competition here (``self.adapter``, not a per-layer-index ``ModuleList``
+    the way ``TableSlotModel``'s mufasa mode would need disambiguating), so no
+    hook is needed to isolate it from a fusion across taps.
+
+    ``u``/``query_u`` are the same mean-over-cells pooling every other capture
+    function uses, read off one extra ``encode_table`` call with the identical
+    inputs the model's own forward makes internally. That costs one redundant
+    encoder pass, but unlike hooking, it works the same way regardless of which
+    internal path (adapter call vs. bare ``feature_slots`` call) the router's
+    scope takes -- hooking would need a different target per scope the way
+    ``capture_cell_assignment`` needs a different one than
+    ``capture_assignment``.
+    """
+    x = torch.as_tensor(encoded, dtype=torch.float32, device=device).unsqueeze(0)
+    y = torch.as_tensor(labels[:support], dtype=torch.float32, device=device).unsqueeze(0)
+    model.to(device).eval()
+    prediction, _ = model(x[:, :support], y, x[:, support:])
+    table = model.backbone.encode_table((x, y), support)
+    pooled = table.mean(dim=2)
+    attention = prediction.support_attention[0].detach().cpu().numpy()
+    query_gate = prediction.log_gate.exp()[0].detach().cpu().numpy()
+    sliced_slot_log_probabilities = torch.log_softmax(prediction.slot_logits[..., :num_classes], dim=-1)
+    marginal_log_probabilities = torch.logsumexp(prediction.log_gate[..., None] + sliced_slot_log_probabilities, dim=2)
+    query_distribution = marginal_log_probabilities.exp()[0]
+    query_probability = (
+        query_distribution[:, 1].cpu().numpy() if num_classes == 2 else query_distribution.cpu().numpy()
+    )
+    return (
+        pooled[0, :support].cpu().numpy(),
+        attention,
+        query_gate,
+        query_probability,
+        pooled[0, support:].cpu().numpy(),
     )
 
 
@@ -278,15 +440,31 @@ def prediction_metrics(probability: np.ndarray, labels: np.ndarray) -> dict[str,
     against) or the plain softmax output for vanilla, so log loss here is
     cross entropy on the true class, computed the same way for every arm.
 
+    ``probability`` is ``(query,)`` -- the positive-class probability -- for a
+    binary task, or ``(query, num_classes)`` above it; both shapes come
+    straight out of ``capture_vanilla``/``capture_assignment``, which switch on
+    the same ``num_classes`` this function infers from ``probability.ndim``.
+    The multi-class branch mirrors ``evaluate_tabarena_small``'s macro,
+    one-vs-rest AUC and full-distribution log loss -- the generalization of
+    the binary numbers, not a different metric.
+
     ``NaN`` when a task's query slice is single-class -- both metrics are
     undefined without both classes present, and a real evaluation should not
     silently read a placeholder as a good or bad score.
     """
     if len(set(labels.tolist())) < 2:
         return {"query_cross_entropy": float("nan"), "query_roc_auc": float("nan")}
+    if probability.ndim == 1:
+        return {
+            "query_cross_entropy": float(log_loss(labels, probability, labels=[0, 1])),
+            "query_roc_auc": float(roc_auc_score(labels, probability)),
+        }
+    classes = list(range(probability.shape[1]))
     return {
-        "query_cross_entropy": float(log_loss(labels, probability, labels=[0, 1])),
-        "query_roc_auc": float(roc_auc_score(labels, probability)),
+        "query_cross_entropy": float(log_loss(labels, probability, labels=classes)),
+        "query_roc_auc": float(
+            roc_auc_score(labels, probability, multi_class="ovr", average="macro", labels=classes)
+        ),
     }
 
 
@@ -370,13 +548,20 @@ def _plot(
     from matplotlib.lines import Line2D
 
     priors, models = config.priors, config.models
-    # The header and legend get a fixed inch budget rather than a fixed figure
-    # fraction: a one-row grid is a fifth the height of a five-row one, and a
-    # fraction that clears the title on one overlaps it on the other.
-    height = 5.5 * len(models) + 1.4
+    # The header and both legends get a fixed inch budget rather than a fixed
+    # figure fraction: a one-row grid is a fifth the height of a five-row one,
+    # and a fraction that clears the title on one overlaps it on the other.
+    height = 5.5 * len(models) + 1.9
     figure, axes = plt.subplots(len(models), len(priors), figsize=(6.5 * len(priors), height), squeeze=False)
     colors = plt.get_cmap("tab10").colors
     markers = ("o", "^", "s", "D")
+    # Figure-global, not per-panel: a task's label set is the same for every
+    # arm, and the legend is drawn once, so it must cover every label any
+    # panel could show rather than whichever panel happens to be built last.
+    all_labels = sorted(
+        {label for capture in captures.values() for label in capture["labels"].tolist()}
+        | {label for capture in captures.values() for label in capture["query_labels"].tolist()}
+    ) or [0, 1]
     for row, model_name in enumerate(models):
         for column, prior in enumerate(priors):
             axis = axes[row][column]
@@ -384,49 +569,98 @@ def _plot(
             if capture is None:
                 axis.set_axis_off()
                 continue
-            projection, variance = _project(capture["u"], kind, config)
+            support_u, query_u = capture["u"], capture["query_u"]
+            support_count = support_u.shape[0]
+            # One shared PCA/t-SNE basis per panel, fit on support and query
+            # together, so a query point's position is comparable to the
+            # support points around it rather than the two being independently
+            # rescaled projections.
+            projection, variance = _project(np.concatenate([support_u, query_u], axis=0), kind, config)
+            support_projection, query_projection = projection[:support_count], projection[support_count:]
             metrics, labels = capture["metrics"], capture["labels"]
+            query_metrics, query_labels = capture["query_metrics"], capture["query_labels"]
+            query_prediction = capture["query_prediction"]
+            performance = (
+                f"query CE={query_prediction['query_cross_entropy']:.3f}, "
+                f"AUC={query_prediction['query_roc_auc']:.3f}"
+                if pd.notna(query_prediction["query_cross_entropy"])
+                else "query CE/AUC undefined (single-class query slice)"
+            )
             vanilla = capture["attention"] is None
             if vanilla:
                 # No assignment to colour by, so colour keys off the true
                 # class directly -- redundant with the marker shape, which is
                 # the honest thing to plot for a model with no competition.
-                for label in sorted(set(labels.tolist())):
+                for label in all_labels:
                     mask = labels == label
-                    if not mask.any():
-                        continue
-                    axis.scatter(
-                        projection[mask, 0],
-                        projection[mask, 1],
-                        s=18,
-                        color=colors[label % len(colors)],
-                        marker=markers[label % len(markers)],
-                        # No per-row confidence exists without a competition,
-                        # so opacity is fixed rather than implying one.
-                        alpha=0.55,
-                        linewidths=0,
-                    )
-                axis.set_title(f"{prior.title()} | {model_name}\nno competition; coloured by class")
-            else:
-                for slot in range(capture["attention"].shape[1]):
-                    for label in sorted(set(labels.tolist())):
-                        mask = (metrics["hard"] == slot) & (labels == label)
-                        if not mask.any():
-                            continue
+                    if mask.any():
                         axis.scatter(
-                            projection[mask, 0],
-                            projection[mask, 1],
+                            support_projection[mask, 0],
+                            support_projection[mask, 1],
                             s=18,
-                            color=colors[slot % len(colors)],
+                            color=colors[label % len(colors)],
                             marker=markers[label % len(markers)],
-                            # Opacity carries confidence, so a panel that looks
-                            # decisive because of its colours but is not shows it.
-                            alpha=float(np.clip(capture["attention"][mask].max(axis=1).mean(), 0.15, 0.9)),
+                            # No per-row confidence exists without a
+                            # competition, so opacity is fixed rather than
+                            # implying one.
+                            alpha=0.55,
                             linewidths=0,
                         )
-                counts = ", ".join(str(c) for c in metrics["hard_counts"])
+                    query_mask = query_labels == label
+                    if query_mask.any():
+                        axis.scatter(
+                            query_projection[query_mask, 0],
+                            query_projection[query_mask, 1],
+                            s=30,
+                            facecolors="none",
+                            edgecolors=colors[label % len(colors)],
+                            marker=markers[label % len(markers)],
+                            alpha=0.55,
+                            linewidths=1.1,
+                        )
                 axis.set_title(
-                    f"{prior.title()} | {model_name}\nH={metrics['mean_normalized_entropy']:.3f}; n=[{counts}]"
+                    f"{prior.title()} | {model_name}\n"
+                    f"no competition; coloured by class; query n={len(query_labels)}\n{performance}"
+                )
+            else:
+                for slot in range(capture["attention"].shape[1]):
+                    for label in all_labels:
+                        mask = (metrics["hard"] == slot) & (labels == label)
+                        if mask.any():
+                            axis.scatter(
+                                support_projection[mask, 0],
+                                support_projection[mask, 1],
+                                s=18,
+                                color=colors[slot % len(colors)],
+                                marker=markers[label % len(markers)],
+                                # Opacity carries confidence, so a panel that
+                                # looks decisive because of its colours but is
+                                # not shows it.
+                                alpha=float(np.clip(capture["attention"][mask].max(axis=1).mean(), 0.15, 0.9)),
+                                linewidths=0,
+                            )
+                        query_mask = (query_metrics["hard"] == slot) & (query_labels == label)
+                        if query_mask.any():
+                            axis.scatter(
+                                query_projection[query_mask, 0],
+                                query_projection[query_mask, 1],
+                                s=30,
+                                facecolors="none",
+                                edgecolors=colors[slot % len(colors)],
+                                marker=markers[label % len(markers)],
+                                # The query analogue of the support opacity:
+                                # the decoder gate's own confidence, not the
+                                # competition's -- the two rows never compete
+                                # against the same thing.
+                                alpha=float(np.clip(capture["query_gate"][query_mask].max(axis=1).mean(), 0.15, 0.9)),
+                                linewidths=1.1,
+                            )
+                counts = ", ".join(str(c) for c in metrics["hard_counts"])
+                query_counts = ", ".join(str(c) for c in query_metrics["hard_counts"])
+                axis.set_title(
+                    f"{prior.title()} | {model_name}\n"
+                    f"support H={metrics['mean_normalized_entropy']:.3f}, n=[{counts}]; "
+                    f"query H={query_metrics['mean_normalized_entropy']:.3f}, n=[{query_counts}]\n{performance}"
                 )
             if kind == "pca":
                 axis.set_xlabel(f"PC1 ({variance[0] * 100:.1f}%)")
@@ -436,16 +670,55 @@ def _plot(
                 axis.set_ylabel("t-SNE 2")
             axis.grid(alpha=0.2)
     slots = config._slots
-    handles = [
+    support_handles = [
         Line2D([], [], marker="o", linestyle="", color=colors[slot % len(colors)], label=f"Slot {slot}")
         for slot in range(slots)
     ] + [
         Line2D([], [], marker=markers[label % len(markers)], linestyle="", color="0.35", label=f"Label {label}")
-        for label in (0, 1)
+        for label in all_labels
     ]
-    figure.legend(handles=handles, loc="lower center", ncol=slots + 2, frameon=False)
+    query_handles = [
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="",
+            markerfacecolor="none",
+            markeredgecolor=colors[slot % len(colors)],
+            label=f"Slot {slot}",
+        )
+        for slot in range(slots)
+    ] + [
+        Line2D(
+            [],
+            [],
+            marker=markers[label % len(markers)],
+            linestyle="",
+            markerfacecolor="none",
+            markeredgecolor="0.35",
+            label=f"Label {label}",
+        )
+        for label in all_labels
+    ]
+    legend_columns = max(1, -(-(slots + len(all_labels)) // 2))
+    figure.legend(
+        handles=support_handles,
+        loc="lower center",
+        bbox_to_anchor=(0.27, 0.0),
+        ncol=legend_columns,
+        frameon=False,
+        title="Support (filled; colour=hard slot or class, shape=label)",
+    )
+    figure.legend(
+        handles=query_handles,
+        loc="lower center",
+        bbox_to_anchor=(0.75, 0.0),
+        ncol=legend_columns,
+        frameon=False,
+        title="Query (hollow; colour=hard gate slot or class, shape=label)",
+    )
     figure.suptitle(
-        f"{kind.upper()} of support u_i: {task['dataset']}",
+        f"{kind.upper()} of support and query u_i: {task['dataset']}",
         fontsize=15,
         fontweight="bold",
         y=1 - 0.35 / height,
@@ -454,11 +727,11 @@ def _plot(
         0.5,
         1 - 0.72 / height,
         f"Task {task['task_id']}; {task['sample_rows']} sampled rows, {task['support_rows']} support; "
-        "color=hard slot, opacity=confidence, shape=label.",
+        "opacity=confidence.",
         ha="center",
         color="0.35",
     )
-    figure.tight_layout(rect=(0, 0.45 / height, 1, 1 - 0.95 / height))
+    figure.tight_layout(rect=(0, 0.68 / height, 1, 1 - 0.95 / height))
     destination = config.output_dir / "plots" / f"{task['task_id']}-{task['slug']}-support-ui-{kind}.png"
     figure.savefig(destination, dpi=140)
     plt.close(figure)
@@ -477,15 +750,32 @@ def run(config: DistributionConfig) -> Path:
     for arm in config.checkpoints:
         loaded = load_checkpoint_for_inference(arm.path, device=config.device)
         model = loaded.model if isinstance(loaded, SlotLogitsAdapter) else loaded
+        if isinstance(model, ReconstructionTabArenaAdapter):
+            # The reconstruction-routing wrapper exposes the label_alpha/
+            # embedding_mse table-slot model, the values-arm router, or the
+            # plain vanilla backbone, behind ``.model``; unwrap so the
+            # isinstance checks below see the same classes they know how to
+            # capture.
+            model = model.model
         if isinstance(model, TableSlotModel):
-            models[(arm.prior, arm.model)] = (model, captured_module_name(model))
+            # scope="cell" runs no data-path competition -- captured_module_name
+            # would raise looking for a datapoint_slots that was never built --
+            # so it is tagged for capture_cell_assignment instead of resolving
+            # a hook target here.
+            module_name = "cell" if model.scope == "cell" else captured_module_name(model)
+            models[(arm.prior, arm.model)] = (model, module_name)
             config._slots = model.num_slots
+        elif isinstance(model, ReconstructionRouter):
+            models[(arm.prior, arm.model)] = (model, "router")
+            config._slots = model.adapter.num_slots
         elif isinstance(model, NanoTabPFNModel):
             # No competition, so no module to hook and nothing to name beyond
             # the fixed source the docstring records.
             models[(arm.prior, arm.model)] = (model, VANILLA_SOURCE)
         else:
-            raise ValueError(f"{arm.path} is neither a table-slot nor a plain nanoTabPFN checkpoint.")
+            raise ValueError(
+                f"{arm.path} is neither a table-slot, reconstruction-router, nor a plain nanoTabPFN checkpoint."
+            )
 
     tasks = list(csv.DictReader(config.tasks_csv.open()))
     summary_rows: list[dict[str, Any]] = []
@@ -511,16 +801,32 @@ def run(config: DistributionConfig) -> Path:
             "query_source_row": selected[support:].astype(np.int64),
             "query_label": query_labels.astype(np.int64),
         }
+        num_classes = int(sampled_labels.max()) + 1
         captures: dict[tuple[str, str], dict[str, Any]] = {}
         for (prior, model_name), (model, module_name) in models.items():
             query_gate = None
-            if isinstance(model, TableSlotModel):
-                u, attention, query_gate, query_probability = capture_assignment(
-                    model, module_name, encoded, sampled_labels, support, config.device, config.num_mem_chunks
+            if isinstance(model, TableSlotModel) and module_name == "cell":
+                u, attention, query_gate, query_probability, query_u = capture_cell_assignment(
+                    model, encoded, sampled_labels, support, config.device, config.num_mem_chunks, num_classes
+                )
+            elif isinstance(model, TableSlotModel):
+                u, attention, query_gate, query_probability, query_u = capture_assignment(
+                    model,
+                    module_name,
+                    encoded,
+                    sampled_labels,
+                    support,
+                    config.device,
+                    config.num_mem_chunks,
+                    num_classes,
+                )
+            elif isinstance(model, ReconstructionRouter):
+                u, attention, query_gate, query_probability, query_u = capture_router_assignment(
+                    model, encoded, sampled_labels, support, config.device, num_classes
                 )
             else:
-                u, query_probability = capture_vanilla(
-                    model, encoded, sampled_labels, support, config.device, config.num_mem_chunks
+                u, query_probability, query_u = capture_vanilla(
+                    model, encoded, sampled_labels, support, config.device, config.num_mem_chunks, num_classes
                 )
                 attention = None
             metrics = assignment_metrics(attention, u, support_labels)
@@ -531,11 +837,17 @@ def run(config: DistributionConfig) -> Path:
             query_prediction = prediction_metrics(query_probability, query_labels)
             captures[(prior, model_name)] = {
                 "u": u,
+                "query_u": query_u,
                 "attention": attention,
+                "query_gate": query_gate,
                 "metrics": metrics,
+                "query_metrics": query_metrics,
                 "labels": support_labels,
+                "query_labels": query_labels,
+                "query_prediction": query_prediction,
             }
             arrays[f"{prior}__{model_name}__u"] = u.astype(np.float32)
+            arrays[f"{prior}__{model_name}__query_u"] = query_u.astype(np.float32)
             arrays[f"{prior}__{model_name}__query_probability"] = query_probability.astype(np.float32)
             if attention is not None:
                 arrays[f"{prior}__{model_name}__attention"] = attention.astype(np.float32)
@@ -609,8 +921,20 @@ def run(config: DistributionConfig) -> Path:
                     "query_position": position,
                     "source_row": int(selected[support + position]),
                     "label": int(query_labels[position]),
-                    "predicted_probability": float(query_probability[position]),
                 }
+                if query_probability.ndim == 1:
+                    # Binary task: unchanged from every result written before
+                    # the multi-class path existed -- the positive-class
+                    # probability alone.
+                    row["predicted_probability"] = float(query_probability[position])
+                else:
+                    # Multi-class task: the probability the model put on the
+                    # row's own true class, plus its actual top pick, since
+                    # neither is reconstructable from the other above two
+                    # classes.
+                    row["predicted_probability"] = float(query_probability[position, query_labels[position]])
+                    row["predicted_class"] = int(np.argmax(query_probability[position]))
+                    row["predicted_class_probability"] = float(query_probability[position].max())
                 if query_gate is not None:
                     row.update(
                         {
