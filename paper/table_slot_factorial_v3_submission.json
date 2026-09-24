@@ -1,0 +1,765 @@
+{
+  "study": "table_slot_factorial_v3",
+  "preflight_job": "37113448",
+  "array_job": "37113451",
+  "array": "0-74",
+  "array_task_throttle": 0,
+  "tabarena_evaluation": {
+    "script": "scripts/slurm/evaluate_table_slot_factorial_tabarena_a30.sbatch",
+    "dependency": "aftercorr:37113451",
+    "array": "0-74",
+    "job_id": 37113502,
+    "checkpoint": "runs/37113451/task-<array_index>/best.pth",
+    "official_checkpoint": "/users/k23139234/repo/TFM-Playground/checkpoints/nanotabpfn.pth",
+    "protocol": "max_predictors=30, subsample=2048, folds=5, repeats=10, real labels, vanilla included"
+  },
+  "partition": "biomed_a30_gpu",
+  "dependency": "afterok:37113448",
+  "host": "create",
+  "source_root": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/table-slot-factorial-v3-20260910-224145/code",
+  "source_hash": "2acf88e4bc6058046316ab461382616c0bb54e2eec115bf5102ed76e3b21c02d",
+  "python": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/routing-scale-20260908/.venv/bin/python",
+  "output_root": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/table-slot-factorial-v3-20260910-224145/code/runs/37113451",
+  "seed": 11,
+  "training": {
+    "steps": 5000,
+    "layers": 6,
+    "width": 192,
+    "hidden": 768,
+    "heads": 6,
+    "slots": 4,
+    "slot_iterations": 3,
+    "batch_size": 8,
+    "accumulate_gradients": 1,
+    "support_rows": 128,
+    "query_rows": 32,
+    "learning_rate": 0.0001,
+    "min_learning_rate": 0.000001,
+    "warmup_steps": 2000,
+    "weight_decay": 0.01,
+    "gradient_clip": 1
+  },
+  "evaluation": {
+    "support_rows": 128,
+    "query_rows": 128,
+    "validation_interval": 500,
+    "validation_episodes_per_family": 8,
+    "test_episodes_per_family": 32,
+    "families": [
+      "original",
+      "shared_rule",
+      "soft_gate",
+      "independent",
+      "persistent"
+    ]
+  },
+  "switches": {
+    "1": "blind query decoder content with labelled slots",
+    "2": "held-out support posterior-responsibility supervision",
+    "3": "temporary routing temperature and episode-local usage loss"
+  },
+  "local_verification": {
+    "tests_passed": 73,
+    "real_prior_preflight": "passed (small shape)",
+    "training_validation_test_smoke": "passed (2 steps)",
+    "gpu_preflight": "see job 37113448"
+  },
+  "cells": [
+    {
+      "index": 0,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 1,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 2,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 3,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 4,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 5,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 6,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 7,
+      "prior": "original",
+      "scope": "data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 8,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 9,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 10,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 11,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 12,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 13,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 14,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 15,
+      "prior": "original",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 16,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 17,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 18,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 19,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 20,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 21,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 22,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 23,
+      "prior": "original",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 24,
+      "prior": "original",
+      "scope": null,
+      "fixes": [],
+      "kind": "plain"
+    },
+    {
+      "index": 25,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 26,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 27,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 28,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 29,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 30,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 31,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 32,
+      "prior": "fixed",
+      "scope": "data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 33,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 34,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 35,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 36,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 37,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 38,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 39,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 40,
+      "prior": "fixed",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 41,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 42,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 43,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 44,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 45,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 46,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 47,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 48,
+      "prior": "fixed",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 49,
+      "prior": "fixed",
+      "scope": null,
+      "fixes": [],
+      "kind": "plain"
+    },
+    {
+      "index": 50,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 51,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 52,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 53,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 54,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 55,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 56,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 57,
+      "prior": "curriculum",
+      "scope": "data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 58,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 59,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 60,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 61,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 62,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 63,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 64,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 65,
+      "prior": "curriculum",
+      "scope": "cell_and_data",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 66,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 67,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        1
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 68,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 69,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 70,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 71,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        1,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 72,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 73,
+      "prior": "curriculum",
+      "scope": "cell",
+      "fixes": [
+        1,
+        2,
+        3
+      ],
+      "kind": "table_slot_head"
+    },
+    {
+      "index": 74,
+      "prior": "curriculum",
+      "scope": null,
+      "fixes": [],
+      "kind": "plain"
+    }
+  ]
+}
