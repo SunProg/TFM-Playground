@@ -1,0 +1,54 @@
+{
+  "status": "training_complete_results_collected",
+  "completed_at": "2026-09-10 09:15:59 UTC",
+  "training_exit_codes": [0, 0, 0, 0, 0, 0],
+  "report_generated_locally": true,
+  "report_job_last_observed_state": "PENDING",
+  "local_report": "results/multiregime_v3/pilot-37097926/report.md",
+  "local_summary": "results/multiregime_v3/pilot-37097926/summary.json",
+  "matching_checks_passed": 13,
+  "recorded_at": "2026-09-10 09:04:42 UTC",
+  "cluster": "create",
+  "partition": "biomed_a30_gpu",
+  "training_job_id": "37097926",
+  "report_job_id": "37097927",
+  "cells": 6,
+  "max_concurrent_gpus": 2,
+  "seed": 2402,
+  "steps_per_cell": 1000,
+  "batch_size": 4,
+  "support_size": 128,
+  "query_size": 32,
+  "layers": 3,
+  "width": 96,
+  "hidden": 384,
+  "heads": 4,
+  "num_slots": 4,
+  "modes": [
+    "original",
+    "fixed",
+    "curriculum"
+  ],
+  "models": [
+    "plain",
+    "slot"
+  ],
+  "source_archive": "/tmp/multiregime-v3-20260910.tar.gz",
+  "archive_sha256": "c41835a41a48705a637c56b2a6fcf4f5fb7428f48ea500d07e8667040d890a9d",
+  "source_hash": "6ea606e85f635dfb635ac4d3d166c83df6fa4e4ae1ae8f15f6c2b9eedbdb3ff9",
+  "remote_snapshot": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/multiregime-v3-20260910",
+  "remote_run_directory": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/submissions/multiregime-v3-20260910/runs/37097926",
+  "local_checks": {
+    "targeted_tests_passed": 9,
+    "ruff": "passed",
+    "shell_syntax": "passed",
+    "full_size_cpu_preflight": "passed"
+  },
+  "remote_checks": {
+    "archive_checksum": "matched",
+    "python_source_hash": "matched",
+    "cuda_preflight": "all six cells passed"
+  },
+  "scope": "One-seed synthetic pilot. No real-world transfer conclusion.",
+  "approval_review": "Initial upload rejection resolved by verifying the existing project destination and prior uploaded snapshot; retry approved."
+}

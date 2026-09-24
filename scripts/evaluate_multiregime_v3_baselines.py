@@ -20,8 +20,13 @@ new one.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
+import platform
+import socket
+import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +38,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from tfmplayground.experiments.multiregime_v3 import FAMILIES, OriginalPrior
-from tfmplayground.experiments.pretrain_multiregime_v3 import PilotConfig, evaluation_bank
+from tfmplayground.experiments.pretrain_multiregime_v3 import PilotConfig, evaluation_bank, source_hash
 from tfmplayground.experiments.pretrain_multiregime_v3 import metrics as pilot_metrics
 
 # v2.6/v3 need an explicit local checkpoint to bypass the gated hosted-weights
@@ -66,8 +71,105 @@ def positive_probability(model, query_x: np.ndarray) -> np.ndarray:
 
 def full_metrics(y: np.ndarray, p: np.ndarray) -> dict:
     result = pilot_metrics(y, p)
-    result["auc"] = float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan")
+    result["auc"] = float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else None
     return result
+
+
+def package_versions() -> dict[str, str | None]:
+    """Return versions relevant to the baseline and episode generator."""
+    distributions = (
+        "numpy",
+        "scipy",
+        "torch",
+        "scikit-learn",
+        "tabicl",
+        "tabpfn",
+        "tabpfn-contrib",
+    )
+    versions = {}
+    for distribution in distributions:
+        try:
+            versions[distribution] = importlib.metadata.version(distribution)
+        except importlib.metadata.PackageNotFoundError:
+            versions[distribution] = None
+    return versions
+
+
+def jsonable(value):
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(item) for item in value]
+    return value
+
+
+def load_pilot_config(path: Path, *, device: str, validation_episodes: int | None) -> tuple[PilotConfig, dict]:
+    metadata = json.loads(path.read_text())
+    config_data = metadata.get("config")
+    if not isinstance(config_data, dict):
+        raise ValueError(f"Pilot config {path} has no object-valued 'config' field.")
+    config_data = dict(config_data)
+    config_data["device"] = device
+    if validation_episodes is not None:
+        config_data["validation_episodes"] = validation_episodes
+    allowed = set(PilotConfig.__dataclass_fields__)
+    unknown = sorted(set(config_data) - allowed)
+    if unknown:
+        raise ValueError(f"Pilot config {path} has unknown fields: {unknown}")
+    return PilotConfig(**config_data), metadata
+
+
+def load_expected_hashes(path: Path, families: tuple[str, ...]) -> dict[str, list[str]]:
+    metadata = json.loads(path.read_text())
+    hashes = metadata.get("evaluation_bank_hashes")
+    if not isinstance(hashes, dict):
+        raise ValueError(f"Pilot result {path} has no evaluation_bank_hashes record.")
+    expected = {}
+    for family in families:
+        family_hashes = hashes.get(family)
+        if not isinstance(family_hashes, list) or not all(isinstance(item, str) for item in family_hashes):
+            raise ValueError(f"Pilot result {path} has no valid hashes for family {family!r}.")
+        expected[family] = family_hashes
+    return expected
+
+
+def write_environment_manifest(path: Path, *, args, config: PilotConfig, pilot_metadata: dict) -> dict:
+    manifest = {
+        "hostname": socket.gethostname(),
+        "python_version": sys.version,
+        "python_executable": sys.executable,
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "package_versions": package_versions(),
+        "torch_version": torch.__version__,
+        "torch_cuda_version": torch.version.cuda,
+        "cuda_available": bool(torch.cuda.is_available()),
+        "cuda_devices": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
+        if torch.cuda.is_available()
+        else [],
+        "device": args.device,
+        "architecture": config.architecture(),
+        "seed": config.seed,
+        "source_hash": source_hash(),
+        "pilot_source_hash": pilot_metadata.get("source_hash"),
+        "pilot_config": jsonable(args.pilot_config),
+        "pilot_result": jsonable(args.pilot_result),
+    }
+    path.write_text(json.dumps(manifest, indent=2) + "\n")
+    return manifest
+
+
+def pooled_auc(predictions: list[tuple[np.ndarray, np.ndarray]]) -> float | None:
+    if not predictions:
+        return None
+    labels = np.concatenate([labels for labels, _ in predictions])
+    probabilities = np.concatenate([probabilities for _, probabilities in predictions])
+    if len(np.unique(labels)) != 2:
+        return None
+    value = float(roc_auc_score(labels, probabilities))
+    return value if np.isfinite(value) else None
 
 
 def build_sklearn_models(seed: int) -> dict:
@@ -77,7 +179,7 @@ def build_sklearn_models(seed: int) -> dict:
     }
 
 
-def build_tabpfn(version: str, *, device: str, finetune: bool, args):
+def build_tabpfn(version: str, *, device: str, finetune: bool, args, validation_split_ratio: float | None = None):
     from tabpfn.constants import ModelVersion
 
     model_version = {"v2.2": ModelVersion.V2, "v2.6": ModelVersion.V2_6, "v3": ModelVersion.V3}[version]
@@ -107,7 +209,9 @@ def build_tabpfn(version: str, *, device: str, finetune: bool, args):
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         weight_decay=0.01,
-        validation_split_ratio=args.validation_split_ratio,
+        validation_split_ratio=(
+            args.validation_split_ratio if validation_split_ratio is None else validation_split_ratio
+        ),
         n_finetune_ctx_plus_query_samples=128,
         finetune_ctx_query_split_ratio=0.2,
         random_state=0,
@@ -138,23 +242,70 @@ def build_tabpfn(version: str, *, device: str, finetune: bool, args):
 
 
 def run(args) -> dict:
-    # generator/eval-bank config only; no torch device needed here. Overriding
-    # validation_episodes departs from the pilot's own bank (smoke-testing
-    # only) -- the real comparison run must leave it at the PilotConfig default.
-    config = PilotConfig(device="cpu", validation_episodes=args.validation_episodes)
+    config, pilot_metadata = load_pilot_config(
+        args.pilot_config,
+        device=args.device,
+        validation_episodes=args.validation_episodes,
+    )
     original = OriginalPrior(config.generator())
     bank = evaluation_bank(config, original)
     families = FAMILIES if not args.families else tuple(args.families)
 
+    expected_hashes = load_expected_hashes(args.pilot_result, families)
+    episode_hashes = {family: [episode.tensor_hash() for episode in bank[family]] for family in families}
+    mismatches = {
+        family: {
+            "expected": expected_hashes[family],
+            "generated": episode_hashes[family],
+        }
+        for family in families
+        if episode_hashes[family] != expected_hashes[family]
+    }
+    if mismatches:
+        raise RuntimeError(
+            "Evaluation-bank hashes do not match the CREATE pilot; refusing to produce cross-group metrics: "
+            + json.dumps(mismatches)
+        )
+
+    environment_manifest = write_environment_manifest(
+        args.environment_manifest,
+        args=args,
+        config=config,
+        pilot_metadata=pilot_metadata,
+    )
+
     sklearn_models = build_sklearn_models(config.seed)
     tabpfn_versions = tuple(args.versions) if args.versions else ("v2.2", "v2.6", "v3")
 
-    def evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y):
+    predictions = defaultdict(list)
+
+    def evaluate_one(
+        name,
+        fit_predict,
+        family,
+        episode_index,
+        episode_hash,
+        support_x,
+        support_y,
+        query_x,
+        query_y,
+    ):
         t0 = time.monotonic()
-        row = {"model": name, "family": family, "episode": episode_index}
+        row = {
+            "model": name,
+            "family": family,
+            "episode": episode_index,
+            "episode_hash": episode_hash,
+            "query_rows": len(query_y),
+        }
         try:
-            probability = fit_predict(support_x, support_y, query_x)
+            probability = np.asarray(fit_predict(support_x, support_y, query_x), dtype=np.float64).reshape(-1)
+            if len(probability) != len(query_y):
+                raise ValueError(f"predicted {len(probability)} probabilities for {len(query_y)} query rows")
+            if not np.isfinite(probability).all():
+                raise ValueError("predicted probabilities contain non-finite values")
             row.update(full_metrics(query_y, probability))
+            predictions[(name, family)].append((query_y.copy(), probability.copy()))
         except Exception as error:  # one bad episode (e.g. a too-imbalanced support
             # set collapsing a finetuning validation split) must not lose every
             # other already-computed result -- record it and keep going.
@@ -174,14 +325,41 @@ def run(args) -> dict:
                     model.fit(sx, sy)
                     return positive_probability(model, qx)
 
-                rows.append(evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y))
+                rows.append(
+                    evaluate_one(
+                        name,
+                        fit_predict,
+                        family,
+                        episode_index,
+                        episode.tensor_hash(),
+                        support_x,
+                        support_y,
+                        query_x,
+                        query_y,
+                    )
+                )
 
             for version in tabpfn_versions:
                 for finetune in (False, True):
                     name = f"tabpfn-{version}" + ("-finetuned" if finetune else "")
 
                     def fit_predict(sx, sy, qx, version=version, finetune=finetune):
-                        classifier = build_tabpfn(version, device=args.device, finetune=finetune, args=args)
+                        validation_split_ratio = None
+                        if finetune:
+                            _, class_counts = np.unique(sy, return_counts=True)
+                            # A stratified validation split is undefined when a
+                            # support class has only one row. Train on all
+                            # support rows for this episode and disable only
+                            # the internal validation/early-stopping path.
+                            if len(class_counts) < 2 or int(class_counts.min()) < 2:
+                                validation_split_ratio = 0.0
+                        classifier = build_tabpfn(
+                            version,
+                            device=args.device,
+                            finetune=finetune,
+                            args=args,
+                            validation_split_ratio=validation_split_ratio,
+                        )
                         classifier.fit(sx, sy)
                         probability = positive_probability(classifier, qx)
                         del classifier
@@ -189,12 +367,34 @@ def run(args) -> dict:
                             torch.cuda.empty_cache()
                         return probability
 
-                    rows.append(evaluate_one(name, fit_predict, family, episode_index, support_x, support_y, query_x, query_y))
+                    rows.append(
+                        evaluate_one(
+                            name,
+                            fit_predict,
+                            family,
+                            episode_index,
+                            episode.tensor_hash(),
+                            support_x,
+                            support_y,
+                            query_x,
+                            query_y,
+                        )
+                    )
 
             # Incremental checkpoint: a crash or kill partway through must not
             # lose every episode already computed, given how long this run is.
             args.output.write_text(
-                json.dumps({"rows": rows, "elapsed_seconds": time.monotonic() - started, "complete": False}, indent=2)
+                json.dumps(
+                    {
+                        "rows": rows,
+                        "elapsed_seconds": time.monotonic() - started,
+                        "complete": False,
+                        "episode_hashes": episode_hashes,
+                        "pilot_source_hash": pilot_metadata.get("source_hash"),
+                        "source_hash": source_hash(),
+                    },
+                    indent=2,
+                )
                 + "\n"
             )
 
@@ -210,16 +410,24 @@ def run(args) -> dict:
             )
             if not family_rows:
                 continue
+            family_predictions = predictions.get((model_name, family), [])
+            per_episode_auc = [row["auc"] for row in family_rows if row.get("auc") is not None]
+            pooled = pooled_auc(family_predictions)
             summary[model_name][family] = {
                 metric: float(np.mean([row[metric] for row in family_rows]))
-                for metric in ("log_loss", "brier", "accuracy", "ece_10", "auc")
+                for metric in ("log_loss", "brier", "accuracy", "ece_10")
             }
+            summary[model_name][family]["pooled_auc"] = pooled
+            summary[model_name][family]["mean_episode_auc"] = (
+                float(np.mean(per_episode_auc)) if per_episode_auc else None
+            )
             summary[model_name][family]["episodes"] = len(family_rows)
+            summary[model_name][family]["query_rows"] = sum(row["query_rows"] for row in family_rows)
             if failures:
                 summary[model_name][family]["failed_episodes"] = failures
 
     return {
-        "config": {key: value for key, value in vars(args).items() if key != "output"},
+        "config": jsonable({key: value for key, value in vars(args).items() if key != "output"}),
         "pilot_config": {
             "support_size": config.support_size,
             "query_size": config.query_size,
@@ -228,6 +436,16 @@ def run(args) -> dict:
             "validation_episodes": config.validation_episodes,
             "seed": config.seed,
         },
+        "architecture": config.architecture(),
+        "seed": config.seed,
+        "source_hash": source_hash(),
+        "pilot_source_hash": pilot_metadata.get("source_hash"),
+        "pilot_config_path": str(args.pilot_config),
+        "pilot_result_path": str(args.pilot_result),
+        "episode_hashes": episode_hashes,
+        "episode_hashes_match": True,
+        "package_versions": environment_manifest["package_versions"],
+        "environment_manifest": str(args.environment_manifest),
         "rows": rows,
         "summary": summary,
         "elapsed_seconds": time.monotonic() - started,
@@ -238,13 +456,16 @@ def run(args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--pilot-config", type=Path, required=True)
+    parser.add_argument("--pilot-result", type=Path, required=True)
+    parser.add_argument("--environment-manifest", type=Path)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--families", nargs="*", choices=FAMILIES, default=None)
     parser.add_argument("--versions", nargs="*", choices=("v2.2", "v2.6", "v3"), default=None)
     parser.add_argument(
         "--validation-episodes",
         type=int,
-        default=PilotConfig().validation_episodes,
+        default=None,
         help="Overrides the pilot's own eval-bank size; only for smoke-testing, not the real comparison run.",
     )
     parser.add_argument("--epochs", type=int, default=5)
@@ -260,7 +481,10 @@ def main() -> None:
     args = parser.parse_args()
     args.checkpoints = {"v2.2": args.checkpoint_v22, "v2.6": args.checkpoint_v26, "v3": args.checkpoint_v3}
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(run(args), indent=2) + "\n")
+    if args.environment_manifest is None:
+        args.environment_manifest = args.output.with_suffix(".environment.json")
+    args.environment_manifest.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(run(args), indent=2, allow_nan=False) + "\n")
 
 
 if __name__ == "__main__":

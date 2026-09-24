@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
-from sklearn.metrics import adjusted_rand_score
+from sklearn.metrics import adjusted_rand_score, roc_auc_score
 
 from tfmplayground.experiments.multiregime_v3 import (
     FAMILIES,
@@ -241,11 +241,19 @@ def metrics(y, probability):
     ece = sum(
         np.mean(bins == b) * abs(y[bins == b].mean() - p[bins == b].mean()) for b in range(10) if np.any(bins == b)
     )
+    # None, not NaN: roc_auc_score is undefined when y is single-class (can
+    # happen at the single-episode row level with heavily skewed families;
+    # the pooled aggregate call almost never hits this since it concatenates
+    # every episode's labels first). evaluate()'s own writer uses
+    # json.dumps(row, allow_nan=False), which raises on a bare NaN float --
+    # None serializes as JSON null instead, which that guard accepts.
+    roc_auc = float(roc_auc_score(y, p)) if len(np.unique(y)) > 1 else None
     return {
         "log_loss": float(nll),
         "brier": float(np.mean((p - y) ** 2)),
         "accuracy": float(np.mean((p >= 0.5) == y)),
         "ece_10": float(ece),
+        "roc_auc": roc_auc,
     }
 
 
