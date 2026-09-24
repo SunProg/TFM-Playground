@@ -21,6 +21,9 @@ class TabICLPriorDataLoader(DataLoader):
             rows; floats denote a fraction of the table length.
         max_train_size (int | float): Exclusive upper support-set bound. Use an
             integer one larger than ``min_train_size`` for an exact split.
+        batch_size_per_gp (int, optional): Number of datasets sharing one
+            TabICL group. Use a model batch equal to this value when each
+            group has an independently sampled table length and split.
         device (torch.device): Target device for tensors.
     """
 
@@ -37,6 +40,7 @@ class TabICLPriorDataLoader(DataLoader):
         prior_type: str = "mix_scm",
         min_train_size: int | float = 0.1,
         max_train_size: int | float = 0.9,
+        batch_size_per_gp: int | None = None,
     ):
         self.num_steps = num_steps
         self.batch_size = batch_size
@@ -48,11 +52,12 @@ class TabICLPriorDataLoader(DataLoader):
         self.prior_type = prior_type
         self.min_train_size = min_train_size
         self.max_train_size = max_train_size
+        self.batch_size_per_gp = batch_size if batch_size_per_gp is None else batch_size_per_gp
         self.device = device
 
         self.pd = TabICLPriorDataset(
             batch_size=batch_size,
-            batch_size_per_gp=batch_size,
+            batch_size_per_gp=self.batch_size_per_gp,
             min_features=min_features,
             max_features=max_features,
             max_classes=max_num_classes,

@@ -10,7 +10,12 @@ from torch.nn.modules.transformer import LayerNorm, Linear, MultiheadAttention
 
 class NanoTabPFNModel(nn.Module):
     def __init__(
-        self, embedding_size: int, num_attention_heads: int, mlp_hidden_size: int, num_layers: int, num_outputs: int
+        self,
+        embedding_size: int,
+        num_attention_heads: int,
+        mlp_hidden_size: int,
+        num_layers: int,
+        num_outputs: int,
     ):
         """Initializes the feature/target encoder, transformer blocks and decoder"""
         super().__init__()
@@ -24,7 +29,9 @@ class NanoTabPFNModel(nn.Module):
         self.transformer_blocks = nn.ModuleList()
         for _ in range(num_layers):
             self.transformer_blocks.append(
-                TransformerEncoderLayer(embedding_size, num_attention_heads, mlp_hidden_size)
+                TransformerEncoderLayer(
+                    embedding_size, num_attention_heads, mlp_hidden_size
+                )
             )
         self.decoder = Decoder(embedding_size, mlp_hidden_size, num_outputs)
 
@@ -59,15 +66,22 @@ class NanoTabPFNModel(nn.Module):
             x = args[0]
             if args[2] is not None:
                 x = torch.cat((x, args[2]), dim=1)
-            return self._forward((x, args[1]), train_test_split_index=args[0].shape[1], **kwargs)
+            return self._forward(
+                (x, args[1]), train_test_split_index=args[0].shape[1], **kwargs
+            )
         elif len(args) == 1 and isinstance(args[0], tuple):
             # case model((x,y), train_test_split_index=None)
             return self._forward(*args, **kwargs)
 
     def _forward(
-        self, src: tuple[torch.Tensor, torch.Tensor], train_test_split_index: int, num_mem_chunks: int = 1
+        self,
+        src: tuple[torch.Tensor, torch.Tensor],
+        train_test_split_index: int,
+        num_mem_chunks: int = 1,
     ) -> torch.Tensor:
-        src = self.encode_table(src, train_test_split_index, num_mem_chunks=num_mem_chunks)
+        src = self.encode_table(
+            src, train_test_split_index, num_mem_chunks=num_mem_chunks
+        )
         # selects the target embeddings (B,num_targets,1,E)
         output = src[:, train_test_split_index:, -1, :]
         # runs the embeddings through the decoder to get
@@ -75,7 +89,10 @@ class NanoTabPFNModel(nn.Module):
         return self.decoder(output)
 
     def encode_table(
-        self, src: tuple[torch.Tensor, torch.Tensor], train_test_split_index: int, num_mem_chunks: int = 1
+        self,
+        src: tuple[torch.Tensor, torch.Tensor],
+        train_test_split_index: int,
+        num_mem_chunks: int = 1,
     ) -> torch.Tensor:
         """Encode a complete support/query table without applying the output decoder.
 
@@ -114,7 +131,9 @@ class FeatureEncoder(nn.Module):
         super().__init__()
         self.linear_layer = nn.Linear(1, embedding_size)
 
-    def forward(self, x: torch.Tensor, train_test_split_index: int) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, train_test_split_index: int
+    ) -> torch.Tensor:
         """
         Normalizes all the features based on the mean and std of the features of the training data,
         clips them between -100 and 100, then applies a linear layer to embed the features.
@@ -128,7 +147,10 @@ class FeatureEncoder(nn.Module):
         """
         x = x.unsqueeze(-1)
         mean = torch.mean(x[:, :train_test_split_index], dim=1, keepdims=True)
-        std = torch.std(x[:, :train_test_split_index], dim=1, keepdims=True) + 1e-8  # TODO: maybe change the constant
+        std = (
+            torch.std(x[:, :train_test_split_index], dim=1, keepdims=True)
+            + 1e-8
+        )  # TODO: maybe change the constant
         x = (x - mean) / std
         x = torch.clip(x, min=-100, max=100)
         return self.linear_layer(x)
@@ -176,20 +198,50 @@ class TransformerEncoderLayer(nn.Module):
     ):
         super().__init__()
         self.self_attention_between_datapoints = MultiheadAttention(
-            embedding_size, nhead, batch_first=batch_first, device=device, dtype=dtype
+            embedding_size,
+            nhead,
+            batch_first=batch_first,
+            device=device,
+            dtype=dtype,
         )
         self.self_attention_between_features = MultiheadAttention(
-            embedding_size, nhead, batch_first=batch_first, device=device, dtype=dtype
+            embedding_size,
+            nhead,
+            batch_first=batch_first,
+            device=device,
+            dtype=dtype,
         )
 
-        self.linear1 = Linear(embedding_size, mlp_hidden_size, device=device, dtype=dtype)
-        self.linear2 = Linear(mlp_hidden_size, embedding_size, device=device, dtype=dtype)
+        self.linear1 = Linear(
+            embedding_size, mlp_hidden_size, device=device, dtype=dtype
+        )
+        self.linear2 = Linear(
+            mlp_hidden_size, embedding_size, device=device, dtype=dtype
+        )
 
-        self.norm1 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
-        self.norm2 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
-        self.norm3 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
+        self.norm1 = LayerNorm(
+            embedding_size, eps=layer_norm_eps, device=device, dtype=dtype
+        )
+        self.norm2 = LayerNorm(
+            embedding_size, eps=layer_norm_eps, device=device, dtype=dtype
+        )
+        self.norm3 = LayerNorm(
+            embedding_size, eps=layer_norm_eps, device=device, dtype=dtype
+        )
+        # Research heads can opt into retaining the final query-to-support
+        # attention map.  The ordinary backbone keeps the old fast path.
+        self.capture_query_support_attention = False
+        self.last_query_support_attention: torch.Tensor | None = None
+        self.last_query_support_attention_by_feature: torch.Tensor | None = (
+            None
+        )
 
-    def forward(self, src: torch.Tensor, train_test_split_index: int, num_mem_chunks: int = 1) -> torch.Tensor:
+    def forward(
+        self,
+        src: torch.Tensor,
+        train_test_split_index: int,
+        num_mem_chunks: int = 1,
+    ) -> torch.Tensor:
         """
         Takes the embeddings of the table as input and applies self-attention between features
         and self-attention between datapoints followed by a simple 2 layer MLP.
@@ -208,13 +260,17 @@ class TransformerEncoderLayer(nn.Module):
         src = self.feature_attention_stage(src, num_mem_chunks=num_mem_chunks)
         src = self.adapt_after_feature_attention(src)
         src = self.datapoint_attention_stage(
-            src, train_test_split_index=train_test_split_index, num_mem_chunks=num_mem_chunks
+            src,
+            train_test_split_index=train_test_split_index,
+            num_mem_chunks=num_mem_chunks,
         )
         src = self.adapt_after_datapoint_attention(src)
         src = self.mlp_stage(src, num_mem_chunks=num_mem_chunks)
         return self.adapt_after_mlp(src)
 
-    def adapt_before_feature_attention(self, src: torch.Tensor) -> torch.Tensor:
+    def adapt_before_feature_attention(
+        self, src: torch.Tensor
+    ) -> torch.Tensor:
         """Hook for research heads; the pretrained model applies no modification."""
         return src
 
@@ -222,7 +278,9 @@ class TransformerEncoderLayer(nn.Module):
         """Hook for research heads; the pretrained model applies no modification."""
         return src
 
-    def adapt_after_datapoint_attention(self, src: torch.Tensor) -> torch.Tensor:
+    def adapt_after_datapoint_attention(
+        self, src: torch.Tensor
+    ) -> torch.Tensor:
         """Hook for research heads; the pretrained model applies no modification."""
         return src
 
@@ -230,7 +288,9 @@ class TransformerEncoderLayer(nn.Module):
         """Hook for research heads; the pretrained model applies no modification."""
         return src
 
-    def feature_attention_stage(self, src: torch.Tensor, num_mem_chunks: int = 1) -> torch.Tensor:
+    def feature_attention_stage(
+        self, src: torch.Tensor, num_mem_chunks: int = 1
+    ) -> torch.Tensor:
         batch_size, rows_size, col_size, embedding_size = src.shape
         # attention between features
         src = src.reshape(batch_size * rows_size, col_size, embedding_size)
@@ -244,9 +304,18 @@ class TransformerEncoderLayer(nn.Module):
         return self.norm1(src)
 
     def datapoint_attention_stage(
-        self, src: torch.Tensor, train_test_split_index: int, num_mem_chunks: int = 1
+        self,
+        src: torch.Tensor,
+        train_test_split_index: int,
+        num_mem_chunks: int = 1,
     ) -> torch.Tensor:
         batch_size, rows_size, col_size, embedding_size = src.shape
+        self.last_query_support_attention = None
+        self.last_query_support_attention_by_feature = None
+        capture_attention = bool(
+            self.capture_query_support_attention and num_mem_chunks <= 1
+        )
+        captured_attention: list[torch.Tensor] = []
         # attention between datapoints
         src = src.transpose(1, 2)
         src = src.reshape(batch_size * col_size, rows_size, embedding_size)
@@ -260,19 +329,47 @@ class TransformerEncoderLayer(nn.Module):
                 x[:, :train_test_split_index],
             )[0]
             # test data attends to the training data
-            x_right = self.self_attention_between_datapoints(
-                x[:, train_test_split_index:],
-                x[:, :train_test_split_index],
-                x[:, :train_test_split_index],
-            )[0]
-            return torch.cat([x_left, x_right], dim=1) + x
+            if capture_attention:
+                x_right, weights = self.self_attention_between_datapoints(
+                    x[:, train_test_split_index:],
+                    x_left,
+                    x_left,
+                    need_weights=True,
+                )
+                captured_attention.append(weights)
+            else:
+                x_right = self.self_attention_between_datapoints(
+                    x[:, train_test_split_index:],
+                    x_left,
+                    x_left,
+                )[0]
+            return torch.cat(tensors=[x_left, x_right], dim=1) + x
 
         src = datapoint_attention(src)
+        if captured_attention:
+            # MultiheadAttention returns (batch * columns, query, support).
+            # Preserve both the per-column map and its historical column mean.
+            # The latter keeps the old API; table-slot factorized routing uses
+            # the former to match the (B*C,R,E) datapoint view.
+            by_feature = (
+                captured_attention[0]
+                .reshape(
+                    batch_size,
+                    col_size,
+                    rows_size - train_test_split_index,
+                    train_test_split_index,
+                )
+                .permute(0, 2, 1, 3)
+            )
+            self.last_query_support_attention_by_feature = by_feature
+            self.last_query_support_attention = by_feature.mean(2)
         src = src.reshape(batch_size, col_size, rows_size, embedding_size)
         src = src.transpose(2, 1)
         return self.norm2(src)
 
-    def mlp_stage(self, src: torch.Tensor, num_mem_chunks: int = 1) -> torch.Tensor:
+    def mlp_stage(
+        self, src: torch.Tensor, num_mem_chunks: int = 1
+    ) -> torch.Tensor:
         batch_size, rows_size, col_size, embedding_size = src.shape
         # MLP after attention
         src = src.reshape(-1, embedding_size)
@@ -295,7 +392,9 @@ def memory_chunking(num_mem_chunks: int) -> callable:
                           Needs to be set to 1 during training to disable chunking and get correct gradients.
     """
 
-    def decorator(func: Callable[[torch.Tensor], torch.Tensor]) -> Callable[[torch.Tensor], torch.Tensor]:
+    def decorator(
+        func: Callable[[torch.Tensor], torch.Tensor],
+    ) -> Callable[[torch.Tensor], torch.Tensor]:
         def wrapper(x: torch.Tensor) -> torch.Tensor:
             if num_mem_chunks <= 1 or x.shape[0] == 0:
                 return func(x)
@@ -307,7 +406,9 @@ def memory_chunking(num_mem_chunks: int) -> callable:
                 )
                 return func(x)
             chunk_size = max(1, math.ceil(x.shape[0] / num_mem_chunks))
-            for x_split in torch.split(x, split_size_or_sections=chunk_size, dim=0):
+            for x_split in torch.split(
+                x, split_size_or_sections=chunk_size, dim=0
+            ):
                 x_split[:] = func(
                     x_split
                 )  # in-place modification to save memory, will cause wrong gradients if used during training
@@ -319,7 +420,9 @@ def memory_chunking(num_mem_chunks: int) -> callable:
 
 
 class Decoder(nn.Module):
-    def __init__(self, embedding_size: int, mlp_hidden_size: int, num_outputs: int):
+    def __init__(
+        self, embedding_size: int, mlp_hidden_size: int, num_outputs: int
+    ):
         """Initializes the linear layers for use in the forward"""
         super().__init__()
         self.linear1 = nn.Linear(embedding_size, mlp_hidden_size)

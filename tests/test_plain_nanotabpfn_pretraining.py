@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import torch
 
 from tfmplayground.experiments import evaluate_plain_nanotabpfn as evaluation
@@ -15,6 +16,7 @@ from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     make_prior,
     multiregime_probability,
     run_pretraining,
+    training_batch,
 )
 from tfmplayground.external_priors.tabicl import TabICLPriorDataLoader
 from tfmplayground.interface import init_model_from_state_dict_file
@@ -43,6 +45,36 @@ class _TinyPrior:
             x = torch.randn((1, rows, 2))
             y = torch.arange(rows).remainder(2).unsqueeze(0).float()
             yield {"x": x, "y": y, "target_y": y, "train_test_split_index": self.support_size}
+
+
+class _PointerTinyPrior(_TinyPrior):
+    """A tiny finite dump stand-in whose cursor advances on every draw."""
+
+    def __init__(self, batches: int, support_size: int, query_size: int):
+        super().__init__(batches, support_size, query_size)
+        self.pointer = 0
+
+    def __iter__(self):
+        for batch in super().__iter__():
+            self.pointer += 1
+            yield batch
+
+
+class _TinyV4Loader:
+    """Minimal paired-dump stand-in for testing ordinary/multiregime routing."""
+
+    def __init__(self, label: int):
+        self.label = label
+
+    def sample(self):
+        x = torch.zeros((1, 4, 2))
+        y = torch.full((1, 4), self.label, dtype=torch.long)
+        return {
+            "support_x": x[:, :2],
+            "support_y": y[:, :2],
+            "query_x": x[:, 2:],
+            "query_y": y[:, 2:],
+        }
 
 
 class TabICLPriorLoaderTests(unittest.TestCase):
@@ -80,6 +112,23 @@ class TabICLPriorLoaderTests(unittest.TestCase):
         self.assertEqual((kwargs["num_datapoints_min"], kwargs["num_datapoints_max"]), (160, 161))
         self.assertEqual((kwargs["min_train_size"], kwargs["max_train_size"]), (128, 129))
         self.assertEqual((kwargs["min_features"], kwargs["max_features"]), (2, 12))
+
+    @patch("tfmplayground.experiments.pretrain_plain_nanotabpfn.TabICLPriorDataLoader")
+    def test_runner_prior_uses_native_row_and_per_group_split_sampling(self, loader_class):
+        config = PlainPretrainingConfig(
+            device="cpu",
+            micro_batch_size=4,
+            batch_size_per_gp=4,
+            min_rows=1024,
+            max_rows=1024,
+            min_train_size=0.1,
+            max_train_size=0.9,
+        )
+        make_prior(config, batches=1)
+        kwargs = loader_class.call_args.kwargs
+        self.assertEqual((kwargs["num_datapoints_min"], kwargs["num_datapoints_max"]), (1024, 1025))
+        self.assertEqual((kwargs["min_train_size"], kwargs["max_train_size"]), (0.1, 0.9))
+        self.assertEqual(kwargs["batch_size_per_gp"], 4)
 
 
 class _FlakyPrior:
@@ -119,6 +168,16 @@ class _BoundedFlakyDraws:
 
 
 class PretrainingSmokeTests(unittest.TestCase):
+    def test_original_fixed_and_curriculum_prior_family(self):
+        original = PlainPretrainingConfig(prior_mode="original", max_steps=100)
+        fixed = PlainPretrainingConfig(prior_mode="fixed", multiregime_ratio=0.3, max_steps=100)
+        curriculum = PlainPretrainingConfig(prior_mode="curriculum", multiregime_ratio=0.3, max_steps=100)
+
+        self.assertEqual(multiregime_probability(original, 99), 0.0)
+        self.assertEqual(multiregime_probability(fixed, 1), 0.3)
+        self.assertAlmostEqual(multiregime_probability(curriculum, 30), 0.15)
+        self.assertEqual(multiregime_probability(curriculum, 50), 0.3)
+
     def test_curriculum_probability_has_plain_ramp_and_multiregime_phases(self):
         config = PlainPretrainingConfig(
             prior_mode="curriculum",
@@ -129,6 +188,21 @@ class PretrainingSmokeTests(unittest.TestCase):
         self.assertAlmostEqual(multiregime_probability(config, 30), 0.25)
         self.assertEqual(multiregime_probability(config, 50), 0.5)
         self.assertEqual(multiregime_probability(config, 99), 0.5)
+
+    def test_paired_v4_shared_dump_supplies_the_ordinary_branch(self):
+        shared, multiregime = _TinyV4Loader(0), _TinyV4Loader(1)
+        rng = np.random.default_rng(4)
+        ordinary_config = PlainPretrainingConfig(
+            prior_mode="fixed", multiregime_ratio=0.0, multiregime_source="v4"
+        )
+        ordinary = training_batch(ordinary_config, None, multiregime, shared, rng, step=1)
+        self.assertTrue(torch.equal(ordinary.support_y, torch.zeros((1, 2), dtype=torch.long)))
+
+        multiregime_config = PlainPretrainingConfig(
+            prior_mode="fixed", multiregime_ratio=1.0, multiregime_source="v4"
+        )
+        selected = training_batch(multiregime_config, None, multiregime, shared, rng, step=1)
+        self.assertTrue(torch.equal(selected.support_y, torch.ones((1, 2), dtype=torch.long)))
 
     def test_tiny_cpu_run_writes_resumable_inference_checkpoint(self):
         config = PlainPretrainingConfig(
@@ -172,6 +246,76 @@ class PretrainingSmokeTests(unittest.TestCase):
             history = [json.loads(line) for line in (output / "history.jsonl").read_text().splitlines()]
             self.assertEqual([row["step"] for row in history], [1, 2, 3])
 
+    def test_ordinary_dump_is_used_for_training_and_its_cursor_is_checkpointed(self):
+        config = self._tiny_config(max_steps=2, original_source="dump")
+
+        def fake_prior(config, *, batches, device=None):
+            del device
+            return _TinyPrior(batches, config.support_size, config.query_size)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            dump_path = Path(temporary) / "ordinary.h5"
+            dump_path.touch()
+            config = replace(config, original_dump_path=str(dump_path))
+            dumped_prior = _PointerTinyPrior(1, config.support_size, config.query_size)
+            with patch(
+                "tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior
+            ), patch(
+                "tfmplayground.experiments.pretrain_plain_nanotabpfn.PriorDumpDataLoader",
+                return_value=dumped_prior,
+            ) as loader_class:
+                output = run_pretraining(config, Path(temporary) / "run")
+
+            loader_class.assert_called_once_with(
+                str(dump_path),
+                num_steps=1,
+                batch_size=1,
+                device=torch.device("cpu"),
+            )
+            state = torch.load(output / "final_checkpoint.pth", map_location="cpu", weights_only=False)
+            self.assertEqual(state["original_dump_pointer"], 2)
+
+    def test_v4_validation_bank_runs_on_its_own_cadence_and_test_runs_once(self):
+        config = self._tiny_config(max_steps=3, v4_validation_interval=1)
+
+        def fake_prior(config, *, batches, device=None):
+            del device
+            return _TinyPrior(batches, config.support_size, config.query_size)
+
+        def fake_evaluate(_model, _bank_path, *, output, split, tag, device, max_episodes_per_forward):
+            del device, max_episodes_per_forward
+            return (
+                {"query_cross_entropy": 0.7, "query_accuracy": 0.5, "episodes": 64.0},
+                output / f"{split}-{tag}.json",
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            validation_bank = Path(temporary) / "validation.h5"
+            test_bank = Path(temporary) / "test.h5"
+            validation_bank.touch()
+            test_bank.touch()
+            config = replace(
+                config,
+                v4_validation_bank_path=str(validation_bank),
+                v4_test_bank_path=str(test_bank),
+            )
+            with patch(
+                "tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior
+            ), patch(
+                "tfmplayground.experiments.pretrain_plain_nanotabpfn.evaluate_v4_bank",
+                side_effect=fake_evaluate,
+            ) as evaluate_bank:
+                output = run_pretraining(config, Path(temporary) / "run")
+
+            evaluated_splits = [call.kwargs["split"] for call in evaluate_bank.call_args_list]
+            self.assertEqual(evaluated_splits, ["validation"] * 3 + ["test"])
+            history = [json.loads(line) for line in (output / "history.jsonl").read_text().splitlines()]
+            self.assertEqual([row["step"] for row in history], [1, 2, 3])
+            self.assertTrue(all(row["v4_validation_episodes"] == 64.0 for row in history))
+            final_state = torch.load(output / "final_checkpoint.pth", map_location="cpu", weights_only=False)
+            self.assertEqual(final_state["v4_validation"]["query_cross_entropy"], 0.7)
+            self.assertEqual(final_state["v4_test"]["query_accuracy"], 0.5)
+
     def test_tabarena_epoch_checkpoints_are_pruned_except_resumable_milestones(self):
         config = self._tiny_config(
             max_steps=2,
@@ -193,6 +337,25 @@ class PretrainingSmokeTests(unittest.TestCase):
             output = run_pretraining(config, Path(temporary) / "run")
             self.assertFalse((output / "epoch-001-checkpoint.pth").exists())
             self.assertTrue((output / "epoch-002-checkpoint.pth").exists())
+            self.assertTrue((output / "checkpoint-000002.pth").exists())
+
+    def test_epoch_boundaries_do_not_write_checkpoints_without_tabarena(self):
+        config = self._tiny_config(
+            max_steps=2,
+            epoch_steps=1,
+            checkpoint_interval=2,
+            tabarena_every_epoch=False,
+        )
+
+        def fake_prior(config, *, batches, device=None):
+            del device
+            return _TinyPrior(batches, config.support_size, config.query_size)
+
+        with tempfile.TemporaryDirectory() as temporary, patch(
+            "tfmplayground.experiments.pretrain_plain_nanotabpfn.make_prior", fake_prior
+        ):
+            output = run_pretraining(config, Path(temporary) / "run")
+            self.assertEqual(list(output.glob("epoch-*-checkpoint.pth")), [])
             self.assertTrue((output / "checkpoint-000002.pth").exists())
 
     def _tiny_config(self, **overrides) -> PlainPretrainingConfig:
