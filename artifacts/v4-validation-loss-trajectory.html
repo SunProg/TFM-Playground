@@ -1,0 +1,127 @@
+<div id="v4-loss-trajectory" aria-label="v4 validation loss trajectory">
+  <style>
+    #v4-loss-trajectory { color: var(--foreground); font-family: var(--font-sans, system-ui, sans-serif); width: 100%; }
+    #v4-loss-trajectory .figure-title { font-size: 16px; font-weight: 650; margin: 0 0 6px; }
+    #v4-loss-trajectory .subtitle { color: var(--muted-foreground); font-size: 12px; margin: 0 0 10px; }
+    #v4-loss-trajectory .series-controls { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
+    #v4-loss-trajectory .series-toggle { align-items: center; background: transparent; border: 0; color: var(--foreground); cursor: pointer; display: inline-flex; font: inherit; font-size: 12px; gap: 5px; padding: 2px 0; }
+    #v4-loss-trajectory .series-toggle[aria-pressed="false"] { color: var(--muted-foreground); text-decoration: line-through; }
+    #v4-loss-trajectory .swatch { display: inline-block; height: 2px; width: 16px; }
+    #v4-loss-trajectory svg { display: block; height: auto; overflow: visible; width: 100%; }
+    #v4-loss-trajectory .axis path, #v4-loss-trajectory .axis line, #v4-loss-trajectory rect[data-chart-frame] { stroke: var(--border); }
+    #v4-loss-trajectory .axis text { fill: var(--foreground); font-size: 12px; }
+    #v4-loss-trajectory .axis-title, #v4-loss-trajectory .annotation { fill: var(--foreground); font-size: 12px; }
+    #v4-loss-trajectory .grid line { stroke: var(--border); stroke-opacity: .55; }
+    #v4-loss-trajectory .tooltip { background: var(--popover); border: 1px solid var(--border); color: var(--popover-foreground); display: none; font-size: 12px; line-height: 1.35; max-width: 220px; padding: 7px 9px; pointer-events: none; position: absolute; white-space: nowrap; z-index: 1; }
+    #v4-loss-trajectory .tooltip-row { display: grid; grid-template-columns: 9px auto auto; gap: 5px; align-items: center; }
+    #v4-loss-trajectory .tooltip-dot { border-radius: 50%; height: 7px; width: 7px; }
+    #v4-loss-trajectory .tooltip-value { font-variant-numeric: tabular-nums; text-align: right; }
+  </style>
+  <div class="figure-title">v4 validation loss trajectory</div>
+  <div class="subtitle">Query cross-entropy · large NanoTabPFN · lower is better</div>
+  <div class="series-controls" aria-label="Toggle trajectory series"></div>
+  <div class="plot-wrap" style="position:relative"><svg role="img" aria-label="Line chart of v4 validation query cross-entropy by training step"></svg><div class="tooltip" role="tooltip"></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script>
+    (() => {
+      const root = document.getElementById('v4-loss-trajectory');
+      const series = [
+        { name: 'original', color: 'var(--viz-series-1)', values: [[500,.967384],[1000,.951996],[1500,.948373],[2000,.950097],[2500,.937208],[3000,.934782],[3500,.929113],[4000,.937814],[4500,.925774],[5000,.930278],[5500,.925860],[6000,.918878],[6500,.922076],[7000,.924682],[7500,.922847]] },
+        { name: 'r_z fixed', color: 'var(--viz-series-2)', values: [[500,.963585],[1000,.954334],[1500,.993265],[2000,.982404],[2500,.981342],[3000,.942800],[3500,.957626],[4000,.958233],[4500,.936736],[5000,.932190]] },
+        { name: 'r_z curriculum', color: 'var(--viz-series-3)', values: [[500,.966053],[1000,.962606],[1500,.953730],[2000,.939703],[2500,.941275],[3000,.947804],[3500,.948862],[4000,.931816],[4500,.943309],[5000,.946953]] },
+        { name: 'g_z fixed', color: 'var(--viz-series-4)', values: [[500,.978494],[1000,.969138],[1500,.968032],[2000,.980394],[2500,.981809],[3000,.985376],[3500,.978838],[4000,.954801]] },
+        { name: 'g_z curriculum', color: 'var(--viz-series-5)', values: [[500,.968562],[1000,.956213],[1500,.950170],[2000,.936578],[2500,.956069],[3000,.940730],[3500,.955082],[4000,.938028],[4500,.946809]] }
+      ].map(s => ({ ...s, values: s.values.map(([x, y]) => ({ x, y })), visible: true }));
+      const controls = d3.select(root).select('.series-controls');
+      const svg = d3.select(root).select('svg');
+      const tooltip = d3.select(root).select('.tooltip');
+      const plotWrap = root.querySelector('.plot-wrap');
+      const fmtCe = d3.format('.4f');
+      let renderState = null;
+
+      controls.selectAll('button')
+        .data(series)
+        .join('button')
+        .attr('type', 'button')
+        .attr('class', 'series-toggle')
+        .attr('aria-pressed', 'true')
+        .html(d => `<span class="swatch" style="background:${d.color}"></span><span>${d.name}</span>`)
+        .on('click', function(event, d) {
+          d.visible = !d.visible;
+          d3.select(this).attr('aria-pressed', String(d.visible));
+          draw();
+        });
+
+      function interpolate(values, x) {
+        if (x < values[0].x || x > values.at(-1).x) return null;
+        const i = d3.bisector(d => d.x).center(values, x);
+        if (values[i].x === x || i === 0) return values[i].y;
+        const a = values[i - 1], b = values[i];
+        return a.y + (x - a.x) * (b.y - a.y) / (b.x - a.x);
+      }
+
+      function drawTooltip(event) {
+        if (!renderState) return;
+        const { xScale, yScale, innerTop, innerBottom, width } = renderState;
+        const [px] = d3.pointer(event, svg.node());
+        const xValue = xScale.invert(Math.max(renderState.left, Math.min(width - renderState.right, px)));
+        const visible = series.filter(s => s.visible);
+        const entries = visible.map(s => ({ s, y: interpolate(s.values, xValue) })).filter(d => d.y !== null);
+        if (!entries.length) return;
+        const guideX = xScale(xValue);
+        svg.select('[data-chart-hover-guide]').attr('x1', guideX).attr('x2', guideX).style('display', null);
+        const markers = svg.select('[data-chart-hover-markers]').selectAll('circle').data(entries, d => d.s.name)
+          .join('circle').attr('data-chart-hover-marker', '').attr('r', 4).attr('fill', d => d.s.color).attr('stroke', 'var(--background)').attr('stroke-width', 1.5);
+        markers.attr('cx', guideX).attr('cy', d => yScale(d.y));
+        tooltip.style('display', 'block')
+          .html(`<strong>${Math.round(xValue).toLocaleString()} steps</strong>${entries.map(d => `<div class="tooltip-row"><span class="tooltip-dot" style="background:${d.s.color}"></span><span>${d.s.name}</span><span class="tooltip-value">${fmtCe(d.y)}</span></div>`).join('')}`);
+        const wrapBox = plotWrap.getBoundingClientRect();
+        const tipBox = tooltip.node().getBoundingClientRect();
+        const x = Math.max(0, Math.min(wrapBox.width - tipBox.width, event.clientX - wrapBox.left + 12));
+        const y = Math.max(0, Math.min(wrapBox.height - tipBox.height, event.clientY - wrapBox.top + 12));
+        tooltip.style('left', `${x}px`).style('top', `${y}px`);
+      }
+
+      function hideTooltip() {
+        tooltip.style('display', 'none');
+        svg.select('[data-chart-hover-guide]').style('display', 'none');
+        svg.select('[data-chart-hover-markers]').selectAll('circle').remove();
+      }
+
+      function draw() {
+        const width = Math.max(320, root.getBoundingClientRect().width || 736);
+        const narrow = width < 480;
+        const height = narrow ? 330 : 390;
+        const margin = { top: 18, right: 18, bottom: 58, left: 72 };
+        const values = series.flatMap(s => s.values);
+        const xExtent = d3.extent(values, d => d.x);
+        const yExtent = d3.extent(values, d => d.y);
+        const yPad = (yExtent[1] - yExtent[0]) * .12;
+        const xScale = d3.scaleLinear().domain(xExtent).range([margin.left, width - margin.right]);
+        const yScale = d3.scaleLinear().domain([yExtent[0] - yPad, yExtent[1] + yPad]).nice().range([height - margin.bottom, margin.top]);
+        renderState = { xScale, yScale, width, left: margin.left, right: margin.right, innerTop: margin.top, innerBottom: height - margin.bottom };
+        svg.attr('viewBox', `0 0 ${width} ${height}`).selectAll('*').remove();
+        svg.append('rect').attr('data-chart-frame', '').attr('x', margin.left).attr('y', margin.top).attr('width', width - margin.left - margin.right).attr('height', height - margin.top - margin.bottom).attr('fill', 'none');
+        const grid = svg.append('g').attr('class', 'grid').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(yScale).ticks(5).tickSize(-(width - margin.left - margin.right)).tickFormat(''));
+        grid.select('.domain').remove();
+        const xAxis = svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(xScale).ticks(narrow ? 4 : 7).tickFormat(d => `${d / 1000}k`));
+        const yAxis = svg.append('g').attr('class', 'axis').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(yScale).ticks(5).tickFormat(d3.format('.2f')));
+        xAxis.selectAll('text').attr('dy', '0.8em');
+        yAxis.selectAll('text').attr('dx', '-0.2em');
+        svg.append('text').attr('class', 'axis-title').attr('data-axis', 'x').attr('x', (margin.left + width - margin.right) / 2).attr('y', height - 10).attr('text-anchor', 'middle').text('Training step');
+        svg.append('text').attr('class', 'axis-title').attr('data-axis', 'y').attr('transform', `translate(17 ${(margin.top + height - margin.bottom) / 2}) rotate(-90)`).attr('text-anchor', 'middle').text('Validation query cross-entropy');
+        const marks = svg.append('g').attr('clip-path', 'url(#v4-loss-clip)');
+        svg.append('defs').append('clipPath').attr('id', 'v4-loss-clip').append('rect').attr('x', margin.left).attr('y', margin.top).attr('width', width - margin.left - margin.right).attr('height', height - margin.top - margin.bottom);
+        const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
+        const groups = marks.selectAll('.series').data(series, d => d.name).join('g').attr('class', 'series').style('display', d => d.visible ? null : 'none');
+        groups.append('path').attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-width', 2).attr('d', d => line(d.values));
+        groups.selectAll('circle').data(d => d.values.map(v => ({ ...v, series: d }))).join('circle').attr('cx', d => xScale(d.x)).attr('cy', d => yScale(d.y)).attr('r', 3.5).attr('fill', d => d.series.color).attr('stroke', 'var(--background)').attr('stroke-width', 1);
+        svg.append('line').attr('data-chart-hover-guide', '').attr('y1', margin.top).attr('y2', height - margin.bottom).attr('stroke', 'var(--foreground)').attr('stroke-opacity', .45).attr('stroke-dasharray', '3,3').style('display', 'none');
+        svg.append('g').attr('data-chart-hover-markers', '');
+        svg.append('rect').attr('data-chart-hit', '').attr('data-chart-hover-overlay', 'cross-series').attr('x', margin.left).attr('y', margin.top).attr('width', width - margin.left - margin.right).attr('height', height - margin.top - margin.bottom).attr('fill', 'transparent').style('cursor', 'crosshair').on('pointermove', drawTooltip).on('pointerleave', hideTooltip).on('click', drawTooltip);
+      }
+      new ResizeObserver(draw).observe(root);
+      draw();
+    })();
+  </script>
+</div>

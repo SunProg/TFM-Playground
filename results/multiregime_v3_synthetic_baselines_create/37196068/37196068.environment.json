@@ -1,0 +1,35 @@
+{
+  "hostname": "erc-hpc-comp197",
+  "python_version": "3.12.7 (main, Oct 16 2024, 04:37:19) [Clang 18.1.8 ]",
+  "python_executable": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/.venv/bin/python3",
+  "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+  "machine": "x86_64",
+  "package_versions": {
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "torch": "2.9.0",
+    "scikit-learn": "1.6.1",
+    "tabicl": "2.2.0",
+    "tabpfn": "8.5.0",
+    "tabpfn-contrib": null
+  },
+  "torch_version": "2.9.0+cu128",
+  "torch_cuda_version": "12.8",
+  "cuda_available": true,
+  "cuda_devices": [
+    "NVIDIA A30"
+  ],
+  "device": "cuda",
+  "architecture": {
+    "embedding_size": 192,
+    "num_attention_heads": 6,
+    "mlp_hidden_size": 768,
+    "num_layers": 6,
+    "num_outputs": 2
+  },
+  "seed": 2402,
+  "source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "pilot_source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "pilot_config": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/runs/37113090/cell-0/config.json",
+  "pilot_result": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/runs/37113090/cell-0/result.json"
+}

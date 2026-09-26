@@ -792,8 +792,8 @@ TABPFN_CHECKPOINTS = {
     # outbound access; the Slurm wrapper supplies this downloaded official
     # artifact.  Leaving it unset preserves package auto-resolution elsewhere.
     "tabpfn-v2.2": os.environ.get("TABPFN_V22_CHECKPOINT"),
-    "tabpfn-v2.6": "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
-    "tabpfn-v3": "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v3-classifier-v3_default.ckpt",
+    "tabpfn-v2.6": os.environ.get("TABPFN_V26_CHECKPOINT", "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"),
+    "tabpfn-v3": os.environ.get("TABPFN_V3_CHECKPOINT", "/users/k23139234/repo/TFM-Playground/checkpoints/tabpfn-v3-classifier-v3_default.ckpt"),
 }
 _BASELINE_ALIASES = {
     "v2.2": "tabpfn-v2.2",

@@ -1,0 +1,13 @@
+\begin{table}[t]
+\centering\footnotesize
+\caption{Evaluation-balance sensitivity on the existing standard-input bank. Six-layer candidate minus native-control paired effects; lower CE and higher accuracy differences (pp) favor the candidate. Bins are defined by support majority fraction within each class count, without using outcomes; pooled rows give class counts equal weight. Descriptive fixed-checkpoint contrasts, not a control for training-label balance.}\label{tab:balance}
+\begin{tabular}{@{}llrrrrrr@{}}\toprule
+Routing & Maj. bin & $n$ & Cells & Fixed $\Delta$CE & Fixed $\Delta$Acc & Curr. $\Delta$CE & Curr. $\Delta$Acc\\\midrule
+soft gate & low & 989 & 340 & -0.0154 & +0.72 & -0.0190 & +1.09\\
+soft gate & middle & 970 & 348 & -0.0144 & +0.65 & -0.0175 & +0.81\\
+soft gate & high & 921 & 332 & -0.0102 & +0.42 & -0.0132 & +0.51\\
+persistent & low & 981 & 335 & -0.0029 & +0.19 & -0.0022 & +0.04\\
+persistent & middle & 985 & 348 & -0.0020 & +0.13 & -0.0015 & -0.11\\
+persistent & high & 914 & 334 & +0.0000 & -0.08 & +0.0011 & -0.12\\
+\bottomrule\end{tabular}
+\end{table}

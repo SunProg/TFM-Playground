@@ -1,0 +1,266 @@
+{
+  "model": "TabPFNClassifier",
+  "tabpfn_package_version": "8.5.0",
+  "config": {
+    "prior_profile": "realistic",
+    "prior": {
+      "support_size": 128,
+      "query_size": 256,
+      "task_features": 4,
+      "max_regimes": 2,
+      "cue_separation": 1.5,
+      "regime_probability": 0.65,
+      "num_layers": 2,
+      "hidden_dim": 12,
+      "init_std": 0.5,
+      "label_noise": 0.05,
+      "calibration_size": 1024,
+      "min_disagreement": 0.2,
+      "max_disagreement": 0.8,
+      "max_attempts": 128
+    },
+    "episodes": 128,
+    "namespace": 3000000,
+    "device": "cuda",
+    "random_state": 0,
+    "versions": [
+      "v2.6",
+      "v3"
+    ],
+    "checkpoints": {
+      "v2.6": "/cephfs/volumes/hpc_home/k23139234/17f71989-c3b3-41d8-9315-37daa2fead54/repo/TFM-Playground-slot/checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+      "v3": "/cephfs/volumes/hpc_home/k23139234/17f71989-c3b3-41d8-9315-37daa2fead54/repo/TFM-Playground-slot/checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
+    },
+    "n_estimators": 8,
+    "softmax_temperature": 0.9,
+    "balance_probabilities": false,
+    "average_before_softmax": false,
+    "fit_mode": "fit_preprocessors"
+  },
+  "models": {
+    "v2.6": {
+      "normal": {
+        "shuffle_support_labels": false,
+        "episodes": 128,
+        "episode_accuracy": {
+          "mean": 0.7618408203125,
+          "ci95": [
+            0.7539038608987467,
+            0.7697777797262533
+          ],
+          "n_episodes": 128
+        },
+        "episode_cross_entropy": {
+          "mean": 0.5110434859792956,
+          "ci95": [
+            0.5002289630109222,
+            0.521858008947669
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_accuracy": {
+          "mean": 0.7970791285197636,
+          "ci95": [
+            0.7877387047817989,
+            0.8064195522577283
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_accuracy": {
+          "mean": 0.6964671977562793,
+          "ci95": [
+            0.68017207059221,
+            0.7127623249203486
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_cross_entropy": {
+          "mean": 0.4666384318374968,
+          "ci95": [
+            0.4539480195434825,
+            0.4793288441315111
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_cross_entropy": {
+          "mean": 0.5929927043878407,
+          "ci95": [
+            0.5735078240261117,
+            0.6124775847495697
+          ],
+          "n_episodes": 128
+        },
+        "pooled_auc": 0.832005412499021,
+        "majority_z1_auc": 0.8659438332699738,
+        "minority_z0_auc": 0.7590459719496968
+      },
+      "shuffled_support": {
+        "shuffle_support_labels": true,
+        "episodes": 128,
+        "episode_accuracy": {
+          "mean": 0.50830078125,
+          "ci95": [
+            0.49686517773836325,
+            0.5197363847616367
+          ],
+          "n_episodes": 128
+        },
+        "episode_cross_entropy": {
+          "mean": 0.7053786890984944,
+          "ci95": [
+            0.6999756536027933,
+            0.7107817245941955
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_accuracy": {
+          "mean": 0.5073701541396627,
+          "ci95": [
+            0.49127216036360033,
+            0.523468147915725
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_accuracy": {
+          "mean": 0.5110223372662495,
+          "ci95": [
+            0.49446166004795183,
+            0.5275830144845471
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_cross_entropy": {
+          "mean": 0.7064494364529628,
+          "ci95": [
+            0.6996597766204155,
+            0.7132390962855101
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_cross_entropy": {
+          "mean": 0.7026317127801263,
+          "ci95": [
+            0.6956501071236925,
+            0.7096133184365601
+          ],
+          "n_episodes": 128
+        },
+        "pooled_auc": 0.508988236302907,
+        "majority_z1_auc": 0.5054690178646587,
+        "minority_z0_auc": 0.5157402813701589
+      }
+    },
+    "v3": {
+      "normal": {
+        "shuffle_support_labels": false,
+        "episodes": 128,
+        "episode_accuracy": {
+          "mean": 0.78466796875,
+          "ci95": [
+            0.7775400169006624,
+            0.7917959205993376
+          ],
+          "n_episodes": 128
+        },
+        "episode_cross_entropy": {
+          "mean": 0.4809445091397153,
+          "ci95": [
+            0.4704698260486505,
+            0.4914191922307801
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_accuracy": {
+          "mean": 0.8140461318131875,
+          "ci95": [
+            0.8054754198475442,
+            0.8226168437788308
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_accuracy": {
+          "mean": 0.7307486922934738,
+          "ci95": [
+            0.7165566908826809,
+            0.7449406937042667
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_cross_entropy": {
+          "mean": 0.441882972295468,
+          "ci95": [
+            0.42913096170483295,
+            0.4546349828861031
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_cross_entropy": {
+          "mean": 0.5529054819022736,
+          "ci95": [
+            0.5337345921116601,
+            0.5720763716928872
+          ],
+          "n_episodes": 128
+        },
+        "pooled_auc": 0.8556647076804097,
+        "majority_z1_auc": 0.8810508689446839,
+        "minority_z0_auc": 0.8009371469556428
+      },
+      "shuffled_support": {
+        "shuffle_support_labels": true,
+        "episodes": 128,
+        "episode_accuracy": {
+          "mean": 0.50726318359375,
+          "ci95": [
+            0.4961793003700201,
+            0.5183470668174799
+          ],
+          "n_episodes": 128
+        },
+        "episode_cross_entropy": {
+          "mean": 0.699859955122623,
+          "ci95": [
+            0.6963521060241141,
+            0.7033678042211319
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_accuracy": {
+          "mean": 0.5015608809036678,
+          "ci95": [
+            0.4876494786448834,
+            0.5154722831624522
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_accuracy": {
+          "mean": 0.518030141439302,
+          "ci95": [
+            0.5027956966418917,
+            0.5332645862367124
+          ],
+          "n_episodes": 128
+        },
+        "majority_z1_cross_entropy": {
+          "mean": 0.7017203987660376,
+          "ci95": [
+            0.6971636313189483,
+            0.706277166213127
+          ],
+          "n_episodes": 128
+        },
+        "minority_z0_cross_entropy": {
+          "mean": 0.6962122786837085,
+          "ci95": [
+            0.6913612497455056,
+            0.7010633076219114
+          ],
+          "n_episodes": 128
+        },
+        "pooled_auc": 0.5051466666087469,
+        "majority_z1_auc": 0.49852120860302584,
+        "minority_z0_auc": 0.5180239828606256
+      }
+    }
+  }
+}

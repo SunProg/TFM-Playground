@@ -1,0 +1,50 @@
+{
+  "original": {
+    "log_loss": 0.7109728751238436,
+    "brier": 0.25851490317908615,
+    "accuracy": 0.5625,
+    "ece_10": 0.24538380404313404,
+    "episode_log_loss_se": 0.025269234710351276
+  },
+  "shared_rule": {
+    "log_loss": 0.7183380619389936,
+    "brier": 0.2623612396839965,
+    "accuracy": 0.4869791666666667,
+    "ece_10": 0.09493337819973623,
+    "episode_log_loss_se": 0.012530384324639304,
+    "oracle_marginal_log_loss": 0.52523651099586,
+    "oracle_without_group_evidence_log_loss": 0.52523651099586,
+    "oracle_privileged_regime_log_loss": 0.52523651099586
+  },
+  "soft_gate": {
+    "log_loss": 0.720548747611853,
+    "brier": 0.26347723931648176,
+    "accuracy": 0.4765625,
+    "ece_10": 0.10745600362618765,
+    "episode_log_loss_se": 0.010925945188933214,
+    "oracle_marginal_log_loss": 0.5375115320951035,
+    "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+    "oracle_privileged_regime_log_loss": 0.45469676839962214
+  },
+  "independent": {
+    "log_loss": 0.7154080339241773,
+    "brier": 0.26096819562980417,
+    "accuracy": 0.4830729166666667,
+    "ece_10": 0.10078753794853888,
+    "episode_log_loss_se": 0.008051515960678542,
+    "oracle_marginal_log_loss": 0.5533214258785214,
+    "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+    "oracle_privileged_regime_log_loss": 0.4365228919981286
+  },
+  "persistent": {
+    "log_loss": 0.7148805425968021,
+    "brier": 0.260686561030889,
+    "accuracy": 0.48828125,
+    "ece_10": 0.09340276305253303,
+    "episode_log_loss_se": 0.011042748127959285,
+    "oracle_marginal_log_loss": 0.465212099527154,
+    "oracle_without_group_evidence_log_loss": 0.557492356194979,
+    "oracle_privileged_regime_log_loss": 0.45080882941292905,
+    "group_information_gain": 1.663590470949809e-05
+  }
+}

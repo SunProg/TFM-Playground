@@ -1,0 +1,1103 @@
+{
+  "description": "Per-family means and episode-paired contrasts for hidden, shuffled, and true regime-tag inputs.",
+  "rows": [
+    {
+      "size": "small",
+      "model": "original",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2436439655255527,
+          "accuracy": 0.4236328125
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.244509119969896,
+          "accuracy": 0.4226806640625
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.1869991224000438,
+          "accuracy": 0.46835801866319443
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.000865154444343514,
+          "cross_entropy_difference_95_interval": [
+            0.0005576537606409855,
+            0.0011790491733700036
+          ],
+          "accuracy_difference_pp": -0.09521484375,
+          "accuracy_difference_95_interval_pp": [
+            -0.15530395507812497,
+            -0.036078559027777776
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.05750999756985241,
+          "cross_entropy_difference_95_interval": [
+            -0.05988078072705927,
+            -0.05515083529262079
+          ],
+          "accuracy_difference_pp": 4.567735460069445,
+          "accuracy_difference_95_interval_pp": [
+            4.335659450954862,
+            4.810119628906249
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.1977758266393923,
+          "accuracy": 0.45924614800347224
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2026091740492524,
+          "accuracy": 0.4559258355034722
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.1676860392093658,
+          "accuracy": 0.4838338216145833
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.004833347409860128,
+          "cross_entropy_difference_95_interval": [
+            0.004318679579624182,
+            0.005361591170205631
+          ],
+          "accuracy_difference_pp": -0.33203125,
+          "accuracy_difference_95_interval_pp": [
+            -0.4001193576388889,
+            -0.26244778103298616
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.03492313483988659,
+          "cross_entropy_difference_95_interval": [
+            -0.036862296766937815,
+            -0.03312782730486813
+          ],
+          "accuracy_difference_pp": 2.790798611111111,
+          "accuracy_difference_95_interval_pp": [
+            2.604563395182292,
+            2.990193684895833
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2429173813201486,
+          "accuracy": 0.4239298502604167
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2437452818060086,
+          "accuracy": 0.4233194986979167
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.1848995865620155,
+          "accuracy": 0.46982014973958336
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.0008279004858599768,
+          "cross_entropy_difference_95_interval": [
+            0.0005157441627751622,
+            0.001156551894576599
+          ],
+          "accuracy_difference_pp": -0.06103515625,
+          "accuracy_difference_95_interval_pp": [
+            -0.11569892035590276,
+            -0.007052951388888888
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.058845695243993155,
+          "cross_entropy_difference_95_interval": [
+            -0.06133602986765456,
+            -0.05640430924511748
+          ],
+          "accuracy_difference_pp": 4.650065104166667,
+          "accuracy_difference_95_interval_pp": [
+            4.407009548611112,
+            4.897620307074653
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.1957889377941482,
+          "accuracy": 0.46054280598958336
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.20046333872144,
+          "accuracy": 0.4574164496527778
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.1658536580029046,
+          "accuracy": 0.48397894965277777
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.004674400927291976,
+          "cross_entropy_difference_95_interval": [
+            0.0041784950325058565,
+            0.005184302819349493
+          ],
+          "accuracy_difference_pp": -0.3126356336805555,
+          "accuracy_difference_95_interval_pp": [
+            -0.38045586480034727,
+            -0.2438693576388889
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.03460968071853535,
+          "cross_entropy_difference_95_interval": [
+            -0.03656549986658825,
+            -0.032810457474875473
+          ],
+          "accuracy_difference_pp": 2.65625,
+          "accuracy_difference_95_interval_pp": [
+            2.4658203125,
+            2.855367024739583
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2431554144144885,
+          "accuracy": 0.42355821397569443
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.244096753746271,
+          "accuracy": 0.4226128472222222
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.186228660791595,
+          "accuracy": 0.46835123697916664
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.0009413393317825264,
+          "cross_entropy_difference_95_interval": [
+            0.0006249125154378514,
+            0.0012633324065245686
+          ],
+          "accuracy_difference_pp": -0.09453667534722222,
+          "accuracy_difference_95_interval_pp": [
+            -0.15190972222222224,
+            -0.03674994574652787
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.05786809295467618,
+          "cross_entropy_difference_95_interval": [
+            -0.06028768010165853,
+            -0.055474160344391656
+          ],
+          "accuracy_difference_pp": 4.573838975694445,
+          "accuracy_difference_95_interval_pp": [
+            4.337832980685763,
+            4.822594536675347
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.1963415693232997,
+          "accuracy": 0.46055501302083335
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2011343634532143,
+          "accuracy": 0.4571601019965278
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.167033491956277,
+          "accuracy": 0.48339708116319446
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.004792794129914708,
+          "cross_entropy_difference_95_interval": [
+            0.004275633225786604,
+            0.005313820269204572
+          ],
+          "accuracy_difference_pp": -0.3394911024305555,
+          "accuracy_difference_95_interval_pp": [
+            -0.41137695312500006,
+            -0.26950073242187506
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.03410087149693734,
+          "cross_entropy_difference_95_interval": [
+            -0.03604794772704028,
+            -0.03231619057711214
+          ],
+          "accuracy_difference_pp": 2.6236979166666665,
+          "accuracy_difference_95_interval_pp": [
+            2.435167100694444,
+            2.8244459364149304
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2551216516643762,
+          "accuracy": 0.4262966579861111
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2539138902961793,
+          "accuracy": 0.42566053602430554
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.1012184135331256,
+          "accuracy": 0.5297444661458334
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.0012077613681968716,
+          "cross_entropy_difference_95_interval": [
+            -0.0019644583087776685,
+            -0.0004478468603661503
+          ],
+          "accuracy_difference_pp": -0.06361219618055555,
+          "accuracy_difference_95_interval_pp": [
+            -0.12125990125868055,
+            -0.005154079861111111
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.1526954767630539,
+          "cross_entropy_difference_95_interval": [
+            -0.15698641343895967,
+            -0.1484191530413874
+          ],
+          "accuracy_difference_pp": 10.408393012152779,
+          "accuracy_difference_95_interval_pp": [
+            10.108361138237848,
+            10.714280870225695
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.1289832539348734,
+          "accuracy": 0.51470947265625
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.1340735899271548,
+          "accuracy": 0.5115451388888889
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0721073811589223,
+          "accuracy": 0.5480821397569444
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.005090335992281325,
+          "cross_entropy_difference_95_interval": [
+            0.00431596484740213,
+            0.005872303439003493
+          ],
+          "accuracy_difference_pp": -0.3164333767361111,
+          "accuracy_difference_95_interval_pp": [
+            -0.3774685329861111,
+            -0.25390285915798616
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.06196620876823242,
+          "cross_entropy_difference_95_interval": [
+            -0.06455565403076535,
+            -0.05941547894876243
+          ],
+          "accuracy_difference_pp": 3.653700086805556,
+          "accuracy_difference_95_interval_pp": [
+            3.467044406467014,
+            3.8439941406249996
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.250488726541193,
+          "accuracy": 0.42660454644097223
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2497375645726505,
+          "accuracy": 0.4262749565972222
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0903109611736403,
+          "accuracy": 0.53387451171875
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.0007511619685424698,
+          "cross_entropy_difference_95_interval": [
+            -0.0013220837567415502,
+            -0.0001673264597128668
+          ],
+          "accuracy_difference_pp": -0.032958984375,
+          "accuracy_difference_95_interval_pp": [
+            -0.09033203125,
+            0.022925482855902728
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.15942660339901016,
+          "cross_entropy_difference_95_interval": [
+            -0.16369590253025915,
+            -0.15523875358126435
+          ],
+          "accuracy_difference_pp": 10.759955512152777,
+          "accuracy_difference_95_interval_pp": [
+            10.455037434895834,
+            11.061608208550346
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.115280684274492,
+          "accuracy": 0.5208265516493056
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.1195527870434387,
+          "accuracy": 0.5180257161458334
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0623180222290103,
+          "accuracy": 0.5509724934895833
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.004272102768946853,
+          "cross_entropy_difference_95_interval": [
+            0.003636560731425157,
+            0.004921128609049548
+          ],
+          "accuracy_difference_pp": -0.2800835503472222,
+          "accuracy_difference_95_interval_pp": [
+            -0.3369208441840278,
+            -0.2223002115885417
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.057234764814428574,
+          "cross_entropy_difference_95_interval": [
+            -0.05980577107557716,
+            -0.054717962049374666
+          ],
+          "accuracy_difference_pp": 3.2946777343749996,
+          "accuracy_difference_95_interval_pp": [
+            3.1084493001302085,
+            3.4849989149305554
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2487007286813525,
+          "accuracy": 0.42733289930555557
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.2473677637572917,
+          "accuracy": 0.42703314887152777
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0819993641434444,
+          "accuracy": 0.5377753363715277
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.001332964924060636,
+          "cross_entropy_difference_95_interval": [
+            -0.0018673431697405047,
+            -0.0007908219871266436
+          ],
+          "accuracy_difference_pp": -0.02997504340277778,
+          "accuracy_difference_95_interval_pp": [
+            -0.0826076931423611,
+            0.020490858289930407
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.16536839961384733,
+          "cross_entropy_difference_95_interval": [
+            -0.16971201676836548,
+            -0.16107757457596664
+          ],
+          "accuracy_difference_pp": 11.07421875,
+          "accuracy_difference_95_interval_pp": [
+            10.762505425347221,
+            11.380645751953123
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.1067282451264975,
+          "accuracy": 0.525146484375
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.1102048902798236,
+          "accuracy": 0.5229994032118056
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0554836984672067,
+          "accuracy": 0.5530544704861111
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.0034766451533262926,
+          "cross_entropy_difference_95_interval": [
+            0.002882562670727364,
+            0.00408305898884363
+          ],
+          "accuracy_difference_pp": -0.21470811631944445,
+          "accuracy_difference_95_interval_pp": [
+            -0.2696397569444444,
+            -0.15936618381076395
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.05472119181261708,
+          "cross_entropy_difference_95_interval": [
+            -0.05720248038809384,
+            -0.05223200235076042
+          ],
+          "accuracy_difference_pp": 3.0055067274305554,
+          "accuracy_difference_95_interval_pp": [
+            2.8192816840277777,
+            3.18919203016493
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2310219717108541,
+          "accuracy": 0.4336466471354167
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.230674703926262,
+          "accuracy": 0.4328830295138889
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0661684300336574,
+          "accuracy": 0.5431260850694445
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.0003472677845921781,
+          "cross_entropy_difference_95_interval": [
+            -0.0009663767262827604,
+            0.0002789511865315338
+          ],
+          "accuracy_difference_pp": -0.07636176215277778,
+          "accuracy_difference_95_interval_pp": [
+            -0.13034735785590276,
+            -0.023600260416666668
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.16450627389260464,
+          "cross_entropy_difference_95_interval": [
+            -0.16909866709934754,
+            -0.15986019304617205
+          ],
+          "accuracy_difference_pp": 11.024305555555555,
+          "accuracy_difference_95_interval_pp": [
+            10.714728461371529,
+            11.341583251953125
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.0875612934330194,
+          "accuracy": 0.5318983289930556
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.0918453072359424,
+          "accuracy": 0.5292317708333333
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0485223137922326,
+          "accuracy": 0.5552652994791667
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.004284013802922952,
+          "cross_entropy_difference_95_interval": [
+            0.0034280648418805668,
+            0.005142254762985329
+          ],
+          "accuracy_difference_pp": -0.2666558159722222,
+          "accuracy_difference_95_interval_pp": [
+            -0.3274197048611111,
+            -0.20859781901041677
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.0433229934437097,
+          "cross_entropy_difference_95_interval": [
+            -0.04602515272421038,
+            -0.040632639477294605
+          ],
+          "accuracy_difference_pp": 2.6033528645833335,
+          "accuracy_difference_95_interval_pp": [
+            2.419277615017361,
+            2.7842915852864585
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.2296623008687877,
+          "accuracy": 0.4343112521701389
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.229376203333959,
+          "accuracy": 0.43390299479166666
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0550673753294784,
+          "accuracy": 0.5480821397569444
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.00028609753482871584,
+          "cross_entropy_difference_95_interval": [
+            -0.0007944496757247381,
+            0.0002054319318590892
+          ],
+          "accuracy_difference_pp": -0.040825737847222224,
+          "accuracy_difference_95_interval_pp": [
+            -0.08748711480034722,
+            0.0063781738281249506
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.17430882800448064,
+          "cross_entropy_difference_95_interval": [
+            -0.17894608501477505,
+            -0.16971125089016925
+          ],
+          "accuracy_difference_pp": 11.417914496527779,
+          "accuracy_difference_95_interval_pp": [
+            11.102796766493055,
+            11.735436333550348
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.0736938618679739,
+          "accuracy": 0.5386013454861112
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.0762818653175297,
+          "accuracy": 0.5367621527777777
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0368743183563411,
+          "accuracy": 0.5594346788194444
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.0025880034495559005,
+          "cross_entropy_difference_95_interval": [
+            0.0019148636891946403,
+            0.0032843240820673394
+          ],
+          "accuracy_difference_pp": -0.18391927083333334,
+          "accuracy_difference_95_interval_pp": [
+            -0.2434658474392361,
+            -0.12301974826388888
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.039407546961188526,
+          "cross_entropy_difference_95_interval": [
+            -0.042044725929897844,
+            -0.03673558969005373
+          ],
+          "accuracy_difference_pp": 2.2672526041666665,
+          "accuracy_difference_95_interval_pp": [
+            2.089572482638889,
+            2.447238498263889
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "family": "persistent",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.230227699322212,
+          "accuracy": 0.43295084635416664
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.229921348941409,
+          "accuracy": 0.43264702690972223
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.0536456778671386,
+          "accuracy": 0.5476752387152778
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.00030635038080314796,
+          "cross_entropy_difference_95_interval": [
+            -0.0007092549411269526,
+            9.031388908624644e-05
+          ],
+          "accuracy_difference_pp": -0.030381944444444444,
+          "accuracy_difference_95_interval_pp": [
+            -0.078399658203125,
+            0.015597873263888888
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.17627567107427036,
+          "cross_entropy_difference_95_interval": [
+            -0.18083196711720018,
+            -0.17176216104669342
+          ],
+          "accuracy_difference_pp": 11.502821180555555,
+          "accuracy_difference_95_interval_pp": [
+            11.18949720594618,
+            11.820892333984375
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "family": "soft_gate",
+      "metrics": {
+        "hidden": {
+          "episodes": 2880,
+          "cross_entropy": 1.0707593226055097,
+          "accuracy": 0.5402886284722223
+        },
+        "shuffled": {
+          "episodes": 2880,
+          "cross_entropy": 1.0730615453490626,
+          "accuracy": 0.5386271158854167
+        },
+        "true": {
+          "episodes": 2880,
+          "cross_entropy": 1.035554830574741,
+          "accuracy": 0.5593600802951388
+        }
+      },
+      "paired_contrasts": {
+        "shuffled_minus_hidden": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": 0.0023022227435527992,
+          "cross_entropy_difference_95_interval": [
+            0.0016777687437004515,
+            0.002903807227412471
+          ],
+          "accuracy_difference_pp": -0.16615125868055555,
+          "accuracy_difference_95_interval_pp": [
+            -0.21756320529513887,
+            -0.11461046006944445
+          ]
+        },
+        "true_minus_shuffled": {
+          "episodes": 2880,
+          "cells": 360,
+          "cross_entropy_difference": -0.037506714774321555,
+          "cross_entropy_difference_95_interval": [
+            -0.04001515349133924,
+            -0.03492876521816167
+          ],
+          "accuracy_difference_pp": 2.0732964409722223,
+          "accuracy_difference_95_interval_pp": [
+            1.8926289876302085,
+            2.2503017849392357
+          ]
+        }
+      },
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "bootstrap": {
+        "replicates": 5000,
+        "seed": 20260924,
+        "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+      }
+    }
+  ]
+}

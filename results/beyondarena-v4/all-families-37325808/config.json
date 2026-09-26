@@ -1,0 +1,23 @@
+{
+  "run_roots": [
+    "/scratch/users/k23139234/tfm_runs"
+  ],
+  "output_dir": "/users/k23139234/repo/TFM-Playground-uncertainty/results/beyondarena-v4/all-families-37325808",
+  "device": "cuda",
+  "data_cache": "/cephfs/volumes/hpc_home/k23139234/17f71989-c3b3-41d8-9315-37daa2fead54/repo/TFM-Playground-uncertainty/data-foundry-cache",
+  "query_chunk_size": 128,
+  "num_mem_chunks": 8,
+  "rows_max": 10000,
+  "features_max": 30,
+  "classes_min": 2,
+  "classes_max": 5,
+  "smoke_task": null,
+  "baseline_models": [
+    "tabpfn-v2.2",
+    "tabpfn-v2.6",
+    "tabpfn-v3",
+    "tabicl-v1",
+    "tabicl-v2"
+  ],
+  "fail_on_task_error": false
+}

@@ -1,0 +1,89 @@
+{
+  "bank_name": "multiregime_v3_evaluation_bank_tabicl211",
+  "bank_tabicl_version": "2.1.1",
+  "bank_source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "pilot_source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "pilot_config": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/runs/37113090/cell-0/config.json",
+  "pilot_result": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/TFM-Playground-slot-attention/runs/37113090/cell-0/result.json",
+  "config": {
+    "seed": 2402,
+    "steps": 10000,
+    "micro_batch_size": 8,
+    "accumulate_gradients": 4,
+    "support_size": 128,
+    "query_size": 32,
+    "max_features": 12,
+    "num_groups": 5,
+    "width": 192,
+    "hidden": 768,
+    "layers": 6,
+    "heads": 6,
+    "num_slots": 4,
+    "learning_rate": 0.0001,
+    "min_learning_rate": 1e-06,
+    "warmup_steps": 2000,
+    "validation_interval": 5000,
+    "validation_episodes": 8,
+    "device": "cuda"
+  },
+  "evaluation_bank_hashes": {
+    "original": [
+      "ca939fcc8c24bb714c07f882adee9ce77b6254c537661f3fae0aebc1e327a6df",
+      "affa6ce25567db5a5575975c23a3c17a608528855d17525e8f4c6db17da19fdd",
+      "b65b254e2b477cc92b4f67f71316ce7cf84e037bab93841ef9f55b19cc23d4a2",
+      "8c7f119e8004e4b02c4d712ae87651cd5a9454037fe76833db563ce6480f6e47",
+      "ed9de4c4755ada1e62b8b6991a17055a1afa2df493a21ba8525d5b16669f73c1",
+      "8a2251dbc164af544a67f8347a5fafb5670dd2a1524039256016fe5c6aa220fc",
+      "03aec81614561292e3d6d222778abecb392cf20075dec8dfd286177a0a0001f5",
+      "49da97bac3b12e53a7b05150eb35e7148c6ae62851a1a10ec15e453959aa6094"
+    ],
+    "shared_rule": [
+      "1d3e1d3140d6b2b03f99813ba6464bb57acd6d13cbadd98b099ec119ebcad0a6",
+      "82627d41c4fc363b990e66bfb828ac174b9331ecf80f357ff90d3f30e3498a9a",
+      "4e6ea05bc6f212770d818f5df395f31b59d3a735a82520488103c2b9ed2c6474",
+      "9738cacc6c7c413c322cafbb17df989048cc6bd9e89873e6511749bdde2f477d",
+      "fd74f384e66947d38af12165ca552e09083e0c8d999a19b200679da34118d5ff",
+      "eaf7d7adafd62624ea3fe9b13020dde6d130e877b33d33d89a67cfacd4cff73b",
+      "3f715eed84fbaa862adc126f8e77f68f785cd6741b08f65422c877a72414e968",
+      "a2b970f7b5da49f46d82f489ac4b08cb6c2f3836cab25f8ca4c628b2d4a4e7a8"
+    ],
+    "soft_gate": [
+      "791eb8b29b86cc56f11f0134f634b5bfadb702d1240a036087967b9f2dc0dd01",
+      "9c0b999598113a298f88652eab273c58e531a21a0059d555c33f46a50ef9d214",
+      "2be0cf81db08d760d500c29cde5e1b849d227bd59e861f642bee62343773fa9d",
+      "6fe1b143ca5facb586c023d1364d4375037f4b3dc92a259bf6eb6d609f5a124f",
+      "f271740a997556798708d2f8664085f4c2371b751da896e9878ee34674e9f4e8",
+      "1590746e2218cfc67cafe72509a35379c941e33e51f1e56d334798529e09a8f4",
+      "a663582859def1c0fa8e604747f78dbecbe6f58a552f7f87b6b2c8577e26ed8b",
+      "c1c0d76a9226064802ec8a7d27251ef60516d838768296cc39e4f8b06ab53b53"
+    ],
+    "independent": [
+      "1d177706a4fa713519776177a9aec90b26c7af78b89d5634bb5790f90de0a232",
+      "0c26b4c2412580b692a69369d5810ae4f2d8a2529f534c425e16da20cb1d02ae",
+      "e881eb6e0c7a4c9fafae0f177841cb93f428b0379063ebb78980204e80f86017",
+      "6a0b2443aa56a45bfb9dd004a63604b57527b410792fa47ccef1508280855d68",
+      "4b9d4a2b8a7990e5b973a9c18677cb4dd624b94be0671a163d13f4091f5a3514",
+      "07dec7b45c4c92c7607b2a0b4d63d66e338ff1c230fe5275dcf5d33a0ab8cfea",
+      "6003f8f849f76b1391c3b28e4953bbfb0486c95e53ed68300da278e0ceeb7773",
+      "e322271f6ea82bb7faffc0df816da8b065af203ae0131d10f9b543a9e2f64b33"
+    ],
+    "persistent": [
+      "7ae66101fe141be6f19ee6fb20bf49ee190e03432bda4fa6d814ddd042b94e0a",
+      "d9294f10374d567ade002429a729e8a2c1d70bd9f12deacffedfbc03e9c7d8b4",
+      "46c31ae80dde367950f2721019d20a1dd147afeb8b084525e4362502874adb88",
+      "c9ec95c61c6e03573d41555ecda3934e4ee52a40d5473ab6fd7f507cc67fc412",
+      "baa5eb3132f648954faf1dc535c5dfd1dd6d0535be365f4ad3345d7b11183ad5",
+      "dad018b6daca906d016d487dc75cd7b1f8a85e8e2b493d971dac962423fe0629",
+      "30c2c2ade3f96b81d23f34cc30d949fa4762079b4b60d0ca1098cf110956f5f6",
+      "c20541b73aa1bb84be47ad192c4019a6446422b9ef8d4534d8f812d647d765dd"
+    ]
+  },
+  "episodes_per_family": 8,
+  "families": [
+    "original",
+    "shared_rule",
+    "soft_gate",
+    "independent",
+    "persistent"
+  ]
+}

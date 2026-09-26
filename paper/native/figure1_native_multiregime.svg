@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="7.2in" height="5.66in" viewBox="0 0 1680 1320">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#73879a"/></marker>
+  <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#278b88"/></marker>
+  <style>text { font-family: Arial, Helvetica, sans-serif; }</style>
+</defs>
+<rect width="1680" height="1320" fill="#ffffff"/>
+
+<rect x="32" y="40" width="790" height="610" rx="22" fill="#f8fafc" stroke="#dce5ec" stroke-width="2" />
+<rect x="54" y="60" width="44" height="40" rx="12" fill="#e7eef5" stroke="none" stroke-width="0" />
+<text x="76" y="88" font-size="23" fill="#36566e" font-weight="700" text-anchor="middle" >A</text>
+<text x="114" y="88" font-size="27" fill="#1f3447" font-weight="700" text-anchor="start" >Sample a task</text>
+<rect x="858" y="40" width="790" height="610" rx="22" fill="#f8fafc" stroke="#dce5ec" stroke-width="2" />
+<rect x="880" y="60" width="44" height="40" rx="12" fill="#e7eef5" stroke="none" stroke-width="0" />
+<text x="902" y="88" font-size="23" fill="#36566e" font-weight="700" text-anchor="middle" >B</text>
+<text x="940" y="88" font-size="27" fill="#1f3447" font-weight="700" text-anchor="start" >Score and label mechanisms</text>
+<rect x="32" y="670" width="790" height="610" rx="22" fill="#f8fafc" stroke="#dce5ec" stroke-width="2" />
+<rect x="54" y="690" width="44" height="40" rx="12" fill="#e7eef5" stroke="none" stroke-width="0" />
+<text x="76" y="718" font-size="23" fill="#36566e" font-weight="700" text-anchor="middle" >C</text>
+<text x="114" y="718" font-size="27" fill="#1f3447" font-weight="700" text-anchor="start" >Route rows to regimes</text>
+<rect x="858" y="670" width="790" height="610" rx="22" fill="#f8fafc" stroke="#dce5ec" stroke-width="2" />
+<rect x="880" y="690" width="44" height="40" rx="12" fill="#e7eef5" stroke="none" stroke-width="0" />
+<text x="902" y="718" font-size="23" fill="#36566e" font-weight="700" text-anchor="middle" >D</text>
+<text x="940" y="718" font-size="27" fill="#1f3447" font-weight="700" text-anchor="start" >Pretrain and predict</text>
+<rect x="62" y="130" width="730" height="88" rx="15" fill="#edf3f7" stroke="#d8e2e9" stroke-width="1.5" />
+<rect x="82" y="148" width="54" height="52" rx="12" fill="#ffffff" stroke="#cad8e2" stroke-width="1.5" />
+<circle cx="98" cy="165" r="4" fill="#268b88" stroke="none" stroke-width="1"/>
+<circle cx="120" cy="165" r="4" fill="#d58a36" stroke="none" stroke-width="1"/>
+<circle cx="98" cy="184" r="4" fill="#7968a9" stroke="none" stroke-width="1"/>
+<circle cx="120" cy="184" r="4" fill="#294e69" stroke="none" stroke-width="1"/>
+<text x="154" y="165" font-size="24" fill="#294e69" font-weight="700" text-anchor="start" >Native TabICL SCM prior</text>
+<text x="154" y="197" font-size="20" fill="#5d7182" font-weight="400" text-anchor="start" >generates features X and continuous score(s)</text>
+<line x1="427" y1="222" x2="427" y2="249" stroke="#8194a4" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="62" y="260" width="730" height="350" rx="16" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.6" />
+<text x="86" y="296" font-size="23" fill="#294e69" font-weight="700" text-anchor="start" >One synthetic episode with multiple regimes</text>
+<text x="86" y="326" font-size="19" fill="#5d7182" font-weight="400" text-anchor="start" >Regime colors are generator labels; they are not model inputs.</text>
+<rect x="84" y="344" width="686" height="34" rx="7" fill="#f1f5f8" stroke="none" stroke-width="0" />
+<text x="175" y="368" font-size="18" fill="#5d7182" font-weight="700" text-anchor="middle" >x₁</text>
+<text x="330" y="368" font-size="18" fill="#5d7182" font-weight="700" text-anchor="middle" >x₂</text>
+<text x="500" y="368" font-size="18" fill="#5d7182" font-weight="700" text-anchor="middle" >Y</text>
+<text x="690" y="368" font-size="18" fill="#5d7182" font-weight="700" text-anchor="middle" >split</text>
+<rect x="84" y="380" width="686" height="28" rx="6" fill="#e5f3f1" stroke="none" stroke-width="0" />
+<rect x="84" y="380" width="6" height="28" rx="3" fill="#268b88" stroke="none" stroke-width="0" />
+<text x="175" y="402" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">−0.8</text>
+<text x="330" y="402" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.2</text>
+<text x="500" y="402" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<text x="690" y="402" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >support</text>
+<rect x="84" y="412" width="686" height="28" rx="6" fill="#e5f3f1" stroke="none" stroke-width="0" />
+<rect x="84" y="412" width="6" height="28" rx="3" fill="#268b88" stroke="none" stroke-width="0" />
+<text x="175" y="434" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">−0.4</text>
+<text x="330" y="434" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.7</text>
+<text x="500" y="434" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<text x="690" y="434" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >support</text>
+<rect x="84" y="444" width="686" height="28" rx="6" fill="#fbf0df" stroke="none" stroke-width="0" />
+<rect x="84" y="444" width="6" height="28" rx="3" fill="#d58a36" stroke="none" stroke-width="0" />
+<text x="175" y="466" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.1</text>
+<text x="330" y="466" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">−0.6</text>
+<text x="500" y="466" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<text x="690" y="466" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >support</text>
+<rect x="84" y="476" width="686" height="28" rx="6" fill="#fbf0df" stroke="none" stroke-width="0" />
+<rect x="84" y="476" width="6" height="28" rx="3" fill="#d58a36" stroke="none" stroke-width="0" />
+<text x="175" y="498" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.5</text>
+<text x="330" y="498" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.3</text>
+<text x="500" y="498" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<text x="690" y="498" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >support</text>
+<rect x="84" y="508" width="686" height="28" rx="6" fill="#eeeaf6" stroke="none" stroke-width="0" />
+<rect x="84" y="508" width="6" height="28" rx="3" fill="#7968a9" stroke="none" stroke-width="0" />
+<text x="175" y="530" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.8</text>
+<text x="330" y="530" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">−0.1</text>
+<text x="500" y="530" font-size="19" fill="#a5b1bc" font-weight="700" text-anchor="middle" >—</text>
+<text x="690" y="530" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >query</text>
+<rect x="84" y="540" width="686" height="28" rx="6" fill="#eeeaf6" stroke="none" stroke-width="0" />
+<rect x="84" y="540" width="6" height="28" rx="3" fill="#7968a9" stroke="none" stroke-width="0" />
+<text x="175" y="562" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">1.1</text>
+<text x="330" y="562" font-size="18" fill="#354b5e" font-weight="400" text-anchor="middle" font-family="monospace">0.6</text>
+<text x="500" y="562" font-size="19" fill="#a5b1bc" font-weight="700" text-anchor="middle" >—</text>
+<text x="690" y="562" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >query</text>
+<text x="427" y="592" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >Support Y is given; query Y is hidden.</text>
+<text x="1253" y="119" font-size="17" fill="#5d7182" font-weight="500" text-anchor="middle" >Example numbers are schematic; class IDs may be permuted.</text>
+<rect x="880" y="138" width="746" height="232" rx="16" fill="#ffffff" stroke="#b9d8d5" stroke-width="1.7" />
+<rect x="900" y="153" width="76" height="34" rx="10" fill="#e5f3f1" stroke="none" stroke-width="0" />
+<text x="938" y="177" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="22" fill="#176e6b" font-weight="700" text-anchor="middle"><tspan font-style="italic">r<tspan font-size="75%" baseline-shift="sub">z</tspan></tspan></text>
+<text x="992" y="177" font-size="19" fill="#294e69" font-weight="700" text-anchor="start" >SCM gives each regime its own score and cut-point draw</text>
+<rect x="894" y="196" width="712" height="58" rx="10" fill="#e5f3f1" stroke="#c9e1de" stroke-width="1" />
+<rect x="904" y="209" width="93" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="950" y="230" font-size="16" fill="#176e6b" font-weight="700" text-anchor="middle" >Regime 1</text>
+<rect x="1005" y="209" width="38" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1024" y="230" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >X</text>
+<line x1="1047" y1="225" x2="1064" y2="225" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1070" y="206" width="132" height="36" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1136" y="229" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="17" fill="#176e6b" font-weight="600" text-anchor="middle"><tspan font-style="italic">s<tspan font-size="75%" baseline-shift="sub">1</tspan></tspan><tspan>(</tspan><tspan font-style="italic">X</tspan><tspan>) = .62</tspan></text>
+<line x1="1205" y1="225" x2="1219" y2="225" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1224.0" y="212" width="74.39999999999999" height="26" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1261.2" y="229.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<rect x="1298.4" y="212" width="124.0" height="26" rx="3" fill="#dce5ec" stroke="#b8c7d2" stroke-width="1" />
+<text x="1360.4" y="229.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<rect x="1422.4" y="212" width="49.59999999999999" height="26" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1447.2" y="229.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >2</text>
+<line x1="1298.4" y1="209" x2="1298.4" y2="241" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1422.4" y1="209" x2="1422.4" y2="241" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1377.76" y1="204" x2="1377.76" y2="240" stroke="#203f56" stroke-width="2"/>
+<circle cx="1377.76" cy="204" r="4" fill="#203f56" stroke="none" stroke-width="1"/>
+<line x1="1474" y1="225" x2="1481" y2="225" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1483" y="209" width="112" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1539" y="230" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >Y = 1</text>
+<rect x="894" y="261" width="712" height="58" rx="10" fill="#e5f3f1" stroke="#c9e1de" stroke-width="1" />
+<rect x="904" y="274" width="93" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="950" y="295" font-size="16" fill="#176e6b" font-weight="700" text-anchor="middle" >Regime 2</text>
+<rect x="1005" y="274" width="38" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1024" y="295" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >X</text>
+<line x1="1047" y1="290" x2="1064" y2="290" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1070" y="271" width="132" height="36" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1136" y="294" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="17" fill="#176e6b" font-weight="600" text-anchor="middle"><tspan font-style="italic">s<tspan font-size="75%" baseline-shift="sub">2</tspan></tspan><tspan>(</tspan><tspan font-style="italic">X</tspan><tspan>) = .30</tspan></text>
+<line x1="1205" y1="290" x2="1219" y2="290" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1224.0" y="277" width="49.6" height="26" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1248.8" y="294.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<rect x="1273.6" y="277" width="49.6" height="26" rx="3" fill="#dce5ec" stroke="#b8c7d2" stroke-width="1" />
+<text x="1298.4" y="294.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<rect x="1323.2" y="277" width="148.79999999999998" height="26" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1397.6" y="294.68" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >2</text>
+<line x1="1273.6" y1="274" x2="1273.6" y2="306" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1323.2" y1="274" x2="1323.2" y2="306" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1298.4" y1="269" x2="1298.4" y2="305" stroke="#203f56" stroke-width="2"/>
+<circle cx="1298.4" cy="269" r="4" fill="#203f56" stroke="none" stroke-width="1"/>
+<line x1="1474" y1="290" x2="1481" y2="290" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1483" y="274" width="112" height="31" rx="8" fill="#ffffff" stroke="#c9e1de" stroke-width="1" />
+<text x="1539" y="295" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >Y = 1</text>
+<text x="1253" y="351" font-size="16" fill="#5d7182" font-weight="500" text-anchor="middle" >Rule settings match; sampled cut points are not shared.</text>
+<rect x="880" y="385" width="746" height="239" rx="16" fill="#ffffff" stroke="#ead5b6" stroke-width="1.7" />
+<rect x="900" y="400" width="76" height="34" rx="10" fill="#fbf0df" stroke="none" stroke-width="0" />
+<text x="938" y="424" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="22" fill="#9a5e14" font-weight="700" text-anchor="middle"><tspan font-style="italic">g<tspan font-size="75%" baseline-shift="sub">z</tspan></tspan></text>
+<text x="992" y="424" font-size="18" fill="#294e69" font-weight="700" text-anchor="start" >One shared score; each regime uses its own cut points</text>
+<rect x="900" y="486" width="55" height="36" rx="8" fill="#ffffff" stroke="#efdec4" stroke-width="1" />
+<text x="927" y="510" font-size="17" fill="#294e69" font-weight="700" text-anchor="middle" >X</text>
+<line x1="959" y1="504" x2="980" y2="504" stroke="#73879a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<rect x="987" y="479" width="152" height="50" rx="9" fill="#fbf0df" stroke="#efdec4" stroke-width="1.2" />
+<text x="1063" y="499" font-size="15" fill="#9a5e14" font-weight="700" text-anchor="middle" >one shared score</text>
+<text x="1063" y="518" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="17" fill="#9a5e14" font-weight="600" text-anchor="middle"><tspan font-style="italic">s</tspan><tspan>(</tspan><tspan font-style="italic">X</tspan><tspan>) = .62</tspan></text>
+<line x1="1139" y1="504" x2="1156" y2="504" stroke="#73879a" stroke-width="1.7"/>
+<line x1="1156" y1="474" x2="1156" y2="562" stroke="#73879a" stroke-width="1.7"/>
+<line x1="1156" y1="474" x2="1170" y2="474" stroke="#73879a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<line x1="1156" y1="562" x2="1170" y2="562" stroke="#73879a" stroke-width="1.7" marker-end="url(#arrow)"/>
+<rect x="1175" y="447" width="88" height="52" rx="8" fill="#ffffff" stroke="#efdec4" stroke-width="1" />
+<text x="1219" y="479" font-size="14" fill="#9a5e14" font-weight="700" text-anchor="middle" >Regime 1</text>
+<rect x="1272.0" y="460" width="63.3" height="25" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1303.65" y="477.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<rect x="1335.3" y="460" width="105.5" height="25" rx="3" fill="#dce5ec" stroke="#b8c7d2" stroke-width="1" />
+<text x="1388.05" y="477.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<rect x="1440.8" y="460" width="42.19999999999999" height="25" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1461.9" y="477.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >2</text>
+<line x1="1335.3" y1="457" x2="1335.3" y2="488" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1440.8" y1="457" x2="1440.8" y2="488" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1402.82" y1="452" x2="1402.82" y2="487" stroke="#203f56" stroke-width="2"/>
+<circle cx="1402.82" cy="452" r="4" fill="#203f56" stroke="none" stroke-width="1"/>
+<line x1="1484" y1="473" x2="1490" y2="473" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1492" y="457" width="112" height="31" rx="8" fill="#ffffff" stroke="#efdec4" stroke-width="1" />
+<text x="1548" y="478" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >Y = 1</text>
+<rect x="1175" y="535" width="88" height="52" rx="8" fill="#ffffff" stroke="#efdec4" stroke-width="1" />
+<text x="1219" y="567" font-size="14" fill="#9a5e14" font-weight="700" text-anchor="middle" >Regime 2</text>
+<rect x="1272.0" y="548" width="42.2" height="25" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1293.1" y="565.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >0</text>
+<rect x="1314.2" y="548" width="42.2" height="25" rx="3" fill="#dce5ec" stroke="#b8c7d2" stroke-width="1" />
+<text x="1335.3" y="565.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >1</text>
+<rect x="1356.4" y="548" width="126.6" height="25" rx="3" fill="#e7edf2" stroke="#b8c7d2" stroke-width="1" />
+<text x="1419.7" y="565.0" font-size="14" fill="#294e69" font-weight="700" text-anchor="middle" >2</text>
+<line x1="1314.2" y1="545" x2="1314.2" y2="576" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1356.4" y1="545" x2="1356.4" y2="576" stroke="#71879a" stroke-width="1.5" stroke-dasharray="3 2"/>
+<line x1="1402.82" y1="540" x2="1402.82" y2="575" stroke="#203f56" stroke-width="2"/>
+<circle cx="1402.82" cy="540" r="4" fill="#203f56" stroke="none" stroke-width="1"/>
+<line x1="1484" y1="561" x2="1490" y2="561" stroke="#73879a" stroke-width="1.5" marker-end="url(#arrow)"/>
+<rect x="1492" y="545" width="112" height="31" rx="8" fill="#ffffff" stroke="#efdec4" stroke-width="1" />
+<text x="1548" y="566" font-size="16" fill="#294e69" font-weight="700" text-anchor="middle" >Y = 2</text>
+<text x="1253" y="610" font-size="16" fill="#5d7182" font-weight="500" text-anchor="middle" >Same score (.62); different cuts give different labels.</text>
+<g transform="translate(0 10)">
+<text x="427" y="737" font-size="19" fill="#5d7182" font-weight="500" text-anchor="middle" >Either routing method can pair with either mechanism.</text>
+<rect x="58" y="746" width="360" height="504" rx="16" fill="#ffffff" stroke="#b9d8d5" stroke-width="1.7" />
+<rect x="80" y="766" width="116" height="36" rx="10" fill="#e5f3f1" stroke="none" stroke-width="0" />
+<text x="138" y="791" font-size="20" fill="#176e6b" font-weight="700" text-anchor="middle" >soft gate</text>
+<text x="80" y="837" font-size="21" fill="#294e69" font-weight="700" text-anchor="start" >Observed x₁ sets the regime.</text>
+<text x="80" y="869" font-size="17" fill="#5d7182" font-weight="400" text-anchor="start" >Sort support x₁; split its ranks into bins.</text>
+<text x="80" y="895" font-size="17" fill="#5d7182" font-weight="400" text-anchor="start" >Query x₁ uses those same boundaries.</text>
+<text x="238" y="956" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >ordered x₁</text>
+<line x1="103" y1="1000" x2="375" y2="1000" stroke="#73879a" stroke-width="2"/>
+<line x1="193" y1="987" x2="193" y2="1013" stroke="#a4b2bd" stroke-width="1.6" stroke-dasharray="4 4"/>
+<line x1="284" y1="987" x2="284" y2="1013" stroke="#a4b2bd" stroke-width="1.6" stroke-dasharray="4 4"/>
+<circle cx="121" cy="1000" r="8" fill="#268b88" stroke="none" stroke-width="1"/>
+<circle cx="145" cy="1000" r="8" fill="#268b88" stroke="none" stroke-width="1"/>
+<circle cx="169" cy="1000" r="8" fill="#268b88" stroke="none" stroke-width="1"/>
+<circle cx="214" cy="1000" r="8" fill="#d58a36" stroke="none" stroke-width="1"/>
+<circle cx="238" cy="1000" r="8" fill="#d58a36" stroke="none" stroke-width="1"/>
+<circle cx="262" cy="1000" r="8" fill="#d58a36" stroke="none" stroke-width="1"/>
+<circle cx="305" cy="1000" r="8" fill="#7968a9" stroke="none" stroke-width="1"/>
+<circle cx="329" cy="1000" r="8" fill="#7968a9" stroke="none" stroke-width="1"/>
+<circle cx="353" cy="1000" r="8" fill="#7968a9" stroke="none" stroke-width="1"/>
+<text x="238" y="1042" font-size="16" fill="#176e6b" font-weight="600" text-anchor="middle" >support ranks define the bins</text>
+<rect x="82" y="1101" width="312" height="122" rx="12" fill="#f3f8f7" stroke="#d4e6e3" stroke-width="1.2" />
+<text x="102" y="1132" font-size="17" fill="#294e69" font-weight="600" text-anchor="start" >Support x₁  →  assign Z</text>
+<text x="102" y="1164" font-size="17" fill="#294e69" font-weight="600" text-anchor="start" >Query x₁     →  same Z cuts</text>
+<text x="102" y="1201" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >Z is determined by observed X₁.</text>
+<rect x="434" y="746" width="360" height="504" rx="16" fill="#ffffff" stroke="#d7d0e7" stroke-width="1.7" />
+<rect x="456" y="766" width="126" height="36" rx="10" fill="#eeeaf6" stroke="none" stroke-width="0" />
+<text x="519" y="791" font-size="20" fill="#61518d" font-weight="700" text-anchor="middle" >persistent</text>
+<text x="456" y="837" font-size="21" fill="#294e69" font-weight="700" text-anchor="start" >Group identity sets the regime.</text>
+<text x="456" y="869" font-size="17" fill="#5d7182" font-weight="400" text-anchor="start" >Rows in a group keep one assignment.</text>
+<text x="456" y="895" font-size="17" fill="#5d7182" font-weight="400" text-anchor="start" >The group ID is not included in X.</text>
+<g transform="translate(0 -16)">
+<text x="614" y="956" font-size="17" fill="#5d7182" font-weight="600" text-anchor="middle" >latent groups</text>
+<line x1="506" y1="977" x2="506" y2="1051" stroke="#bbc7d0" stroke-width="1.5"/>
+<circle cx="506" cy="990" r="10" fill="#268b88" stroke="none" stroke-width="1"/>
+<circle cx="506" cy="1038" r="10" fill="#268b88" stroke="none" stroke-width="1"/>
+<text x="506" y="1076" font-size="15" fill="#61518d" font-weight="600" text-anchor="middle" >Z=1</text>
+<line x1="614" y1="977" x2="614" y2="1051" stroke="#bbc7d0" stroke-width="1.5"/>
+<circle cx="614" cy="990" r="10" fill="#d58a36" stroke="none" stroke-width="1"/>
+<circle cx="614" cy="1038" r="10" fill="#d58a36" stroke="none" stroke-width="1"/>
+<text x="614" y="1076" font-size="15" fill="#61518d" font-weight="600" text-anchor="middle" >Z=2</text>
+<line x1="722" y1="977" x2="722" y2="1051" stroke="#bbc7d0" stroke-width="1.5"/>
+<circle cx="722" cy="990" r="10" fill="#7968a9" stroke="none" stroke-width="1"/>
+<circle cx="722" cy="1038" r="10" fill="#7968a9" stroke="none" stroke-width="1"/>
+<text x="722" y="1076" font-size="15" fill="#61518d" font-weight="600" text-anchor="middle" >Z=3</text>
+</g>
+<rect x="458" y="1101" width="312" height="122" rx="12" fill="#f6f4fa" stroke="#e2dced" stroke-width="1.2" />
+<text x="478" y="1132" font-size="17" fill="#294e69" font-weight="600" text-anchor="start" >same group  →  same regime</text>
+<text x="478" y="1164" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >Group ID is not included in X.</text>
+<text x="478" y="1201" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >Membership stays latent.</text>
+</g>
+<g transform="translate(0 10)">
+<text x="1253" y="737" font-size="19" fill="#5d7182" font-weight="500" text-anchor="middle" >Same in-context prediction task for all schedules</text>
+<rect x="883" y="746" width="228" height="126" rx="14" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.4" />
+<text x="901" y="778" font-size="20" fill="#294e69" font-weight="700" text-anchor="start" >Native control</text>
+<text x="901" y="805" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >single-regime tasks</text>
+<rect x="901" y="837" width="192" height="12" rx="6" fill="#e7edf2" stroke="none" stroke-width="0" />
+<rect x="1125" y="746" width="228" height="126" rx="14" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.4" />
+<text x="1143" y="778" font-size="20" fill="#294e69" font-weight="700" text-anchor="start" >Fixed mixture</text>
+<text x="1143" y="805" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >30% multiregime</text>
+<rect x="1143" y="837" width="192" height="12" rx="6" fill="#e7edf2" stroke="none" stroke-width="0" />
+<rect x="1277.4" y="837" width="57.599999999999994" height="12" rx="6" fill="#7c9ab0" stroke="none" stroke-width="0" />
+<rect x="1367" y="746" width="228" height="126" rx="14" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.4" />
+<text x="1385" y="778" font-size="20" fill="#294e69" font-weight="700" text-anchor="start" >Curriculum</text>
+<text x="1385" y="805" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >share ramps 0 → 50%</text>
+<rect x="1385" y="837" width="192" height="12" rx="6" fill="#e7edf2" stroke="none" stroke-width="0" />
+<path d="M 1385 848 L 1385 846 L 1577 837 L 1577 849 Z" fill="#7c9ab0" opacity="0.9"/>
+<text x="1253" y="913" font-size="20" fill="#294e69" font-weight="700" text-anchor="middle" >Prediction uses labelled examples plus the query features</text>
+<rect x="883" y="949" width="184" height="142" rx="13" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.4" />
+<text x="975" y="977" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >Model input</text>
+<rect x="898" y="992" width="154" height="36" rx="8" fill="#e5f3f1" stroke="none" stroke-width="0" />
+<text x="975" y="1016" xml:space="preserve" font-size="17" fill="#294e69" font-weight="600" text-anchor="middle"><tspan>support: </tspan><tspan font-family="Times New Roman, Georgia, serif" font-style="italic">X<tspan font-size="75%" baseline-shift="sub">s</tspan></tspan><tspan>, </tspan><tspan font-family="Times New Roman, Georgia, serif" font-style="italic">Y<tspan font-size="75%" baseline-shift="sub">s</tspan></tspan></text>
+<rect x="898" y="1038" width="154" height="36" rx="8" fill="#edf3f7" stroke="none" stroke-width="0" />
+<text x="975" y="1062" xml:space="preserve" font-size="17" fill="#294e69" font-weight="600" text-anchor="middle"><tspan>query: </tspan><tspan font-family="Times New Roman, Georgia, serif" font-style="italic">X<tspan font-size="75%" baseline-shift="sub">q</tspan></tspan><tspan> only</tspan></text>
+<line x1="1072" y1="1020" x2="1094" y2="1020" stroke="#8194a4" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="1102" y="966" width="194" height="108" rx="14" fill="#eaf1f5" stroke="#cad8e2" stroke-width="1.4" />
+<text x="1199" y="1009" font-size="21" fill="#294e69" font-weight="700" text-anchor="middle" >NanoTabPFN</text>
+<text x="1199" y="1041" font-size="16" fill="#5d7182" font-weight="500" text-anchor="middle" >in-context predictor</text>
+<line x1="1301" y1="1020" x2="1323" y2="1020" stroke="#8194a4" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="1332" y="949" width="272" height="142" rx="13" fill="#ffffff" stroke="#d7e0e7" stroke-width="1.4" />
+<text x="1468" y="978" font-size="19" fill="#294e69" font-weight="700" text-anchor="middle" >Query prediction</text>
+<text x="1468" y="1016" font-family="STIX Two Math, Cambria Math, Times New Roman, serif" xml:space="preserve" font-size="20" fill="#294e69" font-weight="500" text-anchor="middle"><tspan font-style="italic">p</tspan><tspan>(</tspan><tspan font-style="italic">Y<tspan font-size="75%" baseline-shift="sub">q</tspan></tspan><tspan> ∣ </tspan><tspan font-style="italic">X<tspan font-size="75%" baseline-shift="sub">s</tspan></tspan><tspan>, </tspan><tspan font-style="italic">Y<tspan font-size="75%" baseline-shift="sub">s</tspan></tspan><tspan>, </tspan><tspan font-style="italic">X<tspan font-size="75%" baseline-shift="sub">q</tspan></tspan><tspan>)</tspan></text>
+<text x="1468" y="1052" font-size="16" fill="#5d7182" font-weight="500" text-anchor="middle" >query labels are not supplied</text>
+<rect x="883" y="1110" width="721" height="93" rx="13" fill="#f3f6f8" stroke="#d5dfe6" stroke-width="1.3" />
+<text x="905" y="1143" font-size="18" fill="#294e69" font-weight="700" text-anchor="start" >Primary prediction input omits the regime ID.</text>
+<text x="905" y="1175" font-size="16" fill="#5d7182" font-weight="400" text-anchor="start" >Soft-gate membership may be inferred from X; persistent group membership remains latent.</text>
+</g>
+</svg>

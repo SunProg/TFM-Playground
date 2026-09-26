@@ -1,0 +1,121 @@
+{
+  "config": {
+    "output": "results/_table_slot_head_realistic_v2_smoke",
+    "prior_profile": "realistic",
+    "steps": 200,
+    "seeds": [
+      11
+    ],
+    "conditions": {
+      "decoder_baseline": {
+        "query_routing_mode": "decoder",
+        "reconstruction_mixture": "attention"
+      }
+    },
+    "test_episodes": 16,
+    "validation_episodes": 8,
+    "support_reconstruction_weight": 1.0,
+    "slot_mi_weight": 0.05,
+    "prior": {
+      "support_size": 128,
+      "query_size": 256,
+      "task_features": 4,
+      "max_regimes": 2,
+      "cue_separation": 1.5,
+      "regime_probability": 0.65,
+      "num_layers": 2,
+      "hidden_dim": 12,
+      "init_std": 0.5,
+      "label_noise": 0.05,
+      "calibration_size": 1024,
+      "min_disagreement": 0.2,
+      "max_disagreement": 0.8,
+      "max_attempts": 128
+    }
+  },
+  "runs": [
+    {
+      "condition": "decoder_baseline",
+      "seed": 11,
+      "selected_step": 200,
+      "history": [
+        {
+          "step": 0,
+          "seconds": 0.15239304199349135,
+          "accuracy": {
+            "mean": 0.501953125,
+            "ci95": [
+              0.470819650846115,
+              0.533086599153885
+            ],
+            "n_episodes": 8
+          },
+          "cross_entropy": {
+            "mean": 0.6973156854510307,
+            "ci95": [
+              0.6904286266736005,
+              0.704202744228461
+            ],
+            "n_episodes": 8
+          }
+        },
+        {
+          "step": 200,
+          "seconds": 30.529770291992463,
+          "accuracy": {
+            "mean": 0.4892578125,
+            "ci95": [
+              0.46173826045733574,
+              0.5167773645426642
+            ],
+            "n_episodes": 8
+          },
+          "cross_entropy": {
+            "mean": 0.6949295997619629,
+            "ci95": [
+              0.6922740723531974,
+              0.6975851271707284
+            ],
+            "n_episodes": 8
+          }
+        }
+      ],
+      "test": {
+        "accuracy": {
+          "mean": 0.4970703125,
+          "ci95": [
+            0.48546955670593683,
+            0.5086710682940632
+          ],
+          "n_episodes": 16
+        },
+        "cross_entropy": {
+          "mean": 0.696191806346178,
+          "ci95": [
+            0.6911954535909025,
+            0.7011881591014536
+          ],
+          "n_episodes": 16
+        }
+      },
+      "test_shuffled_support_labels": {
+        "accuracy": {
+          "mean": 0.4970703125,
+          "ci95": [
+            0.48546955670593683,
+            0.5086710682940632
+          ],
+          "n_episodes": 16
+        },
+        "cross_entropy": {
+          "mean": 0.6947013325989246,
+          "ci95": [
+            0.6927649858857926,
+            0.6966376793120567
+          ],
+          "n_episodes": 16
+        }
+      }
+    }
+  ]
+}

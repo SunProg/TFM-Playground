@@ -1,0 +1,63 @@
+{
+  "runs": [
+    {
+      "models": [
+        "native-original-large",
+        "native-original-medium",
+        "native-original-small",
+        "native-rg_z-curriculum-large",
+        "native-rg_z-curriculum-medium",
+        "native-rg_z-curriculum-small",
+        "native-rg_z-fixed-large",
+        "native-rg_z-fixed-medium",
+        "native-rg_z-fixed-small",
+        "tabpfn-v2.2",
+        "tabpfn-v2.6",
+        "tabpfn-v3",
+        "tabicl-v1",
+        "tabicl-v2",
+        "rf",
+        "logreg",
+        "hgb",
+        "xgboost",
+        "lightgbm",
+        "catboost"
+      ],
+      "provenance": {
+        "dataset_revision": "2ecfe882ccfb814fc27c4de10a64ceefd5d7655c",
+        "dataset_rows": 797,
+        "protocol": "stratified target-site shots; all other sites in support",
+        "shots": 20,
+        "repeats_per_site": 5,
+        "seed": 0,
+        "models": [
+          "native-original-large",
+          "native-original-medium",
+          "native-original-small",
+          "native-rg_z-curriculum-large",
+          "native-rg_z-curriculum-medium",
+          "native-rg_z-curriculum-small",
+          "native-rg_z-fixed-large",
+          "native-rg_z-fixed-medium",
+          "native-rg_z-fixed-small",
+          "tabpfn-v2.2",
+          "tabpfn-v2.6",
+          "tabpfn-v3",
+          "tabicl-v1",
+          "tabicl-v2",
+          "rf",
+          "logreg",
+          "hgb",
+          "xgboost",
+          "lightgbm",
+          "catboost"
+        ],
+        "evaluation_source_sha256": "85348a3b6ab0d80716e557544e38e766380eed5f545913d698eb0ef415443aae",
+        "fold_evaluator_source_sha256": "1c33ccee29099b4bc33626104d700314c1ec0b8c029725ad78a3a8d8c8074bdb",
+        "preprocessor_source_sha256": "709e110aa53c7170511f98519d6d7cbef2af75afddd3d26da246442268726e61",
+        "native_model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34"
+      }
+    }
+  ],
+  "checkpoint_files": {}
+}

@@ -1,0 +1,92 @@
+\begingroup\footnotesize\setlength{\tabcolsep}{4pt}\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}lllp{4.4cm}r@{}}
+\caption{Within-checkpoint cross-entropy contrasts (nats) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size.}\label{tab:tagcontrasts}\\
+\toprule Mechanism & Routing & Model/size & True$-$shuffled [95\% interval] & Shuffled$-$hidden\\\midrule\endfirsthead
+\multicolumn{5}{l}{\emph{Continued from previous page}}\\\toprule Mechanism & Routing & Model/size & True$-$shuffled [95\% interval] & Shuffled$-$hidden\\\midrule\endhead
+\bottomrule\endfoot
+$r_z$ & persistent & O/S & -0.057 [-0.061, -0.054] & +0.0008\\
+$r_z$ & persistent & F/S & -0.059 [-0.063, -0.055] & +0.0007\\
+$r_z$ & persistent & C/S & -0.058 [-0.061, -0.054] & +0.0008\\
+$r_z$ & persistent & O/M & -0.150 [-0.156, -0.144] & -0.0023\\
+$r_z$ & persistent & F/M & -0.158 [-0.164, -0.152] & -0.0012\\
+$r_z$ & persistent & C/M & -0.164 [-0.170, -0.157] & -0.0018\\
+$r_z$ & persistent & O/L & -0.162 [-0.169, -0.156] & -0.0005\\
+$r_z$ & persistent & F/L & -0.172 [-0.178, -0.165] & -0.0004\\
+$r_z$ & persistent & C/L & -0.174 [-0.180, -0.167] & -0.0005\\
+\midrule
+$r_z$ & soft gate & O/S & -0.035 [-0.037, -0.032] & +0.0048\\
+$r_z$ & soft gate & F/S & -0.035 [-0.037, -0.032] & +0.0046\\
+$r_z$ & soft gate & C/S & -0.034 [-0.037, -0.032] & +0.0048\\
+$r_z$ & soft gate & O/M & -0.062 [-0.065, -0.058] & +0.0057\\
+$r_z$ & soft gate & F/M & -0.057 [-0.060, -0.053] & +0.0046\\
+$r_z$ & soft gate & C/M & -0.054 [-0.057, -0.050] & +0.0037\\
+$r_z$ & soft gate & O/L & -0.042 [-0.046, -0.039] & +0.0044\\
+$r_z$ & soft gate & F/L & -0.038 [-0.042, -0.035] & +0.0025\\
+$r_z$ & soft gate & C/L & -0.037 [-0.040, -0.033] & +0.0024\\
+\midrule
+$g_z$ & persistent & O/S & -0.058 [-0.061, -0.055] & +0.0009\\
+$g_z$ & persistent & F/S & -0.059 [-0.062, -0.056] & +0.0010\\
+$g_z$ & persistent & C/S & -0.058 [-0.061, -0.055] & +0.0011\\
+$g_z$ & persistent & O/M & -0.155 [-0.161, -0.149] & -0.0002\\
+$g_z$ & persistent & F/M & -0.161 [-0.167, -0.155] & -0.0003\\
+$g_z$ & persistent & C/M & -0.167 [-0.173, -0.161] & -0.0008\\
+$g_z$ & persistent & O/L & -0.167 [-0.173, -0.160] & -0.0002\\
+$g_z$ & persistent & F/L & -0.177 [-0.183, -0.170] & -0.0001\\
+$g_z$ & persistent & C/L & -0.179 [-0.185, -0.172] & -0.0001\\
+\midrule
+$g_z$ & soft gate & O/S & -0.035 [-0.038, -0.032] & +0.0049\\
+$g_z$ & soft gate & F/S & -0.035 [-0.037, -0.032] & +0.0047\\
+$g_z$ & soft gate & C/S & -0.034 [-0.037, -0.031] & +0.0048\\
+$g_z$ & soft gate & O/M & -0.062 [-0.066, -0.058] & +0.0045\\
+$g_z$ & soft gate & F/M & -0.058 [-0.062, -0.054] & +0.0039\\
+$g_z$ & soft gate & C/M & -0.056 [-0.059, -0.052] & +0.0033\\
+$g_z$ & soft gate & O/L & -0.044 [-0.048, -0.040] & +0.0041\\
+$g_z$ & soft gate & F/L & -0.040 [-0.044, -0.037] & +0.0026\\
+$g_z$ & soft gate & C/L & -0.038 [-0.042, -0.035] & +0.0022\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{4pt}\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}lllp{4.4cm}r@{}}
+\caption{Within-checkpoint accuracy contrasts (percentage points) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size.}\label{tab:tagaccuracy}\\
+\toprule Mechanism & Routing & Model/size & True$-$shuffled [95\% interval] & Shuffled$-$hidden\\\midrule\endfirsthead
+\multicolumn{5}{l}{\emph{Continued from previous page}}\\\toprule Mechanism & Routing & Model/size & True$-$shuffled [95\% interval] & Shuffled$-$hidden\\\midrule\endhead
+\bottomrule\endfoot
+$r_z$ & persistent & O/S & +4.52 [+4.18, +4.86] & -0.07\\
+$r_z$ & persistent & F/S & +4.58 [+4.24, +4.93] & -0.03\\
+$r_z$ & persistent & C/S & +4.48 [+4.14, +4.82] & -0.08\\
+$r_z$ & persistent & O/M & +10.15 [+9.72, +10.57] & -0.05\\
+$r_z$ & persistent & F/M & +10.56 [+10.12, +10.99] & -0.07\\
+$r_z$ & persistent & C/M & +10.89 [+10.44, +11.34] & +0.00\\
+$r_z$ & persistent & O/L & +10.85 [+10.41, +11.29] & -0.08\\
+$r_z$ & persistent & F/L & +11.25 [+10.80, +11.69] & +0.01\\
+$r_z$ & persistent & C/L & +11.32 [+10.87, +11.77] & -0.05\\
+\midrule
+$r_z$ & soft gate & O/S & +2.89 [+2.63, +3.17] & -0.39\\
+$r_z$ & soft gate & F/S & +2.69 [+2.41, +2.97] & -0.35\\
+$r_z$ & soft gate & C/S & +2.68 [+2.42, +2.97] & -0.36\\
+$r_z$ & soft gate & O/M & +3.64 [+3.40, +3.89] & -0.36\\
+$r_z$ & soft gate & F/M & +3.18 [+2.94, +3.43] & -0.26\\
+$r_z$ & soft gate & C/M & +3.01 [+2.76, +3.26] & -0.23\\
+$r_z$ & soft gate & O/L & +2.50 [+2.25, +2.75] & -0.22\\
+$r_z$ & soft gate & F/L & +2.18 [+1.95, +2.42] & -0.14\\
+$r_z$ & soft gate & C/L & +1.99 [+1.76, +2.24] & -0.14\\
+\midrule
+$g_z$ & persistent & O/S & +4.62 [+4.29, +4.96] & -0.12\\
+$g_z$ & persistent & F/S & +4.72 [+4.39, +5.07] & -0.10\\
+$g_z$ & persistent & C/S & +4.67 [+4.33, +5.02] & -0.11\\
+$g_z$ & persistent & O/M & +10.67 [+10.23, +11.12] & -0.08\\
+$g_z$ & persistent & F/M & +10.96 [+10.51, +11.41] & +0.00\\
+$g_z$ & persistent & C/M & +11.26 [+10.81, +11.73] & -0.06\\
+$g_z$ & persistent & O/L & +11.20 [+10.71, +11.68] & -0.07\\
+$g_z$ & persistent & F/L & +11.59 [+11.11, +12.07] & -0.09\\
+$g_z$ & persistent & C/L & +11.69 [+11.22, +12.18] & -0.01\\
+\midrule
+$g_z$ & soft gate & O/S & +2.69 [+2.42, +2.98] & -0.27\\
+$g_z$ & soft gate & F/S & +2.62 [+2.35, +2.89] & -0.28\\
+$g_z$ & soft gate & C/S & +2.57 [+2.31, +2.84] & -0.32\\
+$g_z$ & soft gate & O/M & +3.67 [+3.39, +3.95] & -0.27\\
+$g_z$ & soft gate & F/M & +3.41 [+3.12, +3.69] & -0.30\\
+$g_z$ & soft gate & C/M & +3.01 [+2.74, +3.29] & -0.20\\
+$g_z$ & soft gate & O/L & +2.71 [+2.45, +2.98] & -0.31\\
+$g_z$ & soft gate & F/L & +2.35 [+2.08, +2.63] & -0.23\\
+$g_z$ & soft gate & C/L & +2.16 [+1.91, +2.42] & -0.19\\
+\end{longtable}\endgroup

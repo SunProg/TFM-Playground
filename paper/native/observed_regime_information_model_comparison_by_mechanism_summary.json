@@ -1,0 +1,1533 @@
+{
+  "description": "Candidate-minus-original episode-paired differences for hidden, shuffled, and true regime-tag inputs, stratified by regime-generating mechanism.",
+  "filters": {
+    "num_regimes": "at least 2",
+    "num_classes": "at least 3",
+    "rule_mode": "multiregime",
+    "episodes_per_mechanism_routing_family_condition": 1440,
+    "cells_per_mechanism_routing_family_condition": 180
+  },
+  "bootstrap": {
+    "method": "cell-stratified episode bootstrap; resample episodes within each cell and average cells equally",
+    "replicates": 5000,
+    "seed": 20260925,
+    "scope": "finite evaluation-bank episode variation for these frozen checkpoints; not pretraining-seed uncertainty"
+  },
+  "rows": [
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0008295929369827111,
+      "cross_entropy_difference_95_interval": [
+        -0.00120328806909836,
+        -0.000458246819778449
+      ],
+      "accuracy_difference_pp": 0.019802517361111112,
+      "accuracy_difference_95_interval_pp": [
+        -0.049919976128472224,
+        0.09141710069444445
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0009057837331460581,
+      "cross_entropy_difference_95_interval": [
+        -0.0012556804809719323,
+        -0.0005593109004096028
+      ],
+      "accuracy_difference_pp": 0.0661892361111111,
+      "accuracy_difference_95_interval_pp": [
+        -0.004889594184027775,
+        0.13699679904513878
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0023506224284776385,
+      "cross_entropy_difference_95_interval": [
+        -0.0029770585887470384,
+        -0.001754712963787218
+      ],
+      "accuracy_difference_pp": 0.1296657986111111,
+      "accuracy_difference_95_interval_pp": [
+        0.03146701388888889,
+        0.2273220486111111
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.002204167584164275,
+      "cross_entropy_difference_95_interval": [
+        -0.002767291396804568,
+        -0.001626517812514472
+      ],
+      "accuracy_difference_pp": 0.087890625,
+      "accuracy_difference_95_interval_pp": [
+        -0.006510416666666667,
+        0.1784939236111111
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0023470944724977016,
+      "cross_entropy_difference_95_interval": [
+        -0.002886948783675002,
+        -0.0017817887601753075
+      ],
+      "accuracy_difference_pp": 0.13319227430555555,
+      "accuracy_difference_95_interval_pp": [
+        0.034172905815972224,
+        0.23166910807291657
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00226425893811716,
+      "cross_entropy_difference_95_interval": [
+        -0.002985359455924481,
+        -0.0015352887603350817
+      ],
+      "accuracy_difference_pp": -0.05995008680555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.1842041015625,
+        0.05995008680555555
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0006235754738251368,
+      "cross_entropy_difference_95_interval": [
+        -0.0010146323819127346,
+        -0.00022901786698235514
+      ],
+      "accuracy_difference_pp": 0.039605034722222224,
+      "accuracy_difference_95_interval_pp": [
+        -0.030110677083333332,
+        0.11094835069444445
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0006218925946288639,
+      "cross_entropy_difference_95_interval": [
+        -0.0010203562449249955,
+        -0.00023815438203099706
+      ],
+      "accuracy_difference_pp": 0.061577690972222224,
+      "accuracy_difference_95_interval_pp": [
+        -0.008138020833333334,
+        0.13102213541666666
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0018484492475787798,
+      "cross_entropy_difference_95_interval": [
+        -0.0024903992366873554,
+        -0.0012058742478903799
+      ],
+      "accuracy_difference_pp": 0.16276041666666666,
+      "accuracy_difference_95_interval_pp": [
+        0.054524739583333336,
+        0.2710028754340277
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.001769610106324156,
+      "cross_entropy_difference_95_interval": [
+        -0.0023428286124382997,
+        -0.0012133084784727544
+      ],
+      "accuracy_difference_pp": 0.1714409722222222,
+      "accuracy_difference_95_interval_pp": [
+        0.06646050347222222,
+        0.2756076388888889
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0019445761831270324,
+      "cross_entropy_difference_95_interval": [
+        -0.002498783299492465,
+        -0.001381226217684647
+      ],
+      "accuracy_difference_pp": 0.16493055555555555,
+      "accuracy_difference_95_interval_pp": [
+        0.06075710720486111,
+        0.26774766710069436
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0014005034748050902,
+      "cross_entropy_difference_95_interval": [
+        -0.0020886456441237696,
+        -0.0006968504213728011
+      ],
+      "accuracy_difference_pp": 0.08897569444444445,
+      "accuracy_difference_95_interval_pp": [
+        -0.023878309461805552,
+        0.2064480251736109
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0005352828341225783,
+      "cross_entropy_difference_95_interval": [
+        -0.0008312778681930569,
+        -0.0002394007606845768
+      ],
+      "accuracy_difference_pp": 0.006781684027777778,
+      "accuracy_difference_95_interval_pp": [
+        -0.059407552083333336,
+        0.07297770182291657
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0005154157160884804,
+      "cross_entropy_difference_95_interval": [
+        -0.0008018591257536577,
+        -0.00022453389829024694
+      ],
+      "accuracy_difference_pp": 0.0035264756944444445,
+      "accuracy_difference_95_interval_pp": [
+        -0.059136284722222224,
+        0.06781684027777778
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0010033783761577474,
+      "cross_entropy_difference_95_interval": [
+        -0.0014593448008721074,
+        -0.0005559514479763397
+      ],
+      "accuracy_difference_pp": -0.03553602430555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.11583116319444445,
+        0.042324490017361015
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0016861686741726266,
+      "cross_entropy_difference_95_interval": [
+        -0.002128414466149277,
+        -0.0012540680290355059
+      ],
+      "accuracy_difference_pp": 0.09711371527777778,
+      "accuracy_difference_95_interval_pp": [
+        0.019802517361111112,
+        0.1727973090277778
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.001663498409713308,
+      "cross_entropy_difference_95_interval": [
+        -0.002096552436058927,
+        -0.0012245817324664037
+      ],
+      "accuracy_difference_pp": 0.1299370659722222,
+      "accuracy_difference_95_interval_pp": [
+        0.05587429470486111,
+        0.20671251085069434
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.001134966386275159,
+      "cross_entropy_difference_95_interval": [
+        -0.0016703324464874135,
+        -0.0006049327433316247
+      ],
+      "accuracy_difference_pp": -0.07676866319444445,
+      "accuracy_difference_95_interval_pp": [
+        -0.17307535807291666,
+        0.015733506944444444
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00044181938800546855,
+      "cross_entropy_difference_95_interval": [
+        -0.0007561823927486936,
+        -0.00012010343372821813
+      ],
+      "accuracy_difference_pp": -0.021701388888888888,
+      "accuracy_difference_95_interval_pp": [
+        -0.08734809027777778,
+        0.045850965711805455
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00030931673116154143,
+      "cross_entropy_difference_95_interval": [
+        -0.0006091608008783725,
+        -1.6354202396340027e-05
+      ],
+      "accuracy_difference_pp": -0.01708984375,
+      "accuracy_difference_95_interval_pp": [
+        -0.07758924696180555,
+        0.04611545138888889
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0005375448407398329,
+      "cross_entropy_difference_95_interval": [
+        -0.0010016004156528247,
+        -6.045329177545185e-05
+      ],
+      "accuracy_difference_pp": 0.0341796875,
+      "accuracy_difference_95_interval_pp": [
+        -0.05101182725694444,
+        0.11638047960069435
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0011823459580126735,
+      "cross_entropy_difference_95_interval": [
+        -0.0016347831699790225,
+        -0.0007187843474093827
+      ],
+      "accuracy_difference_pp": 0.16465928819444445,
+      "accuracy_difference_95_interval_pp": [
+        0.08137342664930555,
+        0.2514716254340277
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0012861227823628319,
+      "cross_entropy_difference_95_interval": [
+        -0.0017469756160345342,
+        -0.0008339629136025907
+      ],
+      "accuracy_difference_pp": 0.1169162326388889,
+      "accuracy_difference_95_interval_pp": [
+        0.032280815972222224,
+        0.19965955946180547
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00017012811990247832,
+      "cross_entropy_difference_95_interval": [
+        -0.0006950994392132593,
+        0.00034546114556077446
+      ],
+      "accuracy_difference_pp": -0.010579427083333334,
+      "accuracy_difference_95_interval_pp": [
+        -0.1001247829861111,
+        0.07921685112847213
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.004940517567512062,
+      "cross_entropy_difference_95_interval": [
+        -0.005879543711845246,
+        -0.004021675767532242
+      ],
+      "accuracy_difference_pp": 0.06239149305555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.018988715277777776,
+        0.14539930555555555
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.003848013157645861,
+      "cross_entropy_difference_95_interval": [
+        -0.004665912470469872,
+        -0.00302263828408387
+      ],
+      "accuracy_difference_pp": 0.045844184027777776,
+      "accuracy_difference_95_interval_pp": [
+        -0.034993489583333336,
+        0.12532552083333334
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.011071483459737566,
+      "cross_entropy_difference_95_interval": [
+        -0.012290694656678373,
+        -0.009843776494833745
+      ],
+      "accuracy_difference_pp": 0.4538302951388889,
+      "accuracy_difference_95_interval_pp": [
+        0.3445095486111111,
+        0.5666775173611112
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.014029662552315535,
+      "cross_entropy_difference_95_interval": [
+        -0.015215369546769782,
+        -0.012831025458403422
+      ],
+      "accuracy_difference_pp": 0.6556532118055556,
+      "accuracy_difference_95_interval_pp": [
+        0.5563693576388888,
+        0.7579210069444444
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.015112319054444217,
+      "cross_entropy_difference_95_interval": [
+        -0.01633305017422471,
+        -0.013951188361841359
+      ],
+      "accuracy_difference_pp": 0.7527669270833334,
+      "accuracy_difference_95_interval_pp": [
+        0.6529337565104166,
+        0.8555772569444444
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.009938218484684411,
+      "cross_entropy_difference_95_interval": [
+        -0.01119904631661484,
+        -0.008709330918661889
+      ],
+      "accuracy_difference_pp": 0.2945963541666667,
+      "accuracy_difference_95_interval_pp": [
+        0.1958550347222222,
+        0.3998480902777778
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.004325332678854465,
+      "cross_entropy_difference_95_interval": [
+        -0.005147626662833823,
+        -0.003521189708780084
+      ],
+      "accuracy_difference_pp": -0.0008138020833333334,
+      "accuracy_difference_95_interval_pp": [
+        -0.0851779513888889,
+        0.08220079210069435
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.004504638289411863,
+      "cross_entropy_difference_95_interval": [
+        -0.005439391566130022,
+        -0.0036053488905438123
+      ],
+      "accuracy_difference_pp": 0.07703993055555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.005703396267361108,
+        0.16141086154513878
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.010743421259232694,
+      "cross_entropy_difference_95_interval": [
+        -0.01212165894297262,
+        -0.009438530257256288
+      ],
+      "accuracy_difference_pp": 0.3721788194444444,
+      "accuracy_difference_95_interval_pp": [
+        0.2566121419270833,
+        0.48583984375
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.013375476768447293,
+      "cross_entropy_difference_95_interval": [
+        -0.014572106458039748,
+        -0.012187121355285248
+      ],
+      "accuracy_difference_pp": 0.5677625868055556,
+      "accuracy_difference_95_interval_pp": [
+        0.4665730794270833,
+        0.6732923719618055
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.013929286712987555,
+      "cross_entropy_difference_95_interval": [
+        -0.015169177171774208,
+        -0.01269133343335448
+      ],
+      "accuracy_difference_pp": 0.5433485243055556,
+      "accuracy_difference_95_interval_pp": [
+        0.4367404513888889,
+        0.6456163194444444
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.009640499375139673,
+      "cross_entropy_difference_95_interval": [
+        -0.010857298373917326,
+        -0.008381241419507813
+      ],
+      "accuracy_difference_pp": 0.2834743923611111,
+      "accuracy_difference_95_interval_pp": [
+        0.1779513888888889,
+        0.3887261284722222
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.006876247076110707,
+      "cross_entropy_difference_95_interval": [
+        -0.007816666110366997,
+        -0.005971931134505819
+      ],
+      "accuracy_difference_pp": 0.11827256944444445,
+      "accuracy_difference_95_interval_pp": [
+        0.03553602430555555,
+        0.2001953125
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00644929368669788,
+      "cross_entropy_difference_95_interval": [
+        -0.007278434148627437,
+        -0.005626478779854047
+      ],
+      "accuracy_difference_pp": 0.1708984375,
+      "accuracy_difference_95_interval_pp": [
+        0.08843315972222222,
+        0.25146484375
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.019549849205132988,
+      "cross_entropy_difference_95_interval": [
+        -0.020806014655002703,
+        -0.01832761786438318
+      ],
+      "accuracy_difference_pp": 0.9084743923611112,
+      "accuracy_difference_95_interval_pp": [
+        0.795620388454861,
+        1.0194295247395833
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.022130357124195952,
+      "cross_entropy_difference_95_interval": [
+        -0.023538591114386994,
+        -0.020811997710261494
+      ],
+      "accuracy_difference_pp": 1.0088433159722223,
+      "accuracy_difference_95_interval_pp": [
+        0.9022352430555556,
+        1.1170857747395833
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.024139620107598604,
+      "cross_entropy_difference_95_interval": [
+        -0.025423630539638302,
+        -0.022828475348910113
+      ],
+      "accuracy_difference_pp": 1.1406792534722223,
+      "accuracy_difference_95_interval_pp": [
+        1.0375908745659723,
+        1.2524549696180554
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01616555078782969,
+      "cross_entropy_difference_95_interval": [
+        -0.01745339833225848,
+        -0.014895174777549175
+      ],
+      "accuracy_difference_pp": 0.5059136284722222,
+      "accuracy_difference_95_interval_pp": [
+        0.4079861111111111,
+        0.606289333767361
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.005965598889937003,
+      "cross_entropy_difference_95_interval": [
+        -0.006876626370940358,
+        -0.0050821904561275414
+      ],
+      "accuracy_difference_pp": 0.08897569444444445,
+      "accuracy_difference_95_interval_pp": [
+        0.009223090277777778,
+        0.16954210069444445
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.006642959391077359,
+      "cross_entropy_difference_95_interval": [
+        -0.007679333725116319,
+        -0.0057102828959210055
+      ],
+      "accuracy_difference_pp": 0.10362413194444445,
+      "accuracy_difference_95_interval_pp": [
+        0.027391221788194448,
+        0.17822943793402768
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.018888249574229122,
+      "cross_entropy_difference_95_interval": [
+        -0.02016243551715484,
+        -0.01759150421091666
+      ],
+      "accuracy_difference_pp": 0.6976996527777778,
+      "accuracy_difference_95_interval_pp": [
+        0.585110134548611,
+        0.8100111219618055
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.022379660492555964,
+      "cross_entropy_difference_95_interval": [
+        -0.023723886906841976,
+        -0.02108947875780157
+      ],
+      "accuracy_difference_pp": 1.0785590277777777,
+      "accuracy_difference_95_interval_pp": [
+        0.9692247178819444,
+        1.1946614583333333
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.023597779187063374,
+      "cross_entropy_difference_95_interval": [
+        -0.02493560458611076,
+        -0.02225531308161509
+      ],
+      "accuracy_difference_pp": 1.1501736111111112,
+      "accuracy_difference_95_interval_pp": [
+        1.0400390625,
+        1.2576022677951388
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.017081814595601624,
+      "cross_entropy_difference_95_interval": [
+        -0.018269253242631546,
+        -0.015890287360849065
+      ],
+      "accuracy_difference_pp": 0.4885525173611111,
+      "accuracy_difference_95_interval_pp": [
+        0.3873630099826389,
+        0.5916341145833334
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0018467763956222269,
+      "cross_entropy_difference_95_interval": [
+        -0.0029559129551570452,
+        -0.000763336039769153
+      ],
+      "accuracy_difference_pp": 0.011393229166666666,
+      "accuracy_difference_95_interval_pp": [
+        -0.07731797960069445,
+        0.09874131944444445
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0017612329373757043,
+      "cross_entropy_difference_95_interval": [
+        -0.0027906311334421237,
+        -0.0006956873342601814
+      ],
+      "accuracy_difference_pp": 0.10172526041666667,
+      "accuracy_difference_95_interval_pp": [
+        0.01220703125,
+        0.19072129991319414
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01124836777129935,
+      "cross_entropy_difference_95_interval": [
+        -0.012614353343249403,
+        -0.009935143283413104
+      ],
+      "accuracy_difference_pp": 0.5050998263888888,
+      "accuracy_difference_95_interval_pp": [
+        0.3860134548611111,
+        0.6206665039062499
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.013498355518741947,
+      "cross_entropy_difference_95_interval": [
+        -0.014906358393119363,
+        -0.012004532011875806
+      ],
+      "accuracy_difference_pp": 0.6689453125,
+      "accuracy_difference_95_interval_pp": [
+        0.5560980902777778,
+        0.7790866427951388
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.015387614778915627,
+      "cross_entropy_difference_95_interval": [
+        -0.01683945785755188,
+        -0.013946691660255762
+      ],
+      "accuracy_difference_pp": 0.7524956597222222,
+      "accuracy_difference_95_interval_pp": [
+        0.6268988715277778,
+        0.878106011284722
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.011401265318919386,
+      "cross_entropy_difference_95_interval": [
+        -0.012880506188181848,
+        -0.009980813753791154
+      ],
+      "accuracy_difference_pp": 0.4380967881944444,
+      "accuracy_difference_95_interval_pp": [
+        0.3306749131944444,
+        0.5455254448784721
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0008725652885105874,
+      "cross_entropy_difference_95_interval": [
+        -0.0020337896804428763,
+        0.0002930791717436572
+      ],
+      "accuracy_difference_pp": 0.12152777777777778,
+      "accuracy_difference_95_interval_pp": [
+        0.031195746527777776,
+        0.21296522352430525
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0008357682472301854,
+      "cross_entropy_difference_95_interval": [
+        -0.0019205992997417018,
+        0.00024458660019768596
+      ],
+      "accuracy_difference_pp": 0.1022677951388889,
+      "accuracy_difference_95_interval_pp": [
+        0.01654052734375,
+        0.1915283203124998
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.010953741637058556,
+      "cross_entropy_difference_95_interval": [
+        -0.012490236432770164,
+        -0.009407192018633295
+      ],
+      "accuracy_difference_pp": 0.4861111111111111,
+      "accuracy_difference_95_interval_pp": [
+        0.3702799479166667,
+        0.5986870659722222
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.014236507611349225,
+      "cross_entropy_difference_95_interval": [
+        -0.01593572893774965,
+        -0.012561942831768345
+      ],
+      "accuracy_difference_pp": 0.6716579861111112,
+      "accuracy_difference_95_interval_pp": [
+        0.5601671006944444,
+        0.7945421006944444
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.015739269057909646,
+      "cross_entropy_difference_95_interval": [
+        -0.01743678603786975,
+        -0.014081859496525592
+      ],
+      "accuracy_difference_pp": 0.7535807291666666,
+      "accuracy_difference_95_interval_pp": [
+        0.6353013780381944,
+        0.8775499131944444
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.011894725552863545,
+      "cross_entropy_difference_95_interval": [
+        -0.013432240586650247,
+        -0.010323471185337338
+      ],
+      "accuracy_difference_pp": 0.3957790798611111,
+      "accuracy_difference_95_interval_pp": [
+        0.2848307291666667,
+        0.5056423611111112
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0007404999083114995,
+      "cross_entropy_difference_95_interval": [
+        -0.001676171613443229,
+        0.00018939662802343562
+      ],
+      "accuracy_difference_pp": -0.0686306423611111,
+      "accuracy_difference_95_interval_pp": [
+        -0.15164523654513887,
+        0.011393229166666666
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0007622291747894552,
+      "cross_entropy_difference_95_interval": [
+        -0.0016726786244867576,
+        0.00016749175860442922
+      ],
+      "accuracy_difference_pp": -0.03634982638888889,
+      "accuracy_difference_95_interval_pp": [
+        -0.11827256944444445,
+        0.044759114583333336
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01228306815545592,
+      "cross_entropy_difference_95_interval": [
+        -0.01365175601767583,
+        -0.010881773481248984
+      ],
+      "accuracy_difference_pp": 0.4340277777777778,
+      "accuracy_difference_95_interval_pp": [
+        0.3173692491319445,
+        0.5506795247395833
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01641936759115197,
+      "cross_entropy_difference_95_interval": [
+        -0.017732091928644673,
+        -0.01510435538570164
+      ],
+      "accuracy_difference_pp": 0.8311631944444444,
+      "accuracy_difference_95_interval_pp": [
+        0.732421875,
+        0.9350721571180554
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.018394069590916235,
+      "cross_entropy_difference_95_interval": [
+        -0.019745198476981994,
+        -0.017078950912174252
+      ],
+      "accuracy_difference_pp": 0.9065755208333334,
+      "accuracy_difference_95_interval_pp": [
+        0.7977973090277778,
+        1.0161675347222223
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.012752741204005562,
+      "cross_entropy_difference_95_interval": [
+        -0.014072346638196096,
+        -0.011408869432602338
+      ],
+      "accuracy_difference_pp": 0.3982204861111111,
+      "accuracy_difference_95_interval_pp": [
+        0.2888929578993055,
+        0.5042995876736109
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0008480448689725664,
+      "cross_entropy_difference_95_interval": [
+        -0.0018475878730209337,
+        0.0001354057398728181
+      ],
+      "accuracy_difference_pp": -0.0705295138888889,
+      "accuracy_difference_95_interval_pp": [
+        -0.15544297960069442,
+        0.013305664062499802
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0007444807949165503,
+      "cross_entropy_difference_95_interval": [
+        -0.0017111069465883906,
+        0.00017324091607911658
+      ],
+      "accuracy_difference_pp": -0.010850694444444444,
+      "accuracy_difference_95_interval_pp": [
+        -0.09467230902777778,
+        0.07487657335069435
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.012762436177581549,
+      "cross_entropy_difference_95_interval": [
+        -0.014248636231188558,
+        -0.011346453291027705
+      ],
+      "accuracy_difference_pp": 0.4758029513888889,
+      "accuracy_difference_95_interval_pp": [
+        0.36810302734375,
+        0.5864800347222222
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01718457406386733,
+      "cross_entropy_difference_95_interval": [
+        -0.018852218547318545,
+        -0.015615439821914254
+      ],
+      "accuracy_difference_pp": 0.8468967013888888,
+      "accuracy_difference_95_interval_pp": [
+        0.7343207465277778,
+        0.9608357747395833
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.01917345418284337,
+      "cross_entropy_difference_95_interval": [
+        -0.020851665240350283,
+        -0.0175356358419069
+      ],
+      "accuracy_difference_pp": 0.9724934895833334,
+      "accuracy_difference_95_interval_pp": [
+        0.8550347222222222,
+        1.09619140625
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "condition": "true",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.013182225230977767,
+      "cross_entropy_difference_95_interval": [
+        -0.014593039541958003,
+        -0.011798153681124354
+      ],
+      "accuracy_difference_pp": 0.4207356770833333,
+      "accuracy_difference_95_interval_pp": [
+        0.3168402777777778,
+        0.5262654622395833
+      ]
+    }
+  ],
+  "reports": {
+    "original-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "rg_z-fixed-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "rg_z-curriculum-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "original-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "rg_z-fixed-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "rg_z-curriculum-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      }
+    },
+    "original-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 2.384185791015625e-07,
+        "passed": true
+      }
+    },
+    "rg_z-fixed-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 2.384185791015625e-07,
+        "passed": true
+      }
+    },
+    "rg_z-curriculum-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 1.1920928955078125e-07,
+        "passed": true
+      }
+    }
+  },
+  "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5"
+}

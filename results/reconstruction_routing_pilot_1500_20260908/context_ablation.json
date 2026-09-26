@@ -1,0 +1,50 @@
+[
+  {
+    "scope": "data",
+    "seed": 11,
+    "full_nll": 0.652624424546957,
+    "full_accuracy": 0.6083984375,
+    "removed_nll": 0.6608450263738632,
+    "removed_accuracy": 0.60107421875
+  },
+  {
+    "scope": "data",
+    "seed": 12,
+    "full_nll": 0.6928278747946024,
+    "full_accuracy": 0.513671875,
+    "removed_nll": 0.6927631162106991,
+    "removed_accuracy": 0.513671875
+  },
+  {
+    "scope": "cell_and_data",
+    "seed": 11,
+    "full_nll": 0.6939858384430408,
+    "full_accuracy": 0.486328125,
+    "removed_nll": 0.6939432416111231,
+    "removed_accuracy": 0.486328125
+  },
+  {
+    "scope": "cell_and_data",
+    "seed": 12,
+    "full_nll": 0.5976246958598495,
+    "full_accuracy": 0.69091796875,
+    "removed_nll": 0.6111220642924309,
+    "removed_accuracy": 0.67626953125
+  },
+  {
+    "scope": "cell",
+    "seed": 11,
+    "full_nll": 0.6937702931463718,
+    "full_accuracy": 0.486328125,
+    "removed_nll": 0.6937761828303337,
+    "removed_accuracy": 0.486328125
+  },
+  {
+    "scope": "cell",
+    "seed": 12,
+    "full_nll": 0.6928056832402945,
+    "full_accuracy": 0.513671875,
+    "removed_nll": 0.6928414013236761,
+    "removed_accuracy": 0.513671875
+  }
+]

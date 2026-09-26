@@ -1,0 +1,3423 @@
+{
+  "description": "Per-mechanism means and cell-stratified paired contrasts for hidden, shuffled, and true regime-tag inputs.",
+  "filters": {
+    "num_regimes": "at least 2",
+    "num_classes": "at least 3",
+    "rule_mode": "multiregime",
+    "episodes_per_mechanism_and_routing_family": 1440
+  },
+  "bootstrap": {
+    "replicates": 5000,
+    "seed": 20260925,
+    "scope": "finite-episode uncertainty only; does not estimate pretraining-seed uncertainty"
+  },
+  "rows": [
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.233626227763792,
+      "accuracy": 0.43084852430555554
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2334418228620456,
+      "accuracy": 0.43014594184027777
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0667659827404552,
+      "accuracy": 0.5421766493055555
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.0870618098104994,
+      "accuracy": 0.5326036241319444
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.091205486851848,
+      "accuracy": 0.5294704861111111
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.046912310986469,
+      "accuracy": 0.5565863715277778
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2284177156579164,
+      "accuracy": 0.43644476996527776
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2279075849904781,
+      "accuracy": 0.4356201171875
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0655708773268593,
+      "accuracy": 0.5440755208333333
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.0880607770555395,
+      "accuracy": 0.5311930338541667
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.092485127620037,
+      "accuracy": 0.5289930555555555
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.050132316597996,
+      "accuracy": 0.5539442274305556
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2327781828948192,
+      "accuracy": 0.43014322916666664
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.232697342067129,
+      "accuracy": 0.43003743489583335
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0540035465628736,
+      "accuracy": 0.5469346788194445
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.069877235746632,
+      "accuracy": 0.5410725911458333
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.0720320326690045,
+      "accuracy": 0.5391954210069444
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0337300857554914,
+      "accuracy": 0.5607937282986111
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2276772157496048,
+      "accuracy": 0.43575846354166664
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2271453558156888,
+      "accuracy": 0.4352566189236111
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0532878091714035,
+      "accuracy": 0.5484157986111111
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.0716414094643874,
+      "accuracy": 0.5395046657986111
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.0740910580291205,
+      "accuracy": 0.5380588107638888
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0373795753939905,
+      "accuracy": 0.5579264322916667
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2327536624752813,
+      "accuracy": 0.43206380208333334
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2326060546148154,
+      "accuracy": 0.43116861979166665
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0558122411033966,
+      "accuracy": 0.5470377604166666
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.07282530219915,
+      "accuracy": 0.5393202039930556
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.0754662177939383,
+      "accuracy": 0.5370062934027777
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0350175854336057,
+      "accuracy": 0.5605441623263889
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.226570939262294,
+      "accuracy": 0.43655870225694443
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2261463520531026,
+      "accuracy": 0.4366373697916667
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.05432250955556,
+      "accuracy": 0.5491265190972222
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.0745624215367975,
+      "accuracy": 0.5378824869791666
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.077097512841121,
+      "accuracy": 0.5365180121527777
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0387310512790766,
+      "accuracy": 0.5583251953125
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2580897490183511,
+      "accuracy": 0.4229871961805556
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2579256888892916,
+      "accuracy": 0.42223036024305555
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1030210381839425,
+      "accuracy": 0.5289225260416667
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1266611967235804,
+      "accuracy": 0.5153645833333333
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.13114084204038,
+      "accuracy": 0.5126491970486111
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0689528402044541,
+      "accuracy": 0.5493191189236111
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2521535543104012,
+      "accuracy": 0.4296061197916667
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2499020917030672,
+      "accuracy": 0.4290907118055556
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0994157888823086,
+      "accuracy": 0.53056640625
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1313053111461664,
+      "accuracy": 0.5140543619791667
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1370063378139295,
+      "accuracy": 0.5104410807291667
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0752619221133903,
+      "accuracy": 0.5468451605902778
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2521241501284142,
+      "accuracy": 0.423876953125
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2512827294982143,
+      "accuracy": 0.4232666015625
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0841327886097134,
+      "accuracy": 0.5358995225694444
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1042815362310243,
+      "accuracy": 0.5261501736111112
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1075430628533165,
+      "accuracy": 0.5241509331597223
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0518710256088526,
+      "accuracy": 0.5542046440972223
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2452773072342906,
+      "accuracy": 0.4307888454861111
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2434527980163694,
+      "accuracy": 0.4307996961805556
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0798659396771755,
+      "accuracy": 0.5396511501736111
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1091749540219704,
+      "accuracy": 0.5241427951388888
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.112866717706331,
+      "accuracy": 0.5218478732638889
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0590963713255608,
+      "accuracy": 0.551904296875
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2537644163394968,
+      "accuracy": 0.4229790581597222
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2534210505998797,
+      "accuracy": 0.4230007595486111
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0922776169247097,
+      "accuracy": 0.5326443142361111
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1132857199551331,
+      "accuracy": 0.5210422092013889
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1172115553273922,
+      "accuracy": 0.5180826822916667
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.0593123408293144,
+      "accuracy": 0.5521538628472222
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2472130367428893,
+      "accuracy": 0.4302300347222222
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2460540785454213,
+      "accuracy": 0.42954915364583335
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.088344305422571,
+      "accuracy": 0.5351047092013889
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1172756485938509,
+      "accuracy": 0.5206108940972223
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1218940187594852,
+      "accuracy": 0.51796875
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.065323703628706,
+      "accuracy": 0.5497911241319444
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2471520897207988,
+      "accuracy": 0.42059190538194446
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.248101716529992,
+      "accuracy": 0.4194064670138889
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1904394035331076,
+      "accuracy": 0.46559244791666665
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.195341984493037,
+      "accuracy": 0.4592529296875
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2002384597746034,
+      "accuracy": 0.45655381944444445
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.16511533021306,
+      "accuracy": 0.4835015190972222
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2401358413303063,
+      "accuracy": 0.42667371961805556
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2409165234098003,
+      "accuracy": 0.42595486111111114
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1835588412669797,
+      "accuracy": 0.4711235894097222
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2002096687857475,
+      "accuracy": 0.45923936631944445
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2049798883239013,
+      "accuracy": 0.4552978515625
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1702567482056716,
+      "accuracy": 0.48416612413194443
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2467102703327935,
+      "accuracy": 0.42037489149305557
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2477923997988303,
+      "accuracy": 0.4192355685763889
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.189901858692368,
+      "accuracy": 0.4659342447916667
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1941596385350244,
+      "accuracy": 0.46089952256944444
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1989523369922406,
+      "accuracy": 0.4577229817708333
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1649452020931574,
+      "accuracy": 0.4833957248263889
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2396005584961838,
+      "accuracy": 0.42674153645833335
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2404011076937118,
+      "accuracy": 0.42599012586805557
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.182555462890822,
+      "accuracy": 0.47076822916666666
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1985235001115748,
+      "accuracy": 0.4602105034722222
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.203316389914188,
+      "accuracy": 0.4565972222222222
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1691217818193966,
+      "accuracy": 0.4833984375
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2465285142469738,
+      "accuracy": 0.42098795572916664
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.247479823935363,
+      "accuracy": 0.4200222439236111
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1885909542855289,
+      "accuracy": 0.46722005208333334
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1935723743867128,
+      "accuracy": 0.46096733940972223
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.1982938835914765,
+      "accuracy": 0.458203125
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1637148267382549,
+      "accuracy": 0.48439127604166665
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.2393062483933237,
+      "accuracy": 0.4268717447916667
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2400107396766544,
+      "accuracy": 0.4266167534722222
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1812082188385022,
+      "accuracy": 0.4724202473958333
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "hidden",
+      "episodes": 1440,
+      "cross_entropy": 1.1980055012015833,
+      "accuracy": 0.46011827256944443
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "episodes": 1440,
+      "cross_entropy": 1.2026327938514036,
+      "accuracy": 0.45662977430555557
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "episodes": 1440,
+      "cross_entropy": 1.1679924892675546,
+      "accuracy": 0.4835666232638889
+    }
+  ],
+  "paired_contrasts": [
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0007806820794939995,
+      "cross_entropy_difference_95_interval": [
+        0.0003691197874852353,
+        0.0011703424874900115
+      ],
+      "accuracy_difference_pp": -0.07188585069444445,
+      "accuracy_difference_95_interval_pp": [
+        -0.1497463650173611,
+        0.005974663628472123
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.056577000063326624,
+      "cross_entropy_difference_95_interval": [
+        -0.06018997898532285,
+        -0.05316246459312323
+      ],
+      "accuracy_difference_pp": 4.444986979166667,
+      "accuracy_difference_95_interval_pp": [
+        4.124070909288195,
+        4.779737684461805
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.057357682142820623,
+      "cross_entropy_difference_95_interval": [
+        -0.06090424790176459,
+        -0.053912193740769804
+      ],
+      "accuracy_difference_pp": 4.516872829861111,
+      "accuracy_difference_95_interval_pp": [
+        4.180467393663194,
+        4.858133951822917
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004770219538153874,
+      "cross_entropy_difference_95_interval": [
+        0.004031151527694116,
+        0.005549649991508986
+      ],
+      "accuracy_difference_pp": -0.3941514756944444,
+      "accuracy_difference_95_interval_pp": [
+        -0.4937065972222222,
+        -0.29729546440972243
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.029952920580075846,
+      "cross_entropy_difference_95_interval": [
+        -0.03238954588977827,
+        -0.027617915205967923
+      ],
+      "accuracy_difference_pp": 2.49267578125,
+      "accuracy_difference_95_interval_pp": [
+        2.224392361111111,
+        2.7636854383680554
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03472314011822972,
+      "cross_entropy_difference_95_interval": [
+        -0.03722019105619337,
+        -0.03229515954425248
+      ],
+      "accuracy_difference_pp": 2.8868272569444446,
+      "accuracy_difference_95_interval_pp": [
+        2.6299302842881946,
+        3.168416341145833
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0009496268091930283,
+      "cross_entropy_difference_95_interval": [
+        0.0004808599336279763,
+        0.0014060719683766365
+      ],
+      "accuracy_difference_pp": -0.11854383680555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.20726182725694445,
+        -0.03525797526041677
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05671268618769116,
+      "cross_entropy_difference_95_interval": [
+        -0.05988960841825852,
+        -0.05351459860491256
+      ],
+      "accuracy_difference_pp": 4.500054253472222,
+      "accuracy_difference_95_interval_pp": [
+        4.164496527777778,
+        4.823133680555555
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05766231299688419,
+      "cross_entropy_difference_95_interval": [
+        -0.06106726433512651,
+        -0.05452127763898009
+      ],
+      "accuracy_difference_pp": 4.618598090277778,
+      "accuracy_difference_95_interval_pp": [
+        4.292256673177083,
+        4.959038628472222
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004896475281566381,
+      "cross_entropy_difference_95_interval": [
+        0.004187673205354562,
+        0.005614656901193989
+      ],
+      "accuracy_difference_pp": -0.2699110243055556,
+      "accuracy_difference_95_interval_pp": [
+        -0.3662177191840278,
+        -0.17496066623263898
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.030226654279977082,
+      "cross_entropy_difference_95_interval": [
+        -0.03290949435852882,
+        -0.027666307940251298
+      ],
+      "accuracy_difference_pp": 2.4248589409722223,
+      "accuracy_difference_95_interval_pp": [
+        2.154941134982639,
+        2.696139865451389
+      ]
+    },
+    {
+      "size": "small",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03512312956154347,
+      "cross_entropy_difference_95_interval": [
+        -0.03791187175497827,
+        -0.032479725394191014
+      ],
+      "accuracy_difference_pp": 2.6947699652777777,
+      "accuracy_difference_95_interval_pp": [
+        2.4221394856770835,
+        2.9752807617187496
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0007044912833306525,
+      "cross_entropy_difference_95_interval": [
+        0.000279681202955544,
+        0.0011085316528462695
+      ],
+      "accuracy_difference_pp": -0.025499131944444444,
+      "accuracy_difference_95_interval_pp": [
+        -0.1003689236111111,
+        0.04991319444444445
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05809802955482155,
+      "cross_entropy_difference_95_interval": [
+        -0.061890972259570846,
+        -0.054626095500360766
+      ],
+      "accuracy_difference_pp": 4.554850260416667,
+      "accuracy_difference_95_interval_pp": [
+        4.214396158854167,
+        4.909681532118055
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.058802520838152204,
+      "cross_entropy_difference_95_interval": [
+        -0.06254464718778359,
+        -0.055154720460543316
+      ],
+      "accuracy_difference_pp": 4.580349392361111,
+      "accuracy_difference_95_interval_pp": [
+        4.235555013020834,
+        4.925957573784722
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004627292649820447,
+      "cross_entropy_difference_95_interval": [
+        0.003902742196805775,
+        0.0053567192913033055
+      ],
+      "accuracy_difference_pp": -0.3488498263888889,
+      "accuracy_difference_95_interval_pp": [
+        -0.4391818576388889,
+        -0.2566121419270834
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.030013011934028732,
+      "cross_entropy_difference_95_interval": [
+        -0.0324240688389788,
+        -0.027622665140467385
+      ],
+      "accuracy_difference_pp": 2.3448350694444446,
+      "accuracy_difference_95_interval_pp": [
+        2.07110595703125,
+        2.609592013888889
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03464030458384918,
+      "cross_entropy_difference_95_interval": [
+        -0.037138742036444856,
+        -0.03216930063182695
+      ],
+      "accuracy_difference_pp": 2.6936848958333335,
+      "accuracy_difference_95_interval_pp": [
+        2.4145439995659723,
+        2.96929931640625
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0009513096883893013,
+      "cross_entropy_difference_95_interval": [
+        0.0004977874494054252,
+        0.0014296378422942427
+      ],
+      "accuracy_difference_pp": -0.09657118055555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.17985704210069442,
+        -0.016540527343750097
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0579375599614448,
+      "cross_entropy_difference_95_interval": [
+        -0.061354230330843064,
+        -0.05460734715788729
+      ],
+      "accuracy_difference_pp": 4.623209635416667,
+      "accuracy_difference_95_interval_pp": [
+        4.284125434027778,
+        4.972615559895833
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0588888696498341,
+      "cross_entropy_difference_95_interval": [
+        -0.062296988651052945,
+        -0.05563897691149679
+      ],
+      "accuracy_difference_pp": 4.719780815972222,
+      "accuracy_difference_95_interval_pp": [
+        4.385308159722222,
+        5.069993760850695
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004721509204763505,
+      "cross_entropy_difference_95_interval": [
+        0.004039803850335173,
+        0.005389703661591435
+      ],
+      "accuracy_difference_pp": -0.2764214409722222,
+      "accuracy_difference_95_interval_pp": [
+        -0.3770616319444444,
+        -0.17604573567708343
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.029857547648458018,
+      "cross_entropy_difference_95_interval": [
+        -0.03250800181387199,
+        -0.027307910655961474
+      ],
+      "accuracy_difference_pp": 2.3423936631944446,
+      "accuracy_difference_95_interval_pp": [
+        2.0711263020833335,
+        2.6272379557291665
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.034579056853221525,
+      "cross_entropy_difference_95_interval": [
+        -0.037230169581663274,
+        -0.031919327094478325
+      ],
+      "accuracy_difference_pp": 2.6188151041666665,
+      "accuracy_difference_95_interval_pp": [
+        2.3548651801215277,
+        2.894978841145833
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0008005491975280974,
+      "cross_entropy_difference_95_interval": [
+        0.00038125804987632566,
+        0.001223203160593079
+      ],
+      "accuracy_difference_pp": -0.07514105902777778,
+      "accuracy_difference_95_interval_pp": [
+        -0.1565212673611111,
+        0.0038045247395832346
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05704509560536179,
+      "cross_entropy_difference_95_interval": [
+        -0.060807797364864705,
+        -0.053613866874042695
+      ],
+      "accuracy_difference_pp": 4.402669270833333,
+      "accuracy_difference_95_interval_pp": [
+        4.073886447482639,
+        4.745286729600695
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05784564480288989,
+      "cross_entropy_difference_95_interval": [
+        -0.061492540174189744,
+        -0.05441144418773345
+      ],
+      "accuracy_difference_pp": 4.477810329861111,
+      "accuracy_difference_95_interval_pp": [
+        4.139804416232639,
+        4.824490017361111
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004792889802613192,
+      "cross_entropy_difference_95_interval": [
+        0.004038153409492224,
+        0.0055845786609117765
+      ],
+      "accuracy_difference_pp": -0.361328125,
+      "accuracy_difference_95_interval_pp": [
+        -0.4654947916666667,
+        -0.2590535481770834
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.02940171829217838,
+      "cross_entropy_difference_95_interval": [
+        -0.03178457459447802,
+        -0.02701926914561126
+      ],
+      "accuracy_difference_pp": 2.3187934027777777,
+      "accuracy_difference_95_interval_pp": [
+        2.054300944010417,
+        2.5887247721354165
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03419460809479157,
+      "cross_entropy_difference_95_interval": [
+        -0.036550321707295046,
+        -0.03183031695429236
+      ],
+      "accuracy_difference_pp": 2.6801215277777777,
+      "accuracy_difference_95_interval_pp": [
+        2.4194200303819446,
+        2.9685126410590272
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0010821294660369556,
+      "cross_entropy_difference_95_interval": [
+        0.0006117063657277161,
+        0.0015629969552780187
+      ],
+      "accuracy_difference_pp": -0.11393229166666667,
+      "accuracy_difference_95_interval_pp": [
+        -0.20020209418402776,
+        -0.029561360677083433
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05680841164042552,
+      "cross_entropy_difference_95_interval": [
+        -0.06010711280059897,
+        -0.053633689919176206
+      ],
+      "accuracy_difference_pp": 4.555935329861111,
+      "accuracy_difference_95_interval_pp": [
+        4.215766059027778,
+        4.899637858072917
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05789054110646248,
+      "cross_entropy_difference_95_interval": [
+        -0.06119899208140042,
+        -0.05472598613808966
+      ],
+      "accuracy_difference_pp": 4.669867621527778,
+      "accuracy_difference_95_interval_pp": [
+        4.331583658854167,
+        5.016554090711805
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004792698457216223,
+      "cross_entropy_difference_95_interval": [
+        0.004113148119197123,
+        0.005506178882076508
+      ],
+      "accuracy_difference_pp": -0.3176540798611111,
+      "accuracy_difference_95_interval_pp": [
+        -0.4226413302951389,
+        -0.21700710720486122
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.029214436441866887,
+      "cross_entropy_difference_95_interval": [
+        -0.03186383044683478,
+        -0.026582720856208147
+      ],
+      "accuracy_difference_pp": 2.2496202256944446,
+      "accuracy_difference_95_interval_pp": [
+        1.9864773220486112,
+        2.5146620008680554
+      ]
+    },
+    {
+      "size": "small",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03400713489908311,
+      "cross_entropy_difference_95_interval": [
+        -0.03674084200109873,
+        -0.03143362803591623
+      ],
+      "accuracy_difference_pp": 2.5672743055555554,
+      "accuracy_difference_95_interval_pp": [
+        2.3095703125,
+        2.842074924045139
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0022514626073340577,
+      "cross_entropy_difference_95_interval": [
+        -0.0034851759721318053,
+        -0.0011205668825035296
+      ],
+      "accuracy_difference_pp": -0.05154079861111111,
+      "accuracy_difference_95_interval_pp": [
+        -0.12913004557291666,
+        0.028761121961805455
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.15273776542809275,
+      "cross_entropy_difference_95_interval": [
+        -0.15908335268187027,
+        -0.14689177035457557
+      ],
+      "accuracy_difference_pp": 10.096028645833334,
+      "accuracy_difference_95_interval_pp": [
+        9.675286187065971,
+        10.534159342447916
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1504863028207587,
+      "cross_entropy_difference_95_interval": [
+        -0.15643493006963075,
+        -0.1443430330218851
+      ],
+      "accuracy_difference_pp": 10.147569444444445,
+      "accuracy_difference_95_interval_pp": [
+        9.719780815972221,
+        10.572645399305555
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.005701026667763168,
+      "cross_entropy_difference_95_interval": [
+        0.004579663521387071,
+        0.006816489027114583
+      ],
+      "accuracy_difference_pp": -0.361328125,
+      "accuracy_difference_95_interval_pp": [
+        -0.4454277886284722,
+        -0.2739800347222222
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05604338903277595,
+      "cross_entropy_difference_95_interval": [
+        -0.05940162236824917,
+        -0.05284229240879844
+      ],
+      "accuracy_difference_pp": 3.279079861111111,
+      "accuracy_difference_95_interval_pp": [
+        3.042263454861111,
+        3.5273166232638884
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.06174441570053912,
+      "cross_entropy_difference_95_interval": [
+        -0.0651378157414082,
+        -0.05838734139584832
+      ],
+      "accuracy_difference_pp": 3.640407986111111,
+      "accuracy_difference_95_interval_pp": [
+        3.3997870551215277,
+        3.889431423611111
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0001640601290596856,
+      "cross_entropy_difference_95_interval": [
+        -0.0010960106841391988,
+        0.000840984555478724
+      ],
+      "accuracy_difference_pp": -0.07568359375,
+      "accuracy_difference_95_interval_pp": [
+        -0.16005452473958331,
+        0.004618326822916568
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1550687108344088,
+      "cross_entropy_difference_95_interval": [
+        -0.1610642913789747,
+        -0.14890762562811788
+      ],
+      "accuracy_difference_pp": 10.59353298611111,
+      "accuracy_difference_95_interval_pp": [
+        10.145670572916666,
+        11.048224555121527
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.15490465070534912,
+      "cross_entropy_difference_95_interval": [
+        -0.16100185664655228,
+        -0.1488229074406748
+      ],
+      "accuracy_difference_pp": 10.66921657986111,
+      "accuracy_difference_95_interval_pp": [
+        10.22812228732639,
+        11.11871337890625
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004479645316799482,
+      "cross_entropy_difference_95_interval": [
+        0.003473418966556589,
+        0.005543539702064457
+      ],
+      "accuracy_difference_pp": -0.2715386284722222,
+      "accuracy_difference_95_interval_pp": [
+        -0.3629557291666667,
+        -0.18202039930555555
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05770835651912623,
+      "cross_entropy_difference_95_interval": [
+        -0.06160246026275369,
+        -0.05416075504384935
+      ],
+      "accuracy_difference_pp": 3.3954535590277777,
+      "accuracy_difference_95_interval_pp": [
+        3.1260850694444446,
+        3.680318196614583
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.06218800183592571,
+      "cross_entropy_difference_95_interval": [
+        -0.06600744290561933,
+        -0.058464019935992026
+      ],
+      "accuracy_difference_pp": 3.6669921875,
+      "accuracy_difference_95_interval_pp": [
+        3.388393825954861,
+        3.95318603515625
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.001158958197467857,
+      "cross_entropy_difference_95_interval": [
+        -0.0020393797874243723,
+        -0.00028644252465003097
+      ],
+      "accuracy_difference_pp": -0.0680881076388889,
+      "accuracy_difference_95_interval_pp": [
+        -0.1421440972222222,
+        0.007595486111111111
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.15886873132031826,
+      "cross_entropy_difference_95_interval": [
+        -0.16510914295368517,
+        -0.15263157434968486
+      ],
+      "accuracy_difference_pp": 10.487467447916666,
+      "accuracy_difference_95_interval_pp": [
+        10.034172905815971,
+        10.939710828993055
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1577097731228504,
+      "cross_entropy_difference_95_interval": [
+        -0.1639151271639599,
+        -0.1516734762606211
+      ],
+      "accuracy_difference_pp": 10.555555555555555,
+      "accuracy_difference_95_interval_pp": [
+        10.119622124565971,
+        10.9898681640625
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004618370165634486,
+      "cross_entropy_difference_95_interval": [
+        0.003617466811038968,
+        0.005580683239580442
+      ],
+      "accuracy_difference_pp": -0.2642144097222222,
+      "accuracy_difference_95_interval_pp": [
+        -0.3466864691840278,
+        -0.18554009331597232
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.051951944965144825,
+      "cross_entropy_difference_95_interval": [
+        -0.05528780838688059,
+        -0.048799891355964874
+      ],
+      "accuracy_difference_pp": 2.9180230034722223,
+      "accuracy_difference_95_interval_pp": [
+        2.67791748046875,
+        3.178988986545139
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.056570315130779314,
+      "cross_entropy_difference_95_interval": [
+        -0.060003333196186254,
+        -0.05330604452212962
+      ],
+      "accuracy_difference_pp": 3.1822374131944446,
+      "accuracy_difference_95_interval_pp": [
+        2.9394463433159723,
+        3.4345431857638884
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0003433657396170828,
+      "cross_entropy_difference_95_interval": [
+        -0.0011141332725269927,
+        0.00045065972488373443
+      ],
+      "accuracy_difference_pp": 0.002170138888888889,
+      "accuracy_difference_95_interval_pp": [
+        -0.07758924696180555,
+        0.08274332682291657
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16148679941478702,
+      "cross_entropy_difference_95_interval": [
+        -0.167541500613766,
+        -0.1555516832580583
+      ],
+      "accuracy_difference_pp": 10.96652560763889,
+      "accuracy_difference_95_interval_pp": [
+        10.530307345920138,
+        11.433953179253471
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16114343367516995,
+      "cross_entropy_difference_95_interval": [
+        -0.1671875113233303,
+        -0.15502858804849287
+      ],
+      "accuracy_difference_pp": 10.96435546875,
+      "accuracy_difference_95_interval_pp": [
+        10.514322916666666,
+        11.413316514756945
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.00392583537225922,
+      "cross_entropy_difference_95_interval": [
+        0.0030835017869766386,
+        0.004797696445602923
+      ],
+      "accuracy_difference_pp": -0.2959526909722222,
+      "accuracy_difference_95_interval_pp": [
+        -0.3811306423611111,
+        -0.21375868055555555
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05397337912581861,
+      "cross_entropy_difference_95_interval": [
+        -0.057517995251885924,
+        -0.05029675322468393
+      ],
+      "accuracy_difference_pp": 3.1111653645833335,
+      "accuracy_difference_95_interval_pp": [
+        2.831753200954861,
+        3.3946804470486107
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.057899214498077826,
+      "cross_entropy_difference_95_interval": [
+        -0.061586960221951204,
+        -0.054173831198002315
+      ],
+      "accuracy_difference_pp": 3.4071180555555554,
+      "accuracy_difference_95_interval_pp": [
+        3.1165771484375,
+        3.6881510416666665
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0018245092179212305,
+      "cross_entropy_difference_95_interval": [
+        -0.0026317585502854653,
+        -0.0010470860609267322
+      ],
+      "accuracy_difference_pp": 0.0010850694444444445,
+      "accuracy_difference_95_interval_pp": [
+        -0.07215711805555555,
+        0.07189263237847213
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16541136755711502,
+      "cross_entropy_difference_95_interval": [
+        -0.17175625133379882,
+        -0.1593549522651463
+      ],
+      "accuracy_difference_pp": 10.88623046875,
+      "accuracy_difference_95_interval_pp": [
+        10.44051784939236,
+        11.332743326822916
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16358685833919379,
+      "cross_entropy_difference_95_interval": [
+        -0.1699143661819916,
+        -0.15748705627189744
+      ],
+      "accuracy_difference_pp": 10.885145399305555,
+      "accuracy_difference_95_interval_pp": [
+        10.436197916666666,
+        11.339518229166666
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0036917636843605173,
+      "cross_entropy_difference_95_interval": [
+        0.002814337177227976,
+        0.004605338292118782
+      ],
+      "accuracy_difference_pp": -0.2294921875,
+      "accuracy_difference_95_interval_pp": [
+        -0.3108723958333333,
+        -0.15216742621527798
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05007858269640969,
+      "cross_entropy_difference_95_interval": [
+        -0.05337561391022366,
+        -0.04697453814506945
+      ],
+      "accuracy_difference_pp": 2.776150173611111,
+      "accuracy_difference_95_interval_pp": [
+        2.537428114149306,
+        3.030083550347222
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.053770346380770204,
+      "cross_entropy_difference_95_interval": [
+        -0.05717971559717423,
+        -0.05049215440509013
+      ],
+      "accuracy_difference_pp": 3.005642361111111,
+      "accuracy_difference_95_interval_pp": [
+        2.7604166666666665,
+        3.258748372395833
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0008414206302000416,
+      "cross_entropy_difference_95_interval": [
+        -0.0015607014329483112,
+        -0.00010321896730197803
+      ],
+      "accuracy_difference_pp": -0.06103515625,
+      "accuracy_difference_95_interval_pp": [
+        -0.13645426432291666,
+        0.014919704861111112
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16799136151870092,
+      "cross_entropy_difference_95_interval": [
+        -0.1740615311332254,
+        -0.16197474128954734
+      ],
+      "accuracy_difference_pp": 11.202256944444445,
+      "accuracy_difference_95_interval_pp": [
+        10.751132541232638,
+        11.657762315538195
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16714994088850088,
+      "cross_entropy_difference_95_interval": [
+        -0.17338322317848603,
+        -0.1611883942852728
+      ],
+      "accuracy_difference_pp": 11.263292100694445,
+      "accuracy_difference_95_interval_pp": [
+        10.810804578993055,
+        11.733676486545138
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0032615266222920684,
+      "cross_entropy_difference_95_interval": [
+        0.0024889451925021906,
+        0.004081271627607445
+      ],
+      "accuracy_difference_pp": -0.1999240451388889,
+      "accuracy_difference_95_interval_pp": [
+        -0.2761501736111111,
+        -0.1247829861111111
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.05241051062217189,
+      "cross_entropy_difference_95_interval": [
+        -0.05610522635979578,
+        -0.048860947115269185
+      ],
+      "accuracy_difference_pp": 2.805447048611111,
+      "accuracy_difference_95_interval_pp": [
+        2.5306464301215277,
+        3.0802408854166665
+      ]
+    },
+    {
+      "size": "medium",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.055672037244463964,
+      "cross_entropy_difference_95_interval": [
+        -0.0594766223210738,
+        -0.05208172916771016
+      ],
+      "accuracy_difference_pp": 3.00537109375,
+      "accuracy_difference_95_interval_pp": [
+        2.74169921875,
+        3.286404079861111
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0005101306674381097,
+      "cross_entropy_difference_95_interval": [
+        -0.0013860760287692148,
+        0.00031854434068211244
+      ],
+      "accuracy_difference_pp": -0.08246527777777778,
+      "accuracy_difference_95_interval_pp": [
+        -0.1581488715277778,
+        -0.005689832899305654
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16284683833105695,
+      "cross_entropy_difference_95_interval": [
+        -0.1691851899516769,
+        -0.1565342847728688
+      ],
+      "accuracy_difference_pp": 10.763075086805555,
+      "accuracy_difference_95_interval_pp": [
+        10.32550048828125,
+        11.215738932291664
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16233670766361885,
+      "cross_entropy_difference_95_interval": [
+        -0.16877587335235958,
+        -0.1558576794421404
+      ],
+      "accuracy_difference_pp": 10.845540364583334,
+      "accuracy_difference_95_interval_pp": [
+        10.411241319444445,
+        11.28879123263889
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.00442435056449742,
+      "cross_entropy_difference_95_interval": [
+        0.0031556137696801064,
+        0.005673094278511902
+      ],
+      "accuracy_difference_pp": -0.2199978298611111,
+      "accuracy_difference_95_interval_pp": [
+        -0.30328369140625,
+        -0.1377902560763891
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03792846045754333,
+      "cross_entropy_difference_95_interval": [
+        -0.041321262798171825,
+        -0.03455962067421448
+      ],
+      "accuracy_difference_pp": 2.275119357638889,
+      "accuracy_difference_95_interval_pp": [
+        2.0469835069444446,
+        2.5330946180555554
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.04235281102204074,
+      "cross_entropy_difference_95_interval": [
+        -0.04608170727655912,
+        -0.03858157729568322
+      ],
+      "accuracy_difference_pp": 2.4951171875,
+      "accuracy_difference_95_interval_pp": [
+        2.253390842013889,
+        2.751736111111111
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00018440490174624654,
+      "cross_entropy_difference_95_interval": [
+        -0.0010749810809890428,
+        0.0007330462584892902
+      ],
+      "accuracy_difference_pp": -0.07025824652777778,
+      "accuracy_difference_95_interval_pp": [
+        -0.14973958333333334,
+        0.006510416666666667
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16686024502333668,
+      "cross_entropy_difference_95_interval": [
+        -0.17352044404794773,
+        -0.1603112972072429
+      ],
+      "accuracy_difference_pp": 11.1328125,
+      "accuracy_difference_95_interval_pp": [
+        10.673821343315971,
+        11.62411159939236
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.16667584012159042,
+      "cross_entropy_difference_95_interval": [
+        -0.1733827461201387,
+        -0.15998137793891753
+      ],
+      "accuracy_difference_pp": 11.203070746527779,
+      "accuracy_difference_95_interval_pp": [
+        10.710394965277779,
+        11.677537706163195
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.004143677041348484,
+      "cross_entropy_difference_95_interval": [
+        0.0029835209431540635,
+        0.005285688649552564
+      ],
+      "accuracy_difference_pp": -0.3133138020833333,
+      "accuracy_difference_95_interval_pp": [
+        -0.3987630208333333,
+        -0.23084852430555555
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.04014949882403016,
+      "cross_entropy_difference_95_interval": [
+        -0.04393684008339834,
+        -0.036630852462646246
+      ],
+      "accuracy_difference_pp": 2.3982747395833335,
+      "accuracy_difference_95_interval_pp": [
+        2.1475965711805554,
+        2.6746961805555554
+      ]
+    },
+    {
+      "size": "large",
+      "model": "original",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.04429317586537865,
+      "cross_entropy_difference_95_interval": [
+        -0.048085276249977243,
+        -0.040481129387497074
+      ],
+      "accuracy_difference_pp": 2.7115885416666665,
+      "accuracy_difference_95_interval_pp": [
+        2.45306396484375,
+        2.9820488823784723
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00042458720919158726,
+      "cross_entropy_difference_95_interval": [
+        -0.0011314132349151704,
+        0.000258935083531671
+      ],
+      "accuracy_difference_pp": 0.007866753472222222,
+      "accuracy_difference_95_interval_pp": [
+        -0.056966145833333336,
+        0.07432725694444445
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1722484297067341,
+      "cross_entropy_difference_95_interval": [
+        -0.1784680686443527,
+        -0.1657895937269657
+      ],
+      "accuracy_difference_pp": 11.256781684027779,
+      "accuracy_difference_95_interval_pp": [
+        10.79696994357639,
+        11.703592936197916
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1718238424975425,
+      "cross_entropy_difference_95_interval": [
+        -0.17824969917458172,
+        -0.16536145904761118
+      ],
+      "accuracy_difference_pp": 11.248914930555555,
+      "accuracy_difference_95_interval_pp": [
+        10.800774468315971,
+        11.690612792968748
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0025350913043237396,
+      "cross_entropy_difference_95_interval": [
+        0.0015523366005315135,
+        0.0035269317669897435
+      ],
+      "accuracy_difference_pp": -0.1364474826388889,
+      "accuracy_difference_95_interval_pp": [
+        -0.2313910590277778,
+        -0.03444417317708343
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03583137025772076,
+      "cross_entropy_difference_95_interval": [
+        -0.0394275980586988,
+        -0.03253984547511209
+      ],
+      "accuracy_difference_pp": 2.0442708333333335,
+      "accuracy_difference_95_interval_pp": [
+        1.8044637044270835,
+        2.2989908854166665
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.038366461562044506,
+      "cross_entropy_difference_95_interval": [
+        -0.04224345864902716,
+        -0.03484971854699931
+      ],
+      "accuracy_difference_pp": 2.1807183159722223,
+      "accuracy_difference_95_interval_pp": [
+        1.9520263671875,
+        2.424614800347222
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.00014760786046584448,
+      "cross_entropy_difference_95_interval": [
+        -0.0008598779079814752,
+        0.0005624140447212588
+      ],
+      "accuracy_difference_pp": -0.08951822916666667,
+      "accuracy_difference_95_interval_pp": [
+        -0.15598551432291666,
+        -0.022786458333333332
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.17694142137188465,
+      "cross_entropy_difference_95_interval": [
+        -0.183568327684835,
+        -0.1704077008386634
+      ],
+      "accuracy_difference_pp": 11.497395833333334,
+      "accuracy_difference_95_interval_pp": [
+        11.022108289930555,
+        11.978630913628471
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1767938135114188,
+      "cross_entropy_difference_95_interval": [
+        -0.18342694200588286,
+        -0.17014231301585422
+      ],
+      "accuracy_difference_pp": 11.5869140625,
+      "accuracy_difference_95_interval_pp": [
+        11.11322021484375,
+        12.065178765190971
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.0026409155947880614,
+      "cross_entropy_difference_95_interval": [
+        0.0016679122657256408,
+        0.003623679374060076
+      ],
+      "accuracy_difference_pp": -0.2313910590277778,
+      "accuracy_difference_95_interval_pp": [
+        -0.30165608723958337,
+        -0.1592339409722222
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03780771676554448,
+      "cross_entropy_difference_95_interval": [
+        -0.041598656375944204,
+        -0.034266201015949876
+      ],
+      "accuracy_difference_pp": 2.1223958333333335,
+      "accuracy_difference_95_interval_pp": [
+        1.8687405056423612,
+        2.395317925347222
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-fixed",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.04044863236033254,
+      "cross_entropy_difference_95_interval": [
+        -0.044394839682047146,
+        -0.03663022199956079
+      ],
+      "accuracy_difference_pp": 2.353786892361111,
+      "accuracy_difference_95_interval_pp": [
+        2.079800075954861,
+        2.6283230251736107
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0005318599339160654,
+      "cross_entropy_difference_95_interval": [
+        -0.001085595422062195,
+        -3.863347487317556e-06
+      ],
+      "accuracy_difference_pp": -0.05018446180555555,
+      "accuracy_difference_95_interval_pp": [
+        -0.11529541015625,
+        0.015462239583333334
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.1743894065782014,
+      "cross_entropy_difference_95_interval": [
+        -0.1809773622363961,
+        -0.16818077217593477
+      ],
+      "accuracy_difference_pp": 11.265733506944445,
+      "accuracy_difference_95_interval_pp": [
+        10.811319986979168,
+        11.72256808810764
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.17385754664428532,
+      "cross_entropy_difference_95_interval": [
+        -0.18015970632796072,
+        -0.1674368924545383
+      ],
+      "accuracy_difference_pp": 11.31591796875,
+      "accuracy_difference_95_interval_pp": [
+        10.868035210503471,
+        11.771152072482638
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.002449648564733151,
+      "cross_entropy_difference_95_interval": [
+        0.0015731260984062424,
+        0.003350105182519958
+      ],
+      "accuracy_difference_pp": -0.1445855034722222,
+      "accuracy_difference_95_interval_pp": [
+        -0.21809895833333334,
+        -0.07188585069444445
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03426183407039692,
+      "cross_entropy_difference_95_interval": [
+        -0.037694837350152534,
+        -0.031114213765249595
+      ],
+      "accuracy_difference_pp": 1.8421766493055556,
+      "accuracy_difference_95_interval_pp": [
+        1.6126708984375,
+        2.1025933159722223
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "r_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.03671148263513007,
+      "cross_entropy_difference_95_interval": [
+        -0.04021729023868425,
+        -0.03331578438066774
+      ],
+      "accuracy_difference_pp": 1.9867621527777777,
+      "accuracy_difference_95_interval_pp": [
+        1.7569986979166667,
+        2.24420166015625
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -8.084082769023047e-05,
+      "cross_entropy_difference_95_interval": [
+        -0.0006786438760658104,
+        0.0005160752233738695
+      ],
+      "accuracy_difference_pp": -0.010579427083333334,
+      "accuracy_difference_95_interval_pp": [
+        -0.08220079210069445,
+        0.05886501736111111
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.17877463633194565,
+      "cross_entropy_difference_95_interval": [
+        -0.18539281513813574,
+        -0.17228441269783717
+      ],
+      "accuracy_difference_pp": 11.679144965277779,
+      "accuracy_difference_95_interval_pp": [
+        11.20578342013889,
+        12.16934543185764
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "persistent",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.17869379550425543,
+      "cross_entropy_difference_95_interval": [
+        -0.1853522041737516,
+        -0.17207538803664243
+      ],
+      "accuracy_difference_pp": 11.68972439236111,
+      "accuracy_difference_95_interval_pp": [
+        11.216356065538193,
+        12.184271918402777
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "shuffled",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": 0.002154796922372447,
+      "cross_entropy_difference_95_interval": [
+        0.001259363853605464,
+        0.003016868786782854
+      ],
+      "accuracy_difference_pp": -0.1877170138888889,
+      "accuracy_difference_95_interval_pp": [
+        -0.2574395073784722,
+        -0.11474609375
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "hidden",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.0361471499911406,
+      "cross_entropy_difference_95_interval": [
+        -0.039883905884538155,
+        -0.03275845122594749
+      ],
+      "accuracy_difference_pp": 1.9721137152777777,
+      "accuracy_difference_95_interval_pp": [
+        1.7163018120659723,
+        2.239590115017361
+      ]
+    },
+    {
+      "size": "large",
+      "model": "rg_z-curriculum",
+      "mechanism": "g_z",
+      "family": "soft_gate",
+      "information": "true",
+      "reference": "shuffled",
+      "episodes": 1440,
+      "cells": 180,
+      "cross_entropy_difference": -0.038301946913513046,
+      "cross_entropy_difference_95_interval": [
+        -0.04208654625502984,
+        -0.03468207561119926
+      ],
+      "accuracy_difference_pp": 2.1598307291666665,
+      "accuracy_difference_95_interval_pp": [
+        1.9061957465277777,
+        2.422146267361111
+      ]
+    }
+  ],
+  "reports": {
+    "original-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-fixed-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-curriculum-small": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-small/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-small/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-small/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "original-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-fixed-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-curriculum-medium": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-medium/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-medium/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-medium/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 0.0,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "original-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/original-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/original-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 2.384185791015625e-07,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-fixed-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-fixed-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-fixed-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 2.384185791015625e-07,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    },
+    "rg_z-curriculum-large": {
+      "path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-large/seed-2402/test.json",
+      "source_checkpoint": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/final_checkpoint.pth",
+      "source_step": 10000,
+      "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+      "model_source_sha256": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+      "hidden_reference_validation": null,
+      "probe_path": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/regime_information_by_mechanism/rg_z-curriculum-large/seed-2402/monitor_probe_seed2402.json",
+      "probe_hidden_reference_validation": {
+        "reference_path": "/scratch/users/k23139234/tfm_runs/native/rg_z-curriculum-large/seed-2402/v4_test/final.json",
+        "episodes_checked": 42,
+        "reference_aggregation": "episode",
+        "reference_units_checked": 42,
+        "max_cross_entropy_absolute_error": 1.1920928955078125e-07,
+        "passed": true
+      },
+      "episodes_per_condition": 5760
+    }
+  },
+  "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5"
+}

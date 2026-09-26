@@ -1,0 +1,20 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Exploratory observed-ID training comparison on 5,760 multiclass multiregime episodes. H = hidden, S = shuffled-tag, and T = true-tag evaluation inputs; the hidden condition is the primary task setting. Cross-model observed-minus-original differences are paired by episode under hidden inputs. Brackets give 95\% within-cell episode-bootstrap intervals (5,000 replicates); they quantify this fixed episode bank and not pretraining-seed variation. The saved model-source hashes differ across model families, so the cross-model comparison is descriptive.}
+\label{tab:observed-id-training}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llrrrrrrll@{}}
+\toprule
+Size & Model & \multicolumn{3}{c}{Cross-entropy (nats)} & \multicolumn{3}{c}{Accuracy (\%)} & \multicolumn{2}{c}{Observed-ID $-$ original, hidden [95\% interval]}\\
+ & & H & S & T & H & S & T & CE & Accuracy (pp)\\
+\midrule
+Small & Original & 1.221 & 1.224 & 1.177 & 44.1 & 43.9 & 47.6 & -- & --\\
+Small & Fixed mixture & 1.219 & 1.222 & 1.175 & 44.2 & 44.0 & 47.7 & -- & --\\
+Small & Curriculum & 1.220 & 1.223 & 1.177 & 44.2 & 44.0 & 47.6 & -- & --\\
+Small & Observed-ID training & 1.226 & 1.226 & 1.183 & 43.8 & 43.8 & 47.3 & +0.005 [+0.004, +0.006] & -0.33 [-0.42, -0.24]\\
+Medium & Original & 1.192 & 1.194 & 1.087 & 47.1 & 46.9 & 53.9 & -- & --\\
+Medium & Fixed mixture & 1.183 & 1.185 & 1.076 & 47.4 & 47.2 & 54.2 & -- & --\\
+Medium & Curriculum & 1.178 & 1.179 & 1.069 & 47.6 & 47.5 & 54.5 & -- & --\\
+Medium & Observed-ID training & 1.194 & 1.195 & 1.096 & 46.2 & 46.1 & 52.9 & +0.002 [+0.001, +0.004] & -0.87 [-0.96, -0.77]\\
+\bottomrule
+\end{tabular}}
+\end{table*}

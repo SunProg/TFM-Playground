@@ -13,6 +13,7 @@ from tfmplayground.experiments import evaluate_plain_nanotabpfn as evaluation
 from tfmplayground.experiments.evaluate_tabarena_small import SmallTabArenaConfig, _evaluation_rows
 from tfmplayground.experiments.pretrain_plain_nanotabpfn import (
     PlainPretrainingConfig,
+    _v4_dump_batch,
     make_prior,
     multiregime_probability,
     run_pretraining,
@@ -69,11 +70,15 @@ class _TinyV4Loader:
     def sample(self):
         x = torch.zeros((1, 4, 2))
         y = torch.full((1, 4), self.label, dtype=torch.long)
+        regime = torch.tensor([[0, 1, 0, 1]], dtype=torch.long)
         return {
             "support_x": x[:, :2],
             "support_y": y[:, :2],
             "query_x": x[:, 2:],
             "query_y": y[:, 2:],
+            "support_regime": regime[:, :2],
+            "query_regime": regime[:, 2:],
+            "num_regimes": torch.tensor([2], dtype=torch.long),
         }
 
 
@@ -195,14 +200,81 @@ class PretrainingSmokeTests(unittest.TestCase):
         ordinary_config = PlainPretrainingConfig(
             prior_mode="fixed", multiregime_ratio=0.0, multiregime_source="v4"
         )
-        ordinary = training_batch(ordinary_config, None, multiregime, shared, rng, step=1)
+        (ordinary,) = training_batch(ordinary_config, None, multiregime, shared, rng, step=1)
         self.assertTrue(torch.equal(ordinary.support_y, torch.zeros((1, 2), dtype=torch.long)))
 
         multiregime_config = PlainPretrainingConfig(
             prior_mode="fixed", multiregime_ratio=1.0, multiregime_source="v4"
         )
-        selected = training_batch(multiregime_config, None, multiregime, shared, rng, step=1)
+        (selected,) = training_batch(multiregime_config, None, multiregime, shared, rng, step=1)
         self.assertTrue(torch.equal(selected.support_y, torch.ones((1, 2), dtype=torch.long)))
+
+    def test_observed_regime_ids_are_randomly_relabelled_but_preserve_membership(self):
+        shared, multiregime = _TinyV4Loader(0), _TinyV4Loader(1)
+        config = PlainPretrainingConfig(
+            prior_mode="fixed",
+            multiregime_ratio=1.0,
+            multiregime_source="v4",
+            v4_expose_regime_id=True,
+        )
+        (batch,) = training_batch(config, None, multiregime, shared, np.random.default_rng(4), step=1)
+        self.assertEqual(batch.support_x.shape[-1], 3)
+        self.assertEqual(batch.query_x.shape[-1], 3)
+        tags = torch.cat((batch.support_x[0, :, -1], batch.query_x[0, :, -1])).long()
+        self.assertEqual(tags[0].item(), tags[2].item())
+        self.assertEqual(tags[1].item(), tags[3].item())
+        self.assertNotEqual(tags[0].item(), tags[1].item())
+
+    def test_paired_regime_id_exposure_batches_both_copies_in_one_forward_batch(self):
+        shared, multiregime = _TinyV4Loader(0), _TinyV4Loader(1)
+        config = PlainPretrainingConfig(
+            prior_mode="fixed",
+            multiregime_ratio=1.0,
+            multiregime_source="v4",
+            v4_expose_regime_id_paired=True,
+        )
+        (paired,) = training_batch(config, None, multiregime, shared, np.random.default_rng(4), step=1)
+        self.assertEqual(paired.support_x.shape, (2, 2, 3))
+        self.assertEqual(paired.query_x.shape, (2, 2, 3))
+        self.assertTrue(torch.equal(paired.support_y[0], paired.support_y[1]))
+        self.assertTrue(torch.equal(paired.query_y[0], paired.query_y[1]))
+        self.assertTrue(torch.equal(paired.support_x[0, :, :-1], paired.support_x[1, :, :-1]))
+        self.assertTrue(torch.equal(paired.query_x[0, :, :-1], paired.query_x[1, :, :-1]))
+        self.assertTrue(torch.equal(paired.support_x[0, :, -1], torch.full((2,), -1.0)))
+        self.assertTrue(torch.equal(paired.query_x[0, :, -1], torch.full((2,), -1.0)))
+        tags = torch.cat((paired.support_x[1, :, -1], paired.query_x[1, :, -1])).long()
+        self.assertEqual(tags[0].item(), tags[2].item())
+        self.assertEqual(tags[1].item(), tags[3].item())
+        self.assertNotEqual(tags[0].item(), tags[1].item())
+
+    def test_probabilistic_regime_id_exposure_splits_episodes_by_a_bernoulli_draw(self):
+        shared, multiregime = _TinyV4Loader(0), _TinyV4Loader(1)
+        config = PlainPretrainingConfig(
+            prior_mode="fixed",
+            multiregime_ratio=1.0,
+            multiregime_source="v4",
+            v4_expose_regime_id_probability=1.0,
+        )
+        (batch,) = training_batch(config, None, multiregime, shared, np.random.default_rng(4), step=1)
+        self.assertEqual(batch.support_x.shape[-1], 3)
+
+        config_never = PlainPretrainingConfig(
+            prior_mode="fixed",
+            multiregime_ratio=1.0,
+            multiregime_source="v4",
+            v4_expose_regime_id_probability=0.0,
+        )
+        (batch_never,) = training_batch(config_never, None, multiregime, shared, np.random.default_rng(4), step=1)
+        self.assertEqual(batch_never.support_x.shape[-1], 2)
+
+    def test_regime_id_exposure_modes_are_mutually_exclusive(self):
+        with self.assertRaises(ValueError):
+            _v4_dump_batch(
+                _TinyV4Loader(1),
+                expose_regime_id=True,
+                expose_regime_id_paired=True,
+                rng=np.random.default_rng(4),
+            )
 
     def test_tiny_cpu_run_writes_resumable_inference_checkpoint(self):
         config = PlainPretrainingConfig(

@@ -1,0 +1,231 @@
+\begin{thebibliography}{25}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bengio et~al.(2009)Bengio, Louradour, Collobert, and
+  Weston]{bengio2009curriculum}
+Yoshua Bengio, J{\'e}r{\^o}me Louradour, Ronan Collobert, and Jason Weston.
+\newblock Curriculum learning.
+\newblock In \emph{Proceedings of the 26th Annual International Conference on
+  Machine Learning}, pp.\  41--48. ACM, 2009.
+\newblock \doi{10.1145/1553374.1553380}.
+\newblock URL \url{https://doi.org/10.1145/1553374.1553380}.
+
+\bibitem[Breiman(2001)]{breiman2001forests}
+Leo Breiman.
+\newblock Random forests.
+\newblock \emph{Machine Learning}, 45\penalty0 (1):\penalty0 5--32, 2001.
+\newblock \doi{10.1023/A:1010933404324}.
+\newblock URL \url{https://link.springer.com/article/10.1023/A:1010933404324}.
+
+\bibitem[Chen \& Guestrin(2016)Chen and Guestrin]{chen2016xgboost}
+Tianqi Chen and Carlos Guestrin.
+\newblock {XGBoost}: A scalable tree boosting system.
+\newblock In \emph{Proceedings of the 22nd ACM SIGKDD International Conference
+  on Knowledge Discovery and Data Mining}, pp.\  785--794. ACM, 2016.
+\newblock \doi{10.1145/2939672.2939785}.
+\newblock URL \url{https://arxiv.org/abs/1603.02754}.
+
+\bibitem[Dem{\v{s}}ar(2006)]{demsar2006comparisons}
+Janez Dem{\v{s}}ar.
+\newblock Statistical comparisons of classifiers over multiple data sets.
+\newblock \emph{Journal of Machine Learning Research}, 7\penalty0 (1):\penalty0
+  1--30, 2006.
+\newblock URL \url{https://jmlr.org/papers/v7/demsar06a.html}.
+
+\bibitem[Gardner et~al.(2023)Gardner, Popovic, and
+  Schmidt]{gardner2023tableshift}
+Josh Gardner, Zoran Popovic, and Ludwig Schmidt.
+\newblock Benchmarking distribution shift in tabular data with {TableShift}.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~36, pp.\  53385--53432, 2023.
+\newblock \doi{10.52202/075280-2324}.
+\newblock URL
+  \url{https://proceedings.neurips.cc/paper_files/paper/2023/hash/a76a757ed479a1e6a5f8134bea492f83-Abstract-Datasets_and_Benchmarks.html}.
+
+\bibitem[Gneiting \& Raftery(2007)Gneiting and Raftery]{gneiting2007scoring}
+Tilmann Gneiting and Adrian~E. Raftery.
+\newblock Strictly proper scoring rules, prediction, and estimation.
+\newblock \emph{Journal of the American Statistical Association}, 102\penalty0
+  (477):\penalty0 359--378, 2007.
+\newblock \doi{10.1198/016214506000001437}.
+\newblock URL
+  \url{https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf}.
+
+\bibitem[Grinsztajn et~al.(2026)Grinsztajn, Fl{\"o}ge, Key, Birkel, Jund, Roof,
+  Manium, Hoo, B{\"u}hler, Garg, Safaric, Robertson, J{\"a}ger, Alessi, Hayler,
+  Moroshan, Purucker, Singer, Arazi, Siems, Metzen, Grab, Erickson, Guo,
+  Kalfon, Bing, Salinas, Cornu, Wehrhahn, Kriuchkova, Kaya, Sidhoum, Salmon,
+  Chen, Hulsebos, LeCun, M{\"u}ller, Sch{\"o}lkopf, Gambhir, Hollmann, and
+  Hutter]{grinsztajn2026tabpfn3}
+L{\'e}o Grinsztajn, Klemens Fl{\"o}ge, Oscar Key, Felix Birkel, Philipp Jund,
+  Brendan Roof, Mihir Manium, Shi~Bin Hoo, Magnus B{\"u}hler, Anurag Garg,
+  Dominik Safaric, Jake Robertson, Benjamin J{\"a}ger, Simone Alessi, Adrian
+  Hayler, Vladyslav Moroshan, Lennart Purucker, Philipp Singer, Alan Arazi,
+  Julien Siems, Jan~Hendrik Metzen, Georg Grab, Nick Erickson, Siyuan Guo,
+  Eliott Kalfon, Simon Bing, David Salinas, Clara Cornu, Lilly~Charlotte
+  Wehrhahn, Diana Kriuchkova, Kursat Kaya, Lydia Sidhoum, Marie Salmon, Jerry
+  Chen, Madelon Hulsebos, Yann LeCun, Samuel M{\"u}ller, Bernhard
+  Sch{\"o}lkopf, Sauraj Gambhir, Noah Hollmann, and Frank Hutter.
+\newblock {TabPFN-3}: Technical report.
+\newblock \emph{arXiv preprint arXiv:2605.13986}, 2026.
+\newblock \doi{10.48550/arXiv.2605.13986}.
+\newblock URL \url{https://arxiv.org/abs/2605.13986}.
+
+\bibitem[Hollmann et~al.(2023)Hollmann, M{\"u}ller, Eggensperger, and
+  Hutter]{hollmann2023tabpfn}
+Noah Hollmann, Samuel M{\"u}ller, Katharina Eggensperger, and Frank Hutter.
+\newblock {TabPFN}: A transformer that solves small tabular classification
+  problems in a second.
+\newblock In \emph{International Conference on Learning Representations}, 2023.
+\newblock URL \url{https://openreview.net/forum?id=cp5PvcI6w8_}.
+
+\bibitem[Hollmann et~al.(2025)Hollmann, M{\"u}ller, Purucker, Krishnakumar,
+  K{\"o}rfer, Hoo, Schirrmeister, and Hutter]{hollmann2025tabpfn}
+Noah Hollmann, Samuel M{\"u}ller, Lennart Purucker, Arjun Krishnakumar, Max
+  K{\"o}rfer, Shi~Bin Hoo, Robin~Tibor Schirrmeister, and Frank Hutter.
+\newblock Accurate predictions on small data with a tabular foundation model.
+\newblock \emph{Nature}, 637\penalty0 (8045):\penalty0 319--326, 2025.
+\newblock \doi{10.1038/s41586-024-08328-6}.
+\newblock URL \url{https://www.nature.com/articles/s41586-024-08328-6}.
+
+\bibitem[Jacobs et~al.(1991)Jacobs, Jordan, Nowlan, and
+  Hinton]{jacobs1991experts}
+Robert~A. Jacobs, Michael~I. Jordan, Steven~J. Nowlan, and Geoffrey~E. Hinton.
+\newblock Adaptive mixtures of local experts.
+\newblock \emph{Neural Computation}, 3\penalty0 (1):\penalty0 79--87, 1991.
+\newblock \doi{10.1162/neco.1991.3.1.79}.
+\newblock URL \url{https://www.cs.toronto.edu/~hinton/absps/jjnh91.pdf}.
+
+\bibitem[Janosi et~al.(1989)Janosi, Steinbrunn, Pfisterer, and
+  Detrano]{janosi1989heart}
+Andras Janosi, William Steinbrunn, Matthias Pfisterer, and Robert Detrano.
+\newblock Heart disease.
+\newblock UCI Machine Learning Repository, 1989.
+\newblock URL \url{https://archive.ics.uci.edu/dataset/45/heart+disease}.
+\newblock Dataset.
+
+\bibitem[Jiang \& Tanner(1999)Jiang and Tanner]{jiang1999identifiability}
+W.~Jiang and M.~A. Tanner.
+\newblock On the identifiability of mixtures-of-experts.
+\newblock \emph{Neural Networks}, 12\penalty0 (9):\penalty0 1253--1258, 1999.
+\newblock \doi{10.1016/S0893-6080(99)00066-0}.
+\newblock URL
+  \url{https://www.sciencedirect.com/science/article/pii/S0893608099000660}.
+
+\bibitem[Jin et~al.(2025)Jin, Balasubramanian, and Lai]{jin2025mixtures}
+Yanhao Jin, Krishnakumar Balasubramanian, and Lifeng Lai.
+\newblock In-context learning for mixture of linear regression: Existence,
+  generalization and training dynamics.
+\newblock \emph{Transactions on Machine Learning Research}, November 2025.
+\newblock URL \url{https://openreview.net/forum?id=buZXVuTsHY}.
+
+\bibitem[Jordan \& Jacobs(1994)Jordan and Jacobs]{jordan1994hierarchical}
+Michael~I. Jordan and Robert~A. Jacobs.
+\newblock Hierarchical mixtures of experts and the {EM} algorithm.
+\newblock \emph{Neural Computation}, 6\penalty0 (2):\penalty0 181--214, 1994.
+\newblock \doi{10.1162/neco.1994.6.2.181}.
+\newblock URL \url{https://doi.org/10.1162/neco.1994.6.2.181}.
+
+\bibitem[Ke et~al.(2017)Ke, Meng, Finley, Wang, Chen, Ma, Ye, and
+  Liu]{ke2017lightgbm}
+Guolin Ke, Qi~Meng, Thomas Finley, Taifeng Wang, Wei Chen, Weidong Ma, Qiwei
+  Ye, and Tie-Yan Liu.
+\newblock {LightGBM}: A highly efficient gradient boosting decision tree.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~30, 2017.
+\newblock URL
+  \url{https://papers.nips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html}.
+
+\bibitem[M{\"u}ller et~al.(2022)M{\"u}ller, Hollmann, Pineda~Arango, Grabocka,
+  and Hutter]{muller2022pfn}
+Samuel M{\"u}ller, Noah Hollmann, Sebastian Pineda~Arango, Josif Grabocka, and
+  Frank Hutter.
+\newblock Transformers can do {Bayesian} inference.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+\newblock URL \url{https://openreview.net/forum?id=KSugKcbNf9}.
+
+\bibitem[Pathak et~al.(2024)Pathak, Sen, Kong, and Das]{pathak2024mixtures}
+Reese Pathak, Rajat Sen, Weihao Kong, and Abhimanyu Das.
+\newblock Transformers can optimally learn regression mixture models.
+\newblock In \emph{International Conference on Learning Representations}, 2024.
+\newblock URL \url{https://openreview.net/forum?id=sLkj91HIZU}.
+
+\bibitem[Pedregosa et~al.(2011)Pedregosa, Varoquaux, Gramfort, Michel, Thirion,
+  Grisel, Blondel, Prettenhofer, Weiss, Dubourg, Vanderplas, Passos,
+  Cournapeau, Brucher, Perrot, and Duchesnay]{pedregosa2011sklearn}
+Fabian Pedregosa, Ga{\"e}l Varoquaux, Alexandre Gramfort, Vincent Michel,
+  Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron
+  Weiss, Vincent Dubourg, Jake Vanderplas, Alexandre Passos, David Cournapeau,
+  Matthieu Brucher, Matthieu Perrot, and {\'E}douard Duchesnay.
+\newblock Scikit-learn: Machine learning in {Python}.
+\newblock \emph{Journal of Machine Learning Research}, 12\penalty0
+  (85):\penalty0 2825--2830, 2011.
+\newblock URL \url{https://jmlr.org/papers/v12/pedregosa11a.html}.
+
+\bibitem[Pfefferle et~al.(2025)Pfefferle, Hog, Purucker, and
+  Hutter]{pfefferle2025nanotabpfn}
+Alexander Pfefferle, Johannes Hog, Lennart Purucker, and Frank Hutter.
+\newblock {nanoTabPFN}: A lightweight and educational reimplementation of
+  {TabPFN}.
+\newblock \emph{arXiv preprint arXiv:2511.03634}, 2025.
+\newblock \doi{10.48550/arXiv.2511.03634}.
+\newblock URL \url{https://arxiv.org/abs/2511.03634}.
+
+\bibitem[{Prior Labs}(2026)]{priorlabs2026tabpfn26}
+{Prior Labs}.
+\newblock {TabPFN-2.6} model card.
+\newblock Hugging Face model repository, 2026.
+\newblock URL \url{https://huggingface.co/Prior-Labs/tabpfn_2_6}.
+\newblock Official model card; accessed 2026-09-24.
+
+\bibitem[Prokhorenkova et~al.(2018)Prokhorenkova, Gusev, Vorobev, Dorogush, and
+  Gulin]{prokhorenkova2018catboost}
+Liudmila Prokhorenkova, Gleb Gusev, Aleksandr Vorobev, Anna~Veronika Dorogush,
+  and Andrey Gulin.
+\newblock {CatBoost}: unbiased boosting with categorical features.
+\newblock In \emph{Advances in Neural Information Processing Systems},
+  volume~31, 2018.
+\newblock URL
+  \url{https://proceedings.neurips.cc/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html}.
+
+\bibitem[Purucker et~al.(2026)Purucker, Tschalzev, Erickson, Blayer,
+  Holzm{\"u}ller, Arazi, Pfefferle, Tajjar, Varoquaux, and
+  Hutter]{purucker2026beyondarena}
+Lennart Purucker, Andrej Tschalzev, Nick Erickson, Gioia Blayer, David
+  Holzm{\"u}ller, Alan Arazi, Alexander Pfefferle, Mustafa Tajjar, Ga{\"e}l
+  Varoquaux, and Frank Hutter.
+\newblock Beyond {IID}: How general are tabular foundation models, really?
+\newblock \emph{arXiv preprint arXiv:2606.30410}, 2026.
+\newblock \doi{10.48550/arXiv.2606.30410}.
+\newblock URL \url{https://arxiv.org/abs/2606.30410}.
+
+\bibitem[Qu et~al.(2025)Qu, Holzm{\"u}ller, Varoquaux, and
+  Le~Morvan]{qu2025tabicl}
+Jingang Qu, David Holzm{\"u}ller, Ga{\"e}l Varoquaux, and Marine Le~Morvan.
+\newblock {TabICL}: A tabular foundation model for in-context learning on large
+  data.
+\newblock In \emph{Proceedings of the 42nd International Conference on Machine
+  Learning}, volume 267 of \emph{Proceedings of Machine Learning Research},
+  pp.\  50817--50847. PMLR, 2025.
+\newblock URL \url{https://proceedings.mlr.press/v267/qu25d.html}.
+
+\bibitem[Qu et~al.(2026)Qu, Holzm{\"u}ller, Varoquaux, and
+  Le~Morvan]{qu2026tabiclv2}
+Jingang Qu, David Holzm{\"u}ller, Ga{\"e}l Varoquaux, and Marine Le~Morvan.
+\newblock {TabICLv2}: A better, faster, scalable, and open tabular foundation
+  model.
+\newblock In \emph{International Conference on Machine Learning}, 2026.
+\newblock URL \url{https://arxiv.org/abs/2602.11139}.
+
+\bibitem[Xie et~al.(2022)Xie, Raghunathan, Liang, and Ma]{xie2022implicit}
+Sang~Michael Xie, Aditi Raghunathan, Percy Liang, and Tengyu Ma.
+\newblock An explanation of in-context learning as implicit {Bayesian}
+  inference.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+\newblock URL \url{https://arxiv.org/abs/2111.02080}.
+
+\end{thebibliography}

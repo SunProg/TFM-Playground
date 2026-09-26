@@ -4,6 +4,15 @@ Date: 2026-09-21 17:20. Companion to `paper/multiregime_v4_results.md` (rev. 6).
 **native prior** (fix of 2026-09-20; see §1) and the **native banks**; numbers are not comparable to the old
 banks except through BeyondArena (same real data).
 
+**Legacy `expose_z` correction (2026-09-25):** “Exposed Z” is a misleading name for these runs and banks. In
+`multiregime_v4.py`, `expose_z=True` copies processed `x[:, 0]` into an extra, randomly positioned feature column;
+it does not add the row's regime assignment. Call the two evaluation conditions the **standard-input bank** and
+the **duplicate-X1 bank**. The extra column duplicates an already-present routing feature for `soft_gate` and is
+unrelated to the latent group assignment for `persistent`. The native training dumps include this duplicate in
+50% of episodes, including the K=1 control. Therefore comparisons across these banks measure the effect of an
+extra duplicate-X1 feature / changed input width; they provide no evidence about a model receiving true regime
+membership. Historical file and run names retain `expose_z` / `zx` for compatibility only.
+
 ## 1. Why: the 2026-09-20 finding
 
 The v4 production prior (`tfmplayground/experiments/multiregime_v4.py`, profile `production`) replaced TabICL's
@@ -28,8 +37,8 @@ imbalanced too (3-class majority 0.65, 5-class 0.50; 6–10 % of K=1 tasks reali
 
 * Dumps (`/scratch/users/k23139234/tfm_data/multiregime_v4_native/tabicl_mix_scm_paired_zmix5/`, job 37403290):
   `original` (K=1), `r_z-multiregime`, `g_z-multiregime`, 100k episodes each, same geometry as the old dumps,
-  **z exposed in 50 % of the episodes** (per-episode `expose_z`). No shared-rule dumps: K=1 is the control.
-* Banks (`…/tabicl_mix_scm_evaluation` blind, `…_expose_z`; jobs 37403291 / 37403364): same factorial cell grid
+  **a duplicate of X1 in 50 % of episodes** (per-episode legacy `expose_z`). No shared-rule dumps: K=1 is the control.
+* Banks (`…/tabicl_mix_scm_evaluation` standard-input, `…_expose_z` duplicate-X1; jobs 37403291 / 37403364): same factorial cell grid
   and seeds as bank 37277969 on the native base prior; controlled binary cells keep the calibrated 0.1/0.3/0.5
   ratios, multiclass cells use native labels with every requested class present. Two validation episodes with
   non-finite X (native feature processing) were regenerated (job 37406225). Class-prior CE: validation 0.8360,
@@ -38,7 +47,8 @@ imbalanced too (3-class majority 0.65, 5-class 0.50; 6–10 % of K=1 tasks reali
   `original`, `rg_z-fixed` (multiregime share **0.3**), `rg_z-curriculum` (ramp 0 → 0.5 over steps 1000–5000)
   × small / medium / large; 10k steps, **20 % warmup** (2000 steps), otherwise the v4 recipe; ordinary branch =
   `original.h5`, multiregime branch = r_z + g_z dumps round-robin; validation every 500 steps on both banks
-  (`v4_validation/`, `v4_validation_zx/`); `latest_checkpoint.pth` every 50 steps.
+  (`v4_validation/`, `v4_validation_zx/`); `latest_checkpoint.pth` every 50 steps. The `zx` tag is legacy naming
+  for the duplicate-X1 bank, not a true-Z evaluation.
   Status (23 Sep): **all nine runs complete.** small ×3 and medium ×3 on A30/A100; large original and
   rg_z-curriculum on A100 (20 h each, 37403309_2/_20); rg_z-fixed-large started on an A30 and was taken over by
   the A100 job 37424403_17 at step ~6100 on 22 Sep 13:08 (PREEMPT_JOB cancels the A30 twin and resumes from
@@ -49,7 +59,7 @@ imbalanced too (3-class majority 0.65, 5-class 0.50; 6–10 % of K=1 tasks reali
   (`/scratch/users/k23139234/tfm_eval/native_references/`, jobs 37422518 / 37422529, in progress).
 * Figures: `figures/native/native_history.png` (bank / ordinary / training CE per size),
   `figures/native/native_<size>_{excess_ce,acc_gain}_{cells,regime_x_classes}.png` (500-step resolution,
-  z-blind vs z-exposed bank, final test as diamonds).
+  standard-input vs duplicate-X1 bank, final test as diamonds).
 
 ## 3. Synthetic bank — final TEST, pooled
 
@@ -77,11 +87,11 @@ runs are now within 0.006 of TabICL v1.1 and 0.03 of TabICL v1 / TabPFN on the s
 models never beat the class prior on likelihood (rf +0.012 is the closest); their accuracy is above the majority
 baseline (0.596) but below every native run ≥ medium.
 
-## 4. Synthetic bank — final TEST excess CE per cell (z-blind bank / z-exposed bank)
+## 4. Synthetic bank — final TEST excess CE per cell (standard-input bank / duplicate-X1 bank)
 
 ### small
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | all cells | -0.0191 | -0.0192 | -0.0199 | -0.0201 | -0.0195 | -0.0198 |
 | binary, ratio 0.1 | -0.0074 | -0.0063 | -0.0076 | -0.0065 | -0.0075 | -0.0063 |
@@ -100,9 +110,9 @@ baseline (0.596) but below every native run ≥ medium.
 | multiregime K≥2, binary | +0.0067 | +0.0078 | +0.0055 | +0.0065 | +0.0049 | +0.0060 |
 | multiregime K≥2, multiclass | -0.0224 | -0.0286 | -0.0238 | -0.0302 | -0.0234 | -0.0302 |
 
-### medium (z-exposed test from the checkpoint evals; rg_z-fixed / rg_z-curriculum z-exposed pending)
+### medium (duplicate-X1 test from the checkpoint evals; rg_z-fixed / rg_z-curriculum duplicate-X1 pending)
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-curriculum (z-blind) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-curriculum (standard-input) |
 |---|---|---|---|---|
 | all cells | -0.0261 | -0.0264 | -0.0302 | -0.0320 |
 | binary, ratio 0.1 | +0.0042 | +0.0040 | +0.0025 | +0.0031 |
@@ -123,7 +133,7 @@ baseline (0.596) but below every native run ≥ medium.
 
 ### large (final TEST excess CE; all three runs, both banks)
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | all cells | -0.0544 | -0.0537 | -0.0554 | -0.0541 | -0.0553 | -0.0537 |
 | binary, ratio 0.1 | -0.0133 | -0.0125 | -0.0130 | -0.0123 | -0.0121 | -0.0113 |
@@ -144,13 +154,13 @@ baseline (0.596) but below every native run ≥ medium.
 | multiregime, soft_gate | -0.0824 | -0.0838 | -0.0892 | -0.0909 | -0.0908 | -0.0926 |
 | multiregime, persistent | -0.0049 | -0.0038 | -0.0054 | -0.0036 | -0.0050 | -0.0030 |
 
-Reference models on the same bank (z-blind test): TabICL v1.1 -0.061, TabICL v1 -0.083, TabICL v2 -0.084,
+Reference models on the same bank (standard-input test): TabICL v1.1 -0.061, TabICL v1 -0.083, TabICL v2 -0.084,
 TabPFN v2.6 -0.084, v3 -0.089, v2.2 -0.090; rf +0.012, logreg +0.020, catboost +0.103.
 
-**rg_z-fixed matches the curriculum with 30 % multiregime exposure instead of a 0->50 % ramp**: pooled -0.0554 vs
+**rg_z-fixed matches the curriculum with a 30 % multiregime-mixture share instead of a 0->50 % ramp**: pooled -0.0554 vs
 -0.0553 (and the best final validation CE of the three, 0.7809), with the curriculum keeping a small edge on the
 soft_gate cells (-0.0908 vs -0.0892) and rg_z-fixed slightly ahead on 5 classes (-0.0815 vs -0.0808) and on the
-z-exposed bank at K=1/K=2 shared. Both beat original by 0.0009-0.0010 pooled and by 0.007-0.009 on multiregime
+duplicate-X1 bank at K=1/K=2 shared. Both beat original by 0.0009-0.0010 pooled and by 0.007-0.009 on multiregime
 multiclass, and lose 0.0014 on K=1.
 
 Large resolves the two medium failure modes: `multiregime K≥2, binary` goes from +0.015 (medium) to −0.003 —
@@ -196,7 +206,7 @@ all cells and therefore not interpretable as a per-ratio AUC comparison.
 
 ### regime count × class condition (final TEST excess CE)
 
-original-small (z-blind / z-exposed):
+original-small (standard-input / duplicate-X1):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -208,7 +218,7 @@ original-small (z-blind / z-exposed):
 | K=4 shared | -0.0154 / -0.0139 | -0.0351 / -0.0339 | -0.0301 / -0.0289 | -0.0338 / -0.0332 | -0.0398 / -0.0389 | -0.0207 / -0.0206 |
 | K=4 multiregime | +0.0061 / +0.0071 | +0.0064 / +0.0072 | +0.0081 / +0.0097 | -0.0214 / -0.0268 | -0.0206 / -0.0270 | -0.0139 / -0.0201 |
 
-rg_z-fixed-small (z-blind / z-exposed):
+rg_z-fixed-small (standard-input / duplicate-X1):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -220,7 +230,7 @@ rg_z-fixed-small (z-blind / z-exposed):
 | K=4 shared | -0.0155 / -0.0140 | -0.0356 / -0.0345 | -0.0319 / -0.0308 | -0.0342 / -0.0339 | -0.0410 / -0.0400 | -0.0199 / -0.0199 |
 | K=4 multiregime | +0.0059 / +0.0068 | +0.0051 / +0.0059 | +0.0066 / +0.0080 | -0.0238 / -0.0294 | -0.0222 / -0.0288 | -0.0146 / -0.0212 |
 
-rg_z-curriculum-small (z-blind / z-exposed):
+rg_z-curriculum-small (standard-input / duplicate-X1):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -232,7 +242,7 @@ rg_z-curriculum-small (z-blind / z-exposed):
 | K=4 shared | -0.0146 / -0.0130 | -0.0351 / -0.0339 | -0.0316 / -0.0305 | -0.0328 / -0.0322 | -0.0384 / -0.0375 | -0.0175 / -0.0176 |
 | K=4 multiregime | +0.0056 / +0.0067 | +0.0049 / +0.0059 | +0.0058 / +0.0073 | -0.0231 / -0.0291 | -0.0212 / -0.0282 | -0.0139 / -0.0209 |
 
-original-medium (z-blind):
+original-medium (standard-input):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -244,7 +254,7 @@ original-medium (z-blind):
 | K=4 shared | -0.0192 | -0.0488 | -0.0446 | -0.0739 | -0.1019 | -0.0812 |
 | K=4 multiregime | +0.0093 | +0.0047 | +0.0064 | -0.0664 | -0.0724 | -0.0623 |
 
-rg_z-curriculum-medium (z-blind):
+rg_z-curriculum-medium (standard-input):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -256,9 +266,9 @@ rg_z-curriculum-medium (z-blind):
 | K=4 shared | -0.0196 | -0.0498 | -0.0469 | -0.0749 | -0.1019 | -0.0820 |
 | K=4 multiregime | +0.0094 | +0.0037 | +0.0037 | -0.0796 | -0.0867 | -0.0750 |
 
-large (z-exposed test for original-large pending its checkpoint eval):
+large (duplicate-X1 test for original-large pending its checkpoint eval):
 
-original-large (z-blind / z-exposed):
+original-large (standard-input / duplicate-X1):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -270,7 +280,7 @@ original-large (z-blind / z-exposed):
 | K=4 shared | -0.0287 / — | -0.0620 / — | -0.0596 / — | -0.0939 / — | -0.1289 / — | -0.1163 / — |
 | K=4 multiregime | +0.0003 / — | -0.0056 / — | -0.0060 / — | -0.0948 / — | -0.1054 / — | -0.0960 / — |
 
-rg_z-curriculum-large (z-blind / z-exposed):
+rg_z-curriculum-large (standard-input / duplicate-X1):
 
 | K / rule | bin 0.1 | bin 0.3 | bin 0.5 | 3 cls | 4 cls | 5 cls |
 |---|---|---|---|---|---|---|
@@ -286,7 +296,7 @@ rg_z-curriculum-large (z-blind / z-exposed):
 
 small:
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | r_z × soft_gate | -0.0217 | -0.0280 | -0.0234 | -0.0302 | -0.0234 | -0.0304 |
 | g_z × soft_gate | -0.0189 | -0.0250 | -0.0203 | -0.0268 | -0.0203 | -0.0270 |
@@ -305,7 +315,7 @@ small:
 
 medium:
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) |
 |---|---|---|
 | r_z × soft_gate | -0.0536 | -0.0656 |
 | g_z × soft_gate | -0.0493 | -0.0616 |
@@ -324,7 +334,7 @@ medium:
 
 large:
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) | original (z-exposed) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) | original (duplicate-X1) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|
 | r_z × soft_gate | -0.0848 | -0.0933 | — | -0.0951 |
 | g_z × soft_gate | -0.0800 | -0.0882 | — | -0.0900 |
@@ -345,9 +355,9 @@ large:
 
 ### multiregime cells (K≥2) by mechanism × routing family × class kind
 
-small (z-blind / z-exposed test bank):
+small (standard-input / duplicate-X1 test bank):
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | r_z × soft_gate, binary | +0.0032 | +0.0042 | +0.0019 | +0.0027 | +0.0014 | +0.0024 |
 | r_z × soft_gate, multiclass | -0.0465 | -0.0602 | -0.0487 | -0.0630 | -0.0482 | -0.0632 |
@@ -358,9 +368,9 @@ small (z-blind / z-exposed test bank):
 | g_z × persistent, binary | +0.0129 | +0.0143 | +0.0118 | +0.0129 | +0.0109 | +0.0122 |
 | g_z × persistent, multiclass | +0.0017 | +0.0032 | +0.0010 | +0.0026 | +0.0012 | +0.0028 |
 
-medium (z-blind):
+medium (standard-input):
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) |
 |---|---|---|
 | r_z × soft_gate, binary | +0.0083 | +0.0063 |
 | r_z × soft_gate, multiclass | -0.1154 | -0.1376 |
@@ -375,7 +385,7 @@ medium (z-blind):
 
 small:
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | K=2, r_z × soft_gate | -0.0234 | -0.0296 | -0.0250 | -0.0318 | -0.0259 | -0.0328 |
 | K=2, r_z × persistent | +0.0015 | +0.0023 | +0.0005 | +0.0015 | +0.0002 | +0.0010 |
@@ -390,9 +400,9 @@ small:
 | K=4, g_z × soft_gate | -0.0157 | -0.0216 | -0.0175 | -0.0238 | -0.0169 | -0.0233 |
 | K=4, g_z × persistent | +0.0074 | +0.0085 | +0.0065 | +0.0075 | +0.0065 | +0.0076 |
 
-medium (z-blind):
+medium (standard-input):
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) |
 |---|---|---|
 | K=2, r_z × soft_gate | -0.0295 | -0.0425 |
 | K=2, r_z × persistent | +0.0327 | +0.0241 |
@@ -409,7 +419,7 @@ medium (z-blind):
 
 large:
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) | original (z-exposed) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) | original (duplicate-X1) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|
 | K=2, r_z × soft_gate | -0.0665 | -0.0733 | — | -0.0731 |
 | K=2, r_z × persistent | -0.0027 | -0.0030 | — | +0.0002 |
@@ -440,9 +450,9 @@ Reading the large per-cell tables:
 * **Accuracy gain** follows the same pattern: rg_z-curriculum +0.070 vs +0.066 on multiregime soft_gate and
   +0.067 vs +0.063 on multiregime multiclass, identical elsewhere (pooled +0.0423 vs +0.0418).
 
-### accuracy gain, small (z-blind / z-exposed)
+### accuracy gain, small (standard-input / duplicate-X1)
 
-| cell | original (z-blind) | original (z-exposed) | rg_z-fixed (z-blind) | rg_z-fixed (z-exposed) | rg_z-curriculum (z-blind) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | original (duplicate-X1) | rg_z-fixed (standard-input) | rg_z-fixed (duplicate-X1) | rg_z-curriculum (standard-input) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|---|---|
 | all cells | +0.0212 | +0.0216 | +0.0216 | +0.0222 | +0.0213 | +0.0218 |
 | binary, ratio 0.1 | +0.0000 | -0.0001 | +0.0000 | -0.0000 | -0.0000 | -0.0001 |
@@ -469,8 +479,9 @@ Findings:
    and only in `soft_gate` (regime visible in X; −0.046 small, −0.115/−0.137 medium). `persistent` (latent
    regime, not in X) stays at the prior for every model: no in-context learner can route without regime
    information. `r_z` (mechanism per regime) is slightly easier than `g_z` (same score, different cut).
-3. z exposure helps exactly on the soft_gate multiregime cells (z is the soft-gate score): −0.005…−0.008 at
-   small; no effect on K=1/shared cells; slightly *worse* on binary multiregime cells.
+3. The duplicate-X1 bank is associated with lower CE on some soft-gate multiregime cells and small changes
+   elsewhere. This is an input-duplication / width comparison, not evidence that the model receives regime
+   membership: X1 is already present, and persistent membership remains unobserved.
 4. Remaining structural failure: **binary multiregime cells** stay above the prior (+0.004…+0.012 small,
    +0.005…+0.035 medium) and get worse after step 4000 — the model learns a rule-0 bias for two-class mixes.
    Capacity makes this worse, not better.
@@ -479,9 +490,9 @@ Findings:
    plus less loss on the binary/persistent cells → 0.006 pooled.
 6. Medium vs small: the medium trades K=1 binary calibration (worse than small) for multiregime multiclass skill.
 
-### accuracy gain, large (z-blind / z-exposed)
+### accuracy gain, large (standard-input / duplicate-X1)
 
-| cell | original (z-blind) | rg_z-curriculum (z-blind) | original (z-exposed) | rg_z-curriculum (z-exposed) |
+| cell | original (standard-input) | rg_z-curriculum (standard-input) | original (duplicate-X1) | rg_z-curriculum (duplicate-X1) |
 |---|---|---|---|---|
 | all cells | +0.0418 | +0.0423 | — | +0.0423 |
 | binary, ratio 0.1 | +0.0010 | +0.0010 | — | +0.0009 |
@@ -572,16 +583,26 @@ neutral on real data at every size**, while on the synthetic multiregime cells i
   or the routing?) — candidate follow-up: per-regime class-ratio audit of the bank cells vs model predictions.
 * Old-vs-new side-by-side section in `multiregime_v4_results.md`; T14 per-dataset tables.
 
-## 7. Real-data group-exposure test (merged heart-disease sites)
+## 7. Real-data observed-site-label test (merged heart-disease sites)
 
 The three UCI Heart Disease sites in BeyondArena share an identical 13-attribute schema, so merging them gives a
-797-row real dataset with a known latent regime (the hospital) — the real-data counterpart of the z-blind /
-z-exposed banks. Full tables: `paper/native/heart_sites_group_feature.md` (job 37449374). Headline: in-distribution
+797-row real dataset with a known group label (the hospital). Unlike the legacy synthetic duplicate-X1 bank, the
+site-indicator condition supplies actual group membership. Full tables: `paper/native/heart_sites_group_feature.md`
+(job 37449374). Headline: in-distribution
 the group label is worthless (|Δ excess CE| ≤ 0.0045 for all 19 models; the site is 92 % recoverable from the
-features), while under leave-one-site-out shift it helps the in-context models (tabpfn-v2.6 −0.019, tabpfn-v2.2 and
-rf −0.014, nat-original-large −0.007) and destroys logreg (+0.074). |Δ AUC| ≤ 0.002 throughout: the effect is
-calibration, not ranking — the same conclusion as the synthetic soft_gate (redundant z) versus persistent
-(non-recoverable z) cells.
+features). |Δ AUC| ≤ 0.002 under IID: the effect is calibration, not ranking — the same conclusion as the
+synthetic soft_gate (redundant z) versus persistent (non-recoverable z) cells.
+
+**The leave-one-site-out figures previously reported here (helps in-context models, destroys logreg) are
+withdrawn.** Under that protocol the held-out site's category is absent from support, so the fold preprocessor
+maps it to an unknown value and imputes a training-site code instead of preserving the true held-out identity;
+the apparent cross-entropy change reflects that encoding artifact, not an intervention on group membership. The
+replacement is a 20-shot target-site adaptation protocol (labelled target-site rows kept in support, so the site
+category is genuinely observed for the query rows too). The full 20-model rerun (job `heart-adapt`, SLURM
+37526009) completed 2026-09-26: true-minus-shuffled excess CE is small and mixed (−0.0127 to +0.0042, 16/20
+models negative), |Δ AUC| ≤ 0.0053 throughout (calibration, not ranking, as before), no family consistently
+beats original across sizes, and the previously reported logreg failure (+0.074 CE) does not reproduce
+(−0.0064) — it was the encoding artifact. Full tables: `paper/native/heart_sites_adaptation.md`.
 
 ## A1. BeyondArena per-dataset tables (final checkpoints; bold = best in row)
 

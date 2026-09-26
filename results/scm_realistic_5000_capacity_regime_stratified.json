@@ -1,0 +1,215 @@
+{
+  "prior": {
+    "support_size": 128,
+    "query_size": 256,
+    "task_features": 4,
+    "max_regimes": 2,
+    "cue_separation": 1.5,
+    "regime_probability": 0.65,
+    "num_layers": 2,
+    "hidden_dim": 12,
+    "init_std": 0.5,
+    "label_noise": 0.05,
+    "calibration_size": 1024,
+    "min_disagreement": 0.2,
+    "max_disagreement": 0.8,
+    "max_attempts": 128
+  },
+  "episodes": 128,
+  "architecture": {
+    "embedding_size": 192,
+    "num_attention_heads": 6,
+    "mlp_hidden_size": 768,
+    "num_layers": 6
+  },
+  "runs": [
+    {
+      "model": "nanotabpfn_large",
+      "seed": 11,
+      "selected_step": 3600,
+      "architecture": {
+        "embedding_size": 192,
+        "num_attention_heads": 6,
+        "mlp_hidden_size": 768,
+        "num_layers": 6
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.504119873046875,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6931203594431281,
+            "n_episodes": 128
+          },
+          "auc": 0.4996866650487129
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.502724977908656,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6931538605131209,
+            "n_episodes": 128
+          },
+          "auc": 0.4993181046322539
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.5063887261785567,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6930658803321421,
+            "n_episodes": 128
+          },
+          "auc": 0.5003686836028858
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    },
+    {
+      "model": "table_slot_decoder_baseline_large",
+      "seed": 11,
+      "selected_step": 5000,
+      "architecture": {
+        "embedding_size": 192,
+        "num_attention_heads": 6,
+        "mlp_hidden_size": 768,
+        "num_layers": 6
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.504119873046875,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6931133405305445,
+            "n_episodes": 128
+          },
+          "auc": 0.49814696508809453
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.502724977908656,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.693135020788759,
+            "n_episodes": 128
+          },
+          "auc": 0.49508440180491436
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.5063887261785567,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6930780760012567,
+            "n_episodes": 128
+          },
+          "auc": 0.5039148128741031
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    },
+    {
+      "model": "nanotabpfn_large",
+      "seed": 12,
+      "selected_step": 5000,
+      "architecture": {
+        "embedding_size": 192,
+        "num_attention_heads": 6,
+        "mlp_hidden_size": 768,
+        "num_layers": 6
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.504119873046875,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6931239222176373,
+            "n_episodes": 128
+          },
+          "auc": 0.5
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.502724977908656,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6931598256342113,
+            "n_episodes": 128
+          },
+          "auc": 0.5
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.5063887261785567,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6930655520409346,
+            "n_episodes": 128
+          },
+          "auc": 0.5
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    },
+    {
+      "model": "table_slot_decoder_baseline_large",
+      "seed": 12,
+      "selected_step": 1600,
+      "architecture": {
+        "embedding_size": 192,
+        "num_attention_heads": 6,
+        "mlp_hidden_size": 768,
+        "num_layers": 6
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.505828857421875,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6930705113336444,
+            "n_episodes": 128
+          },
+          "auc": 0.5055677815259185
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.5055070244707167,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.693076394032687,
+            "n_episodes": 128
+          },
+          "auc": 0.506956481142018
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.5066995131783187,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.693057281896472,
+            "n_episodes": 128
+          },
+          "auc": 0.5029027833521623
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    }
+  ]
+}

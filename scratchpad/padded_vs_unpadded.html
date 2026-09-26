@@ -1,0 +1,165 @@
+<title>Padded vs Unpadded AttentionSlotRouter</title>
+<meta name="description" content="AUC/accuracy/NLL history, padded vs unpadded original-mode training, all three scopes">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f4f0; --surface: #ffffff; --border: #ddd8ce;
+    --ink: #21201c; --ink-dim: #6b675e;
+    --accent: #b5541f; --accent-soft: #f3e2d6;
+    --grid: #e8e4da; --padded: #b5541f; --unpadded: #2f5fa8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1a17; --surface: #242320; --border: #3a3833;
+      --ink: #ece8e0; --ink-dim: #a39d90;
+      --accent: #e08a4f; --accent-soft: #3a2a1e;
+      --grid: #33312b; --padded: #e08a4f; --unpadded: #7fa8e0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1a17; --surface: #242320; --border: #3a3833;
+    --ink: #ece8e0; --ink-dim: #a39d90;
+    --accent: #e08a4f; --accent-soft: #3a2a1e;
+    --grid: #33312b; --padded: #e08a4f; --unpadded: #7fa8e0;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, sans-serif; margin: 0; padding: 2rem 2rem 4rem; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+  .subtitle { color: var(--ink-dim); font-size: 0.9rem; margin: 0 0 1.5rem; max-width: 70ch; line-height: 1.5; }
+  .subtitle code { font-family: "IBM Plex Mono", monospace; background: var(--accent-soft); padding: 0.05rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  .legend { display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--ink-dim); margin-bottom: 1.5rem; }
+  .legend .swatch { display: inline-block; width: 0.9rem; height: 0.15rem; margin-right: 0.4rem; vertical-align: middle; }
+  .scope-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .scope-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: baseline; }
+  .scope-title .note { font-size: 0.78rem; font-weight: 400; color: var(--ink-dim); }
+  canvas { width: 100%; display: block; }
+  .stats-row { display: flex; gap: 2rem; margin-top: 0.6rem; font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; }
+  .stats-row .group { display: flex; gap: 0.5rem; align-items: baseline; }
+  .stats-row .k { color: var(--ink-dim); }
+</style>
+
+<h1>AttentionSlotRouter — padded vs unpadded, mode=original</h1>
+<p class="subtitle">
+  Local pilots, <code>seed=2402</code>, <code>width=128 hidden=512 layers=4 heads=4</code>, 3000 steps.
+  <strong>Padded</strong> = <code>OriginalPrior.sample(pad_groups=False)</code> via <code>_model_x_unpadded</code>
+  (zero-pads every episode to <code>max_features=12</code> regardless of real feature count).
+  <strong>Unpadded</strong> = <code>TabICLPriorDataLoader</code> called directly, natural feature width, no padding
+  at all. <code>cell_and_data</code> unpadded is still mid-run (step 900 of 3000 at last check).
+</p>
+
+<div class="legend">
+  <span><span class="swatch" style="background:var(--padded)"></span>padded</span>
+  <span><span class="swatch" style="background:var(--unpadded)"></span>unpadded</span>
+  <span style="opacity:0.6">– – – chance (AUC 0.5)</span>
+</div>
+
+<div id="scopes"></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  const data = JSON.parse(document.getElementById('data').textContent);
+  const scopes = ['data', 'cell_and_data', 'cell'];
+  const container = document.getElementById('scopes');
+
+  scopes.forEach(scope => {
+    const card = document.createElement('div');
+    card.className = 'scope-card';
+    const unpaddedN = data[scope].unpadded.length;
+    const unpaddedComplete = data[scope].unpadded[unpaddedN-1].step >= 3000;
+    card.innerHTML = `
+      <div class="scope-title">${scope} <span class="note">${unpaddedComplete ? '' : '(unpadded still running, last checkpoint shown)'}</span></div>
+      <canvas class="aucCanvas" data-scope="${scope}" height="220"></canvas>
+      <div class="stats-row" data-stats="${scope}"></div>
+    `;
+    container.appendChild(card);
+  });
+
+  function drawScope(scope) {
+    const canvas = document.querySelector(`canvas[data-scope="${scope}"]`);
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.parentElement.clientWidth - 40;
+    const cssHeight = parseInt(canvas.getAttribute('height'), 10);
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const style = getComputedStyle(document.documentElement);
+    const gridColor = style.getPropertyValue('--grid').trim();
+    const inkDim = style.getPropertyValue('--ink-dim').trim();
+    const ink = style.getPropertyValue('--ink').trim();
+    const paddedColor = style.getPropertyValue('--padded').trim();
+    const unpaddedColor = style.getPropertyValue('--unpadded').trim();
+
+    const padL = 46, padR = 12, padT = 12, padB = 26;
+    const plotW = cssWidth - padL - padR;
+    const plotH = cssHeight - padT - padB;
+    const maxStep = 3000;
+    const yMin = 0.40, yMax = 0.60;
+
+    const xPix = s => padL + (s / maxStep) * plotW;
+    const yPix = v => padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+    ctx.strokeStyle = gridColor;
+    ctx.fillStyle = inkDim;
+    ctx.font = '10.5px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let i = 0; i <= 4; i++) {
+      const v = yMin + (yMax - yMin) * (i / 4);
+      const py = yPix(v);
+      ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL + plotW, py); ctx.stroke();
+      ctx.fillText(v.toFixed(2), padL - 8, py);
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let i = 0; i <= 5; i++) {
+      const s = (maxStep * i) / 5;
+      ctx.fillText(Math.round(s), xPix(s), padT + plotH + 6);
+    }
+    // chance line
+    ctx.strokeStyle = ink; ctx.globalAlpha = 0.3; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(padL, yPix(0.5)); ctx.lineTo(padL+plotW, yPix(0.5)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+    function series(rows, color) {
+      const valid = rows.filter(r => r.auc !== null && r.auc !== undefined);
+      ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      valid.forEach((r, i) => {
+        const px = xPix(r.step), py = yPix(Math.max(yMin, Math.min(yMax, r.auc)));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      valid.forEach(r => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(xPix(r.step), yPix(Math.max(yMin, Math.min(yMax, r.auc))), 3, 0, Math.PI*2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      return valid;
+    }
+    series(data[scope].padded, paddedColor);
+    const unpaddedValid = series(data[scope].unpadded, unpaddedColor);
+
+    ctx.strokeStyle = ink; ctx.globalAlpha = 0.15;
+    ctx.strokeRect(padL, padT, plotW, plotH);
+    ctx.globalAlpha = 1;
+
+    const statsEl = document.querySelector(`[data-stats="${scope}"]`);
+    const lastPadded = data[scope].padded[data[scope].padded.length-1];
+    const lastUnpadded = data[scope].unpadded[data[scope].unpadded.length-1];
+    statsEl.innerHTML = `
+      <span class="group"><span class="k">padded final (step ${lastPadded.step}):</span> auc=${lastPadded.auc?.toFixed(4)} acc=${lastPadded.acc.toFixed(4)}</span>
+      <span class="group"><span class="k">unpadded ${lastUnpadded.step>=3000?'final':'latest'} (step ${lastUnpadded.step}):</span> auc=${lastUnpadded.auc?.toFixed(4)} acc=${lastUnpadded.acc.toFixed(4)}</span>
+    `;
+  }
+
+  scopes.forEach(drawScope);
+  window.addEventListener('resize', () => scopes.forEach(drawScope));
+})();
+</script>

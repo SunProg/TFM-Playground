@@ -1,0 +1,560 @@
+{
+  "schema_version": 1,
+  "analysis": "paired_matched_control_effects",
+  "evaluation_subset": {
+    "bank": "standard-input blind TEST",
+    "rule_mode": "multiregime",
+    "num_regimes": [
+      2,
+      3,
+      4
+    ],
+    "facets": [
+      "Soft gate \u00b7 Binary",
+      "Soft gate \u00b7 Multiclass",
+      "Persistent \u00b7 Binary",
+      "Persistent \u00b7 Multiclass"
+    ],
+    "episodes_per_facet_and_size": 2880,
+    "factorial_cells_per_facet_and_size": 360,
+    "episode_counts_per_factorial_cell": 8
+  },
+  "estimand": "candidate minus same-size native single-regime control; equal mean of factorial-cell means",
+  "bootstrap": {
+    "unit": "episode",
+    "stratification": "factorial evaluation cell",
+    "replicates": 5000,
+    "confidence": 0.95,
+    "interval": "percentile",
+    "seed": 20260925,
+    "scope": "evaluation-episode variation; not variation across training seeds"
+  },
+  "model_sizes": {
+    "small": {
+      "layers": 2
+    },
+    "medium": {
+      "layers": 4
+    },
+    "large": {
+      "layers": 6
+    }
+  },
+  "inputs": {
+    "original-small": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/original-small/seed-2402/v4_test/final.json",
+    "rg_z-fixed-small": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-fixed-small/seed-2402/v4_test/final.json",
+    "rg_z-curriculum-small": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-curriculum-small/seed-2402/v4_test/final.json",
+    "original-medium": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/original-medium/seed-2402/v4_test/final.json",
+    "rg_z-fixed-medium": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-fixed-medium/seed-2402/v4_test/final.json",
+    "rg_z-curriculum-medium": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-curriculum-medium/seed-2402/v4_test/final.json",
+    "original-large": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/original-large/seed-2402/v4_test/final.json",
+    "rg_z-fixed-large": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-fixed-large/seed-2402/v4_test/final.json",
+    "rg_z-curriculum-large": "/Users/edward/orca/workspaces/TFM-Playground/slot-attention/artifacts/cluster_sync/tfm_eval/native_regime_split/blind/rg_z-curriculum-large/seed-2402/v4_test/final.json"
+  },
+  "results": [
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0012116169947047537,
+        "confidence_low": -0.0013689369210603925,
+        "confidence_high": -0.0010653867301425636
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.03770616319444445,
+        "confidence_low": 0.0032518174913194592,
+        "confidence_high": 0.0729709201388889
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0016905519261248023,
+        "confidence_low": -0.0018539722528880197,
+        "confidence_high": -0.00151620501896913
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.043267144097222224,
+        "confidence_low": 0.009901258680555556,
+        "confidence_high": 0.07704332139756939
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0018030151006920884,
+        "confidence_low": -0.002176655475339228,
+        "confidence_high": -0.001417340814154563
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.04489474826388889,
+        "confidence_low": -0.1505635579427083,
+        "confidence_high": 0.04489813910590273
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0021323951673467593,
+        "confidence_low": -0.0025235930796265573,
+        "confidence_high": -0.0017488412655479301
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.022379557291666668,
+        "confidence_low": -0.06253051757812499,
+        "confidence_high": 0.018720838758680507
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": 0.0002280733518192493,
+        "confidence_low": -0.00022166843177627815,
+        "confidence_high": 0.0006796586579265644
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.026448567708333332,
+        "confidence_low": -0.11380343967013885,
+        "confidence_high": 0.042317708333333336
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Binary",
+      "task_family": "soft_gate",
+      "class_type": "binary",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": 5.4581172298640014e-05,
+        "confidence_low": -0.0003217821976310612,
+        "confidence_high": 0.0004237463200378341
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.06361219618055555,
+        "confidence_low": -0.17131212022569442,
+        "confidence_high": 0.026997884114583235
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.001985742782966958,
+        "confidence_low": -0.002397077649624811,
+        "confidence_high": -0.0015888140034965343
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.1299370659722222,
+        "confidence_low": 0.05967881944444445,
+        "confidence_high": 0.19979180230034718
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0014339387675540315,
+        "confidence_low": -0.0017511788397354797,
+        "confidence_high": -0.0011117725560001825
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.13020833333333334,
+        "confidence_low": 0.07500542534722222,
+        "confidence_high": 0.1886664496527778
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.013701916293616199,
+        "confidence_low": -0.014526187025201377,
+        "confidence_high": -0.012866992932484007
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.6119791666666666,
+        "confidence_low": 0.5381876627604166,
+        "confidence_high": 0.6864454481336805
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.022253285782062447,
+        "confidence_low": -0.023223194554149004,
+        "confidence_high": -0.021312258210059047
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 1.0439724392361112,
+        "confidence_low": 0.966250949435764,
+        "confidence_high": 1.1225111219618054
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.013868650336775722,
+        "confidence_low": -0.014979465716492592,
+        "confidence_high": -0.012767085113898954
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.6698947482638888,
+        "confidence_low": 0.5897318522135417,
+        "confidence_high": 0.750057644314236
+      }
+    },
+    {
+      "facet": "Soft gate \u00b7 Multiclass",
+      "task_family": "soft_gate",
+      "class_type": "multiclass",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.016802003030251297,
+        "confidence_low": -0.017818088897038252,
+        "confidence_high": -0.015775570335034798
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.8390299479166666,
+        "confidence_low": 0.7630750868055556,
+        "confidence_high": 0.9187825520833334
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0011674190242047188,
+        "confidence_low": -0.001326186852103193,
+        "confidence_high": -0.0010117875826037765
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.061713324652777776,
+        "confidence_low": 0.029025607638888888,
+        "confidence_high": 0.09291246202256939
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0019393665017155904,
+        "confidence_low": -0.002116244209835511,
+        "confidence_high": -0.0017654403966652253
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.05710177951388889,
+        "confidence_low": 0.024142795138888888,
+        "confidence_high": 0.09048122829861091
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0019497397498020696,
+        "confidence_low": -0.002330506980985471,
+        "confidence_high": -0.0015655740866107712
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.03431532118055555,
+        "confidence_low": -0.007595486111111111,
+        "confidence_high": 0.07514105902777778
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.002438083736261534,
+        "confidence_low": -0.0027944785265309395,
+        "confidence_high": -0.0020960958542147845
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.008680555555555556,
+        "confidence_low": -0.03268771701388889,
+        "confidence_high": 0.04978773328993041
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": 0.00028447955705309546,
+        "confidence_low": -9.501377529078226e-05,
+        "confidence_high": 0.0006570909125902187
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.025363498263888888,
+        "confidence_low": -0.0698513454861111,
+        "confidence_high": 0.021162245008680507
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Binary",
+      "task_family": "persistent",
+      "class_type": "binary",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": 0.0004931068692611815,
+        "confidence_low": 0.00015324679377954465,
+        "confidence_high": 0.000817234110309073
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.005832248263888889,
+        "confidence_low": -0.05208672417534721,
+        "confidence_high": 0.038658989800347175
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0007244580632282628,
+        "confidence_low": -0.0010013460173892478,
+        "confidence_high": -0.0004532664569301739
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.030788845486111112,
+        "confidence_low": -0.018720838758680542,
+        "confidence_high": 0.07962036132812494
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "small",
+      "layers": 2,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.00048649430068002804,
+        "confidence_low": -0.0007097751960261828,
+        "confidence_high": -0.0002681223305666612
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.007731119791666667,
+        "confidence_low": -0.05357530381944445,
+        "confidence_high": 0.03960842556423606
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.004633647451798121,
+        "confidence_low": -0.005255200746986601,
+        "confidence_high": -0.004027660032216874
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.030517578125,
+        "confidence_low": -0.029025607638888888,
+        "confidence_high": 0.09033203125
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "medium",
+      "layers": 4,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.006418486105071174,
+        "confidence_low": -0.007058869455682321,
+        "confidence_high": -0.005804187283954687
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.10321723090277778,
+        "confidence_low": 0.046383327907986126,
+        "confidence_high": 0.16018676757812494
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-fixed",
+      "schedule": "Fixed mixture",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0013694944170614084,
+        "confidence_low": -0.002153517922334787,
+        "confidence_high": -0.0005885020115723213
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": 0.06537543402777778,
+        "confidence_low": 0.0002678765190972369,
+        "confidence_high": 0.12966918945312494
+      }
+    },
+    {
+      "facet": "Persistent \u00b7 Multiclass",
+      "task_family": "persistent",
+      "class_type": "multiclass",
+      "size": "large",
+      "layers": 6,
+      "candidate": "rg_z-curriculum",
+      "schedule": "Curriculum",
+      "episodes": 2880,
+      "cells": 360,
+      "excess_cross_entropy_nats": {
+        "estimate": -0.0008005201195677122,
+        "confidence_low": -0.0014878263389174308,
+        "confidence_high": -0.00012754354418979767
+      },
+      "accuracy_gain_percentage_points": {
+        "estimate": -0.0705295138888889,
+        "confidence_low": -0.1277703179253472,
+        "confidence_high": -0.012478298611111112
+      }
+    }
+  ]
+}

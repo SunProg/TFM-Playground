@@ -1,0 +1,361 @@
+\begingroup\small\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}lrrr@{}}
+\caption{BeyondArena equal-task summaries from the original evaluation aggregates. Overall excess CE covers 36 tasks, binary accuracy gain 27 tasks, and multiclass accuracy gain nine tasks. Values are rounded; accuracy gains are percentage points.}\label{tab:baoverall}\\
+\toprule
+Model & Overall excess CE $\downarrow$ & Binary gain & Multiclass gain\\\midrule
+Native single-regime & -.224 & 9.4 & 20.0\\
+Native fixed mixture & -.221 & 9.3 & 20.2\\
+Native curriculum & -.220 & 9.2 & 19.9\\
+Random forest & -.225 & 9.7 & 21.7\\
+TabICL v2 & -.273 & 11.2 & 23.0\\
+TabPFN v3 & -.267 & 11.0 & 22.8\\
+\bottomrule\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}lrrrrr@{}}
+\caption{BeyondArena split summaries, Excess CE (nats; lower is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each.}\label{tab:splitce}\\
+\toprule
+Model & Bin. IID (26) & Bin. group (1) & Multi IID (6) & Multi group (2) & Multi time (1)\\\midrule
+Native single-regime & -0.161 & +0.067 & -0.525 & -0.346 & -0.095\\
+Native fixed mixture & -0.159 & +0.089 & -0.527 & -0.347 & -0.069\\
+Native curriculum & -0.159 & +0.127 & -0.526 & -0.348 & -0.088\\
+Random forest & -0.160 & -0.118 & -0.567 & -0.345 & +0.267\\
+TabICL v2 & -0.206 & +0.116 & -0.620 & -0.360 & -0.139\\
+TabPFN v3 & -0.205 & +0.260 & -0.616 & -0.345 & -0.142\\
+\bottomrule\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}lrrrrr@{}}
+\caption{BeyondArena split summaries, Accuracy gain (percentage points; higher is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each.}\label{tab:splitacc}\\
+\toprule
+Model & Bin. IID (26) & Bin. group (1) & Multi IID (6) & Multi group (2) & Multi time (1)\\\midrule
+Native single-regime & +9.55 & +4.10 & +25.78 & +12.80 & -0.80\\
+Native fixed mixture & +9.47 & +4.50 & +26.03 & +13.05 & -0.90\\
+Native curriculum & +9.45 & +3.80 & +25.87 & +12.55 & -1.40\\
+Random forest & +9.88 & +3.90 & +28.47 & +12.35 & -0.40\\
+TabICL v2 & +11.45 & +3.40 & +30.07 & +13.35 & -0.30\\
+TabPFN v3 & +11.41 & +1.00 & +30.05 & +12.80 & -0.30\\
+\bottomrule\end{longtable}\endgroup
+\begingroup\footnotesize\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{6.3cm}lrrr@{}}
+\caption{Selected BeyondArena task inventory. Training rows and features describe the task-level evaluation manifest; G = grouped and T = temporal. Task names follow the source results and are truncated there where necessary.}\label{tab:inventory}\\
+\toprule Task & Split & Train $n$ & $d$ & Majority\\\midrule\endfirsthead
+\toprule Task & Split & Train $n$ & $d$ & Majority\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & 1148 & 13 & 0.89\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & 6666 & 10 & 0.80\\
+blood\_\allowbreak{}transfusion & IID & 498 & 4 & 0.76\\
+churn & IID & 3333 & 19 & 0.86\\
+credit\_\allowbreak{}approval & IID & 460 & 15 & 0.56\\
+credit\_\allowbreak{}g & IID & 666 & 20 & 0.70\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & 167 & 16 & 0.69\\
+ecommerce\_\allowbreak{}shipping & IID & 7332 & 10 & 0.60\\
+fitness\_\allowbreak{}club & IID & 1000 & 6 & 0.70\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & 1600 & 30 & 0.50\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & 202 & 13 & 0.54\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & 196 & 13 & 0.64\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & 133 & 13 & 0.74\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & 199 & 12 & 0.68\\
+heloc & IID & 6972 & 23 & 0.52\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & 103 & 19 & 0.79\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & 3805 & 12 & 0.80\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & 388 & 10 & 0.71\\
+iranian\_\allowbreak{}churn & IID & 1900 & 13 & 0.84\\
+jm1 & IID & 7256 & 21 & 0.81\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & 190 & 9 & 0.70\\
+marketing\_\allowbreak{}campaign & IID & 1493 & 25 & 0.85\\
+seismic\_\allowbreak{}bumps & IID & 1722 & 15 & 0.93\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & 308 & 9 & 0.65\\
+thyroid\_\allowbreak{}discordant & IID & 2474 & 26 & 0.98\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & 636 & 6 & 0.77\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & 127 & 23 & 0.76\\
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & 206 & 6 & 0.48\\
+ecoli\_\allowbreak{}proteins & IID & 218 & 6 & 0.44\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & 405 & 12 & 0.88\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & 229 & 20 & 0.63\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & 676 & 6 & 0.40\\
+website\_\allowbreak{}phishing & IID & 902 & 9 & 0.52\\
+cardiotocography & G & 1254 & 22 & 0.78\\
+dementia\_\allowbreak{}prediction & G & 250 & 8 & 0.56\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & 9933 & 10 & 0.93\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrr@{}}
+\caption{Per-task BeyondArena Excess cross-entropy (nats; lower is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:cesm}\\
+\toprule Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule
+\endfirsthead
+\multicolumn{8}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & -0.019 & -0.018 & -0.015 & -0.028 & -0.025 & -0.026\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & -0.075 & -0.079 & -0.080 & -0.137 & -0.133 & -0.129\\
+blood\_\allowbreak{}transfusion & IID & -0.074 & -0.072 & -0.076 & -0.065 & -0.067 & -0.064\\
+churn & IID & -0.076 & -0.075 & -0.067 & -0.136 & -0.131 & -0.133\\
+credit\_\allowbreak{}approval & IID & -0.308 & -0.316 & -0.313 & -0.347 & -0.342 & -0.340\\
+credit\_\allowbreak{}g & IID & -0.075 & -0.072 & -0.075 & -0.099 & -0.092 & -0.091\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & -0.297 & -0.288 & -0.285 & -0.349 & -0.351 & -0.337\\
+ecommerce\_\allowbreak{}shipping & IID & -0.124 & -0.130 & -0.129 & -0.154 & -0.157 & -0.154\\
+fitness\_\allowbreak{}club & IID & -0.118 & -0.122 & -0.123 & -0.139 & -0.140 & -0.141\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & -0.220 & -0.225 & -0.227 & -0.314 & -0.309 & -0.305\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & -0.261 & -0.259 & -0.259 & -0.287 & -0.289 & -0.287\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & -0.241 & -0.245 & -0.242 & -0.286 & -0.288 & -0.294\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & -0.028 & -0.026 & -0.031 & +0.000 & -0.000 & -0.013\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & -0.208 & -0.197 & -0.181 & -0.261 & -0.263 & -0.264\\
+heloc & IID & -0.106 & -0.116 & -0.117 & -0.129 & -0.132 & -0.128\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & -0.142 & -0.137 & -0.147 & -0.118 & -0.125 & -0.129\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & -0.141 & -0.150 & -0.145 & -0.205 & -0.207 & -0.190\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & -0.059 & -0.064 & -0.065 & -0.075 & -0.078 & -0.081\\
+iranian\_\allowbreak{}churn & IID & -0.183 & -0.190 & -0.185 & -0.230 & -0.223 & -0.220\\
+jm1 & IID & +0.007 & -0.019 & -0.010 & -0.039 & -0.038 & -0.037\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & -0.043 & -0.045 & -0.048 & -0.050 & -0.052 & -0.049\\
+marketing\_\allowbreak{}campaign & IID & -0.079 & -0.074 & -0.073 & -0.124 & -0.112 & -0.113\\
+seismic\_\allowbreak{}bumps & IID & -0.022 & -0.022 & -0.023 & -0.030 & -0.029 & -0.030\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & -0.083 & -0.079 & -0.081 & -0.090 & -0.091 & -0.091\\
+thyroid\_\allowbreak{}discordant & IID & +0.082 & +0.043 & +0.034 & -0.014 & -0.011 & -0.010\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & -0.123 & -0.120 & -0.118 & -0.211 & -0.201 & -0.192\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & -0.075 & -0.070 & -0.076 & +0.004 & -0.004 & +0.009\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & -0.406 & -0.409 & -0.407 & -0.627 & -0.637 & -0.641\\
+ecoli\_\allowbreak{}proteins & IID & -0.563 & -0.560 & -0.548 & -0.879 & -0.839 & -0.855\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & -0.168 & -0.187 & -0.158 & -0.341 & -0.333 & -0.330\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & -0.036 & -0.017 & -0.013 & -0.205 & -0.201 & -0.202\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & -0.256 & -0.246 & -0.239 & -0.412 & -0.414 & -0.419\\
+website\_\allowbreak{}phishing & IID & -0.272 & -0.270 & -0.271 & -0.489 & -0.473 & -0.474\\
+cardiotocography & G & -0.212 & -0.224 & -0.209 & -0.359 & -0.369 & -0.352\\
+dementia\_\allowbreak{}prediction & G & -0.228 & -0.249 & -0.236 & -0.282 & -0.303 & -0.293\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & -0.072 & -0.079 & -0.068 & -0.115 & -0.105 & -0.099\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrrr@{}}
+\caption{Per-task BeyondArena Excess cross-entropy (nats; lower is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:celarge}\\
+\toprule Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule
+\endfirsthead
+\multicolumn{9}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & -0.037 & -0.038 & -0.036 & -0.038 & -0.037 & -0.030 & -0.025\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & -0.152 & -0.152 & -0.150 & -0.180 & -0.176 & -0.156 & -0.069\\
+blood\_\allowbreak{}transfusion & IID & -0.067 & -0.069 & -0.068 & -0.072 & -0.074 & +0.116 & -0.069\\
+churn & IID & -0.166 & -0.161 & -0.161 & -0.294 & -0.286 & -0.224 & -0.087\\
+credit\_\allowbreak{}approval & IID & -0.357 & -0.356 & -0.325 & -0.371 & -0.374 & -0.346 & -0.334\\
+credit\_\allowbreak{}g & IID & -0.103 & -0.102 & -0.100 & -0.117 & -0.121 & -0.109 & -0.067\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & -0.349 & -0.346 & -0.347 & -0.404 & -0.428 & -0.387 & -0.336\\
+ecommerce\_\allowbreak{}shipping & IID & -0.162 & -0.163 & -0.164 & -0.178 & -0.177 & -0.163 & -0.127\\
+fitness\_\allowbreak{}club & IID & -0.140 & -0.142 & -0.140 & -0.147 & -0.148 & -0.088 & -0.136\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & -0.387 & -0.378 & -0.377 & -0.604 & -0.610 & -0.407 & -0.421\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & -0.268 & -0.264 & -0.272 & -0.301 & -0.300 & -0.285 & -0.269\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & -0.264 & -0.265 & -0.274 & -0.283 & -0.285 & -0.244 & -0.274\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & -0.011 & -0.003 & +0.001 & -0.019 & -0.008 & -0.024 & +0.059\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & -0.252 & -0.238 & -0.254 & -0.264 & -0.274 & -0.262 & -0.198\\
+heloc & IID & -0.140 & -0.135 & -0.140 & -0.150 & -0.149 & -0.139 & -0.127\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & -0.116 & -0.107 & -0.119 & -0.131 & -0.148 & -0.168 & -0.006\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & -0.231 & -0.229 & -0.224 & -0.468 & -0.432 & -0.293 & -0.220\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & -0.079 & -0.082 & -0.083 & -0.098 & -0.100 & -0.079 & -0.081\\
+iranian\_\allowbreak{}churn & IID & -0.263 & -0.257 & -0.252 & -0.386 & -0.385 & -0.310 & -0.210\\
+jm1 & IID & -0.045 & -0.046 & -0.047 & -0.078 & -0.076 & -0.034 & -0.044\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & -0.051 & -0.049 & -0.055 & -0.055 & -0.057 & +0.025 & -0.022\\
+marketing\_\allowbreak{}campaign & IID & -0.151 & -0.141 & -0.143 & -0.171 & -0.189 & -0.142 & -0.134\\
+seismic\_\allowbreak{}bumps & IID & -0.031 & -0.033 & -0.032 & -0.032 & -0.032 & -0.001 & -0.025\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & -0.086 & -0.087 & -0.087 & -0.098 & -0.103 & -0.069 & -0.105\\
+thyroid\_\allowbreak{}discordant & IID & -0.025 & -0.026 & -0.023 & -0.053 & -0.054 & -0.044 & -0.010\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & -0.263 & -0.259 & -0.252 & -0.346 & -0.341 & -0.294 & -0.134\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & +0.067 & +0.089 & +0.127 & +0.260 & +0.116 & -0.118 & +0.041\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & -0.669 & -0.673 & -0.674 & -0.701 & -0.701 & -0.667 & -0.680\\
+ecoli\_\allowbreak{}proteins & IID & -0.892 & -0.895 & -0.898 & -1.038 & -1.040 & -0.993 & -1.010\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & -0.355 & -0.370 & -0.362 & -0.385 & -0.385 & -0.326 & -0.285\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & -0.191 & -0.191 & -0.198 & -0.189 & -0.204 & -0.183 & +0.091\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & -0.487 & -0.483 & -0.480 & -0.701 & -0.709 & -0.639 & -0.298\\
+website\_\allowbreak{}phishing & IID & -0.554 & -0.551 & -0.542 & -0.684 & -0.681 & -0.593 & -0.396\\
+cardiotocography & G & -0.403 & -0.404 & -0.399 & -0.439 & -0.451 & -0.436 & -0.334\\
+dementia\_\allowbreak{}prediction & G & -0.289 & -0.289 & -0.297 & -0.251 & -0.269 & -0.253 & -0.337\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & -0.095 & -0.069 & -0.088 & -0.142 & -0.139 & +0.267 & -0.081\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrr@{}}
+\caption{Per-task BeyondArena Accuracy gain (fraction; higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:accsm}\\
+\toprule Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule
+\endfirsthead
+\multicolumn{8}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & +0.000 & +0.000 & +0.000 & +0.000 & +0.000 & +0.000\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & +0.011 & +0.011 & +0.011 & +0.054 & +0.048 & +0.050\\
+blood\_\allowbreak{}transfusion & IID & +0.019 & +0.009 & +0.021 & +0.011 & +0.014 & +0.016\\
+churn & IID & -0.006 & -0.005 & -0.004 & +0.024 & +0.022 & +0.024\\
+credit\_\allowbreak{}approval & IID & +0.287 & +0.289 & +0.285 & +0.305 & +0.300 & +0.303\\
+credit\_\allowbreak{}g & IID & +0.016 & +0.016 & +0.020 & +0.040 & +0.034 & +0.037\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & +0.180 & +0.172 & +0.170 & +0.181 & +0.178 & +0.169\\
+ecommerce\_\allowbreak{}shipping & IID & +0.062 & +0.069 & +0.073 & +0.076 & +0.081 & +0.077\\
+fitness\_\allowbreak{}club & IID & +0.076 & +0.075 & +0.076 & +0.073 & +0.073 & +0.077\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & +0.282 & +0.292 & +0.294 & +0.337 & +0.340 & +0.334\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & +0.265 & +0.258 & +0.254 & +0.281 & +0.279 & +0.281\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & +0.186 & +0.187 & +0.181 & +0.204 & +0.199 & +0.198\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & +0.007 & +0.003 & +0.012 & -0.000 & +0.003 & +0.005\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & +0.136 & +0.123 & +0.103 & +0.153 & +0.153 & +0.161\\
+heloc & IID & +0.177 & +0.183 & +0.184 & +0.195 & +0.197 & +0.195\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & +0.034 & +0.036 & +0.038 & +0.049 & +0.048 & +0.043\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & +0.044 & +0.052 & +0.052 & +0.078 & +0.077 & +0.067\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & -0.030 & -0.027 & -0.025 & +0.001 & -0.003 & -0.001\\
+iranian\_\allowbreak{}churn & IID & +0.044 & +0.049 & +0.048 & +0.068 & +0.071 & +0.067\\
+jm1 & IID & -0.050 & -0.013 & -0.031 & +0.001 & +0.002 & +0.002\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & +0.005 & +0.004 & +0.005 & +0.020 & +0.024 & +0.018\\
+marketing\_\allowbreak{}campaign & IID & +0.009 & +0.013 & +0.014 & +0.024 & +0.020 & +0.020\\
+seismic\_\allowbreak{}bumps & IID & +0.000 & +0.000 & +0.000 & +0.000 & +0.000 & -0.000\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & +0.053 & +0.045 & +0.045 & +0.058 & +0.057 & +0.059\\
+thyroid\_\allowbreak{}discordant & IID & -0.044 & -0.000 & +0.000 & +0.000 & +0.000 & -0.001\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & +0.044 & +0.041 & +0.033 & +0.058 & +0.059 & +0.054\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & -0.025 & -0.034 & -0.021 & +0.039 & +0.043 & +0.044\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & +0.233 & +0.237 & +0.229 & +0.351 & +0.342 & +0.350\\
+ecoli\_\allowbreak{}proteins & IID & +0.210 & +0.202 & +0.204 & +0.388 & +0.362 & +0.375\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & +0.006 & +0.009 & +0.003 & +0.059 & +0.057 & +0.056\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & +0.002 & -0.000 & +0.004 & +0.054 & +0.057 & +0.061\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & +0.202 & +0.192 & +0.194 & +0.280 & +0.283 & +0.294\\
+website\_\allowbreak{}phishing & IID & +0.247 & +0.251 & +0.245 & +0.313 & +0.314 & +0.310\\
+cardiotocography & G & +0.023 & +0.025 & +0.024 & +0.077 & +0.085 & +0.071\\
+dementia\_\allowbreak{}prediction & G & +0.123 & +0.148 & +0.137 & +0.171 & +0.167 & +0.167\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & +0.000 & +0.000 & +0.000 & -0.015 & -0.011 & -0.003\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrrr@{}}
+\caption{Per-task BeyondArena Accuracy gain (fraction; higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:acclarge}\\
+\toprule Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule
+\endfirsthead
+\multicolumn{9}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & -0.000 & +0.000 & +0.000 & -0.001 & -0.001 & -0.001 & -0.001\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & +0.058 & +0.057 & +0.058 & +0.071 & +0.069 & +0.062 & +0.011\\
+blood\_\allowbreak{}transfusion & IID & +0.023 & +0.034 & +0.033 & +0.025 & +0.029 & -0.018 & +0.011\\
+churn & IID & +0.048 & +0.045 & +0.044 & +0.114 & +0.111 & +0.098 & +0.007\\
+credit\_\allowbreak{}approval & IID & +0.315 & +0.315 & +0.286 & +0.315 & +0.315 & +0.322 & +0.307\\
+credit\_\allowbreak{}g & IID & +0.050 & +0.049 & +0.051 & +0.061 & +0.061 & +0.054 & +0.018\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & +0.198 & +0.191 & +0.191 & +0.215 & +0.231 & +0.231 & +0.175\\
+ecommerce\_\allowbreak{}shipping & IID & +0.076 & +0.076 & +0.083 & +0.089 & +0.088 & +0.070 & +0.042\\
+fitness\_\allowbreak{}club & IID & +0.074 & +0.076 & +0.078 & +0.084 & +0.084 & +0.056 & +0.079\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & +0.369 & +0.364 & +0.362 & +0.468 & +0.470 & +0.393 & +0.389\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & +0.273 & +0.273 & +0.283 & +0.292 & +0.292 & +0.280 & +0.281\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & +0.202 & +0.203 & +0.204 & +0.197 & +0.195 & +0.178 & +0.201\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & +0.011 & +0.008 & +0.006 & +0.001 & -0.002 & +0.006 & -0.014\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & +0.147 & +0.145 & +0.154 & +0.165 & +0.172 & +0.165 & +0.140\\
+heloc & IID & +0.198 & +0.199 & +0.199 & +0.210 & +0.210 & +0.201 & +0.194\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & +0.047 & +0.043 & +0.042 & +0.041 & +0.043 & +0.056 & +0.033\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & +0.096 & +0.101 & +0.099 & +0.189 & +0.174 & +0.111 & +0.091\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & +0.001 & -0.008 & -0.006 & +0.005 & +0.004 & -0.003 & +0.003\\
+iranian\_\allowbreak{}churn & IID & +0.082 & +0.076 & +0.071 & +0.138 & +0.138 & +0.112 & +0.054\\
+jm1 & IID & +0.004 & +0.003 & +0.005 & +0.017 & +0.014 & +0.011 & +0.006\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & +0.034 & +0.036 & +0.039 & +0.033 & +0.036 & +0.005 & +0.017\\
+marketing\_\allowbreak{}campaign & IID & +0.038 & +0.033 & +0.035 & +0.048 & +0.046 & +0.030 & +0.033\\
+seismic\_\allowbreak{}bumps & IID & +0.000 & +0.000 & +0.000 & -0.000 & -0.000 & -0.002 & -0.003\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & +0.053 & +0.058 & +0.058 & +0.064 & +0.071 & +0.037 & +0.069\\
+thyroid\_\allowbreak{}discordant & IID & +0.000 & +0.000 & +0.000 & +0.006 & +0.007 & +0.002 & -0.002\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & +0.086 & +0.086 & +0.082 & +0.120 & +0.120 & +0.112 & +0.054\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & +0.041 & +0.045 & +0.038 & +0.010 & +0.034 & +0.039 & +0.024\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & +0.364 & +0.371 & +0.367 & +0.377 & +0.375 & +0.360 & +0.368\\
+ecoli\_\allowbreak{}proteins & IID & +0.396 & +0.392 & +0.392 & +0.444 & +0.443 & +0.440 & +0.447\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & +0.065 & +0.071 & +0.068 & +0.080 & +0.081 & +0.059 & +0.063\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & +0.052 & +0.060 & +0.065 & +0.060 & +0.058 & +0.053 & +0.019\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & +0.326 & +0.322 & +0.321 & +0.445 & +0.450 & +0.425 & +0.216\\
+website\_\allowbreak{}phishing & IID & +0.344 & +0.346 & +0.339 & +0.397 & +0.397 & +0.371 & +0.305\\
+cardiotocography & G & +0.101 & +0.103 & +0.096 & +0.129 & +0.132 & +0.126 & +0.090\\
+dementia\_\allowbreak{}prediction & G & +0.155 & +0.158 & +0.155 & +0.127 & +0.135 & +0.121 & +0.170\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & -0.008 & -0.009 & -0.014 & -0.003 & -0.003 & -0.004 & -0.026\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrr@{}}
+\caption{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:aucsm}\\
+\toprule Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule
+\endfirsthead
+\multicolumn{8}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-S & F-S & C-S & O-M & F-M & C-M\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & 0.693 & 0.689 & 0.678 & 0.736 & 0.734 & 0.735\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & 0.787 & 0.791 & 0.790 & 0.843 & 0.841 & 0.836\\
+blood\_\allowbreak{}transfusion & IID & 0.755 & 0.757 & 0.758 & 0.739 & 0.741 & 0.735\\
+churn & IID & 0.841 & 0.833 & 0.825 & 0.880 & 0.875 & 0.878\\
+credit\_\allowbreak{}approval & IID & 0.907 & 0.910 & 0.908 & 0.925 & 0.924 & 0.923\\
+credit\_\allowbreak{}g & IID & 0.743 & 0.741 & 0.745 & 0.777 & 0.774 & 0.771\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & 0.942 & 0.932 & 0.930 & 0.952 & 0.953 & 0.947\\
+ecommerce\_\allowbreak{}shipping & IID & 0.731 & 0.734 & 0.734 & 0.740 & 0.740 & 0.740\\
+fitness\_\allowbreak{}club & IID & 0.786 & 0.793 & 0.793 & 0.813 & 0.816 & 0.817\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & 0.877 & 0.877 & 0.877 & 0.913 & 0.910 & 0.910\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & 0.886 & 0.882 & 0.882 & 0.901 & 0.901 & 0.897\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & 0.884 & 0.884 & 0.884 & 0.911 & 0.912 & 0.913\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & 0.682 & 0.679 & 0.684 & 0.659 & 0.652 & 0.663\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & 0.883 & 0.875 & 0.864 & 0.910 & 0.911 & 0.910\\
+heloc & IID & 0.762 & 0.773 & 0.774 & 0.784 & 0.785 & 0.781\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & 0.869 & 0.857 & 0.862 & 0.863 & 0.868 & 0.857\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & 0.846 & 0.858 & 0.853 & 0.905 & 0.909 & 0.898\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & 0.714 & 0.715 & 0.718 & 0.731 & 0.735 & 0.737\\
+iranian\_\allowbreak{}churn & IID & 0.915 & 0.914 & 0.914 & 0.954 & 0.950 & 0.948\\
+jm1 & IID & 0.691 & 0.688 & 0.689 & 0.706 & 0.708 & 0.706\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & 0.715 & 0.717 & 0.720 & 0.709 & 0.711 & 0.709\\
+marketing\_\allowbreak{}campaign & IID & 0.811 & 0.807 & 0.803 & 0.874 & 0.864 & 0.864\\
+seismic\_\allowbreak{}bumps & IID & 0.746 & 0.749 & 0.749 & 0.770 & 0.766 & 0.770\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & 0.746 & 0.741 & 0.743 & 0.758 & 0.759 & 0.759\\
+thyroid\_\allowbreak{}discordant & IID & 0.580 & 0.547 & 0.543 & 0.857 & 0.837 & 0.843\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & 0.828 & 0.825 & 0.824 & 0.897 & 0.891 & 0.887\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & 0.818 & 0.809 & 0.811 & 0.778 & 0.776 & 0.783\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & 0.874 & 0.879 & 0.883 & 0.945 & 0.946 & 0.947\\
+ecoli\_\allowbreak{}proteins & IID & 0.859 & 0.865 & 0.866 & 0.955 & 0.943 & 0.950\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & 0.917 & 0.921 & 0.914 & 0.972 & 0.974 & 0.972\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & 0.719 & 0.718 & 0.724 & 0.805 & 0.800 & 0.803\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & 0.781 & 0.775 & 0.773 & 0.850 & 0.852 & 0.853\\
+website\_\allowbreak{}phishing & IID & 0.833 & 0.830 & 0.829 & 0.924 & 0.921 & 0.917\\
+cardiotocography & G & 0.880 & 0.881 & 0.868 & 0.948 & 0.950 & 0.948\\
+dementia\_\allowbreak{}prediction & G & 0.825 & 0.822 & 0.823 & 0.851 & 0.853 & 0.849\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & 0.857 & 0.858 & 0.852 & 0.875 & 0.877 & 0.873\\
+\end{longtable}\endgroup
+\begingroup\footnotesize\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.15}
+\setlength\LTleft{0pt}\setlength\LTright{0pt}
+\begin{longtable}{@{}p{3.95cm}lrrrrrrr@{}}
+\caption{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}\label{tab:auclarge}\\
+\toprule Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule
+\endfirsthead
+\multicolumn{9}{l}{\emph{Continued from previous page}}\\\toprule
+Task & Split & O-L & F-L & C-L & PFN3 & ICL2 & RF & LR\\\midrule\endhead
+\bottomrule\endfoot
+bad\_\allowbreak{}customer\_\allowbreak{}detection & IID & 0.745 & 0.751 & 0.745 & 0.747 & 0.746 & 0.728 & 0.705\\
+bank\_\allowbreak{}customer\_\allowbreak{}churn & IID & 0.848 & 0.850 & 0.847 & 0.875 & 0.871 & 0.851 & 0.753\\
+blood\_\allowbreak{}transfusion & IID & 0.746 & 0.742 & 0.739 & 0.753 & 0.753 & 0.682 & 0.751\\
+churn & IID & 0.894 & 0.890 & 0.891 & 0.933 & 0.931 & 0.916 & 0.823\\
+credit\_\allowbreak{}approval & IID & 0.933 & 0.933 & 0.931 & 0.937 & 0.939 & 0.934 & 0.920\\
+credit\_\allowbreak{}g & IID & 0.780 & 0.778 & 0.778 & 0.793 & 0.796 & 0.784 & 0.729\\
+early\_\allowbreak{}stage\_\allowbreak{}diabetes\_\allowbreak{}risk\_\allowbreak{}pred & IID & 0.956 & 0.952 & 0.953 & 0.969 & 0.975 & 0.973 & 0.945\\
+ecommerce\_\allowbreak{}shipping & IID & 0.743 & 0.738 & 0.739 & 0.747 & 0.746 & 0.743 & 0.721\\
+fitness\_\allowbreak{}club & IID & 0.813 & 0.816 & 0.815 & 0.821 & 0.820 & 0.777 & 0.815\\
+hazelnut\_\allowbreak{}spread\_\allowbreak{}contaminant\_\allowbreak{}de & IID & 0.943 & 0.939 & 0.940 & 0.994 & 0.995 & 0.958 & 0.953\\
+heart\_\allowbreak{}disease\_\allowbreak{}cleveland & IID & 0.894 & 0.892 & 0.897 & 0.908 & 0.908 & 0.902 & 0.892\\
+heart\_\allowbreak{}disease\_\allowbreak{}hungary & IID & 0.904 & 0.902 & 0.906 & 0.910 & 0.911 & 0.884 & 0.905\\
+heart\_\allowbreak{}disease\_\allowbreak{}va\_\allowbreak{}long\_\allowbreak{}beach & IID & 0.656 & 0.658 & 0.650 & 0.676 & 0.665 & 0.674 & 0.656\\
+heart\_\allowbreak{}failure\_\allowbreak{}followup\_\allowbreak{}surviva & IID & 0.905 & 0.900 & 0.905 & 0.909 & 0.916 & 0.911 & 0.864\\
+heloc & IID & 0.792 & 0.790 & 0.792 & 0.802 & 0.802 & 0.792 & 0.781\\
+hepatitis\_\allowbreak{}survival\_\allowbreak{}prediction & IID & 0.867 & 0.866 & 0.867 & 0.857 & 0.868 & 0.880 & 0.817\\
+homeq\_\allowbreak{}default\_\allowbreak{}prediction & IID & 0.924 & 0.919 & 0.919 & 0.999 & 0.996 & 0.961 & 0.902\\
+indian\_\allowbreak{}liver\_\allowbreak{}patient\_\allowbreak{}dataset & IID & 0.733 & 0.734 & 0.737 & 0.758 & 0.764 & 0.744 & 0.745\\
+iranian\_\allowbreak{}churn & IID & 0.972 & 0.971 & 0.970 & 0.997 & 0.996 & 0.983 & 0.932\\
+jm1 & IID & 0.716 & 0.717 & 0.717 & 0.773 & 0.770 & 0.749 & 0.713\\
+ljubljana\_\allowbreak{}breast\_\allowbreak{}cancer & IID & 0.702 & 0.707 & 0.713 & 0.710 & 0.712 & 0.661 & 0.685\\
+marketing\_\allowbreak{}campaign & IID & 0.893 & 0.884 & 0.887 & 0.922 & 0.926 & 0.888 & 0.883\\
+seismic\_\allowbreak{}bumps & IID & 0.772 & 0.777 & 0.775 & 0.782 & 0.779 & 0.747 & 0.754\\
+south\_\allowbreak{}africa\_\allowbreak{}coronary\_\allowbreak{}heart\_\allowbreak{}di & IID & 0.750 & 0.751 & 0.752 & 0.765 & 0.770 & 0.727 & 0.771\\
+thyroid\_\allowbreak{}discordant & IID & 0.906 & 0.911 & 0.907 & 0.987 & 0.989 & 0.976 & 0.822\\
+tour\_\allowbreak{}travels\_\allowbreak{}churn & IID & 0.931 & 0.930 & 0.928 & 0.963 & 0.960 & 0.947 & 0.835\\
+parkinsons\_\allowbreak{}biomedical\_\allowbreak{}voice\_\allowbreak{}me & G & 0.772 & 0.755 & 0.754 & 0.708 & 0.737 & 0.802 & 0.754\\
+\midrule
+biomechanical\_\allowbreak{}orthopaedic\_\allowbreak{}pred & IID & 0.953 & 0.954 & 0.954 & 0.960 & 0.960 & 0.950 & 0.957\\
+ecoli\_\allowbreak{}proteins & IID & 0.954 & 0.953 & 0.953 & 0.973 & 0.974 & 0.971 & 0.969\\
+hepatitis\_\allowbreak{}c\_\allowbreak{}prediction & IID & 0.977 & 0.980 & 0.978 & 0.985 & 0.985 & 0.973 & 0.951\\
+horse\_\allowbreak{}colic\_\allowbreak{}survival & IID & 0.797 & 0.802 & 0.807 & 0.798 & 0.806 & 0.794 & 0.743\\
+maternal\_\allowbreak{}health\_\allowbreak{}risk & IID & 0.881 & 0.881 & 0.880 & 0.957 & 0.958 & 0.945 & 0.795\\
+website\_\allowbreak{}phishing & IID & 0.951 & 0.949 & 0.951 & 0.982 & 0.982 & 0.972 & 0.859\\
+cardiotocography & G & 0.960 & 0.960 & 0.958 & 0.974 & 0.976 & 0.970 & 0.946\\
+dementia\_\allowbreak{}prediction & G & 0.843 & 0.841 & 0.845 & 0.829 & 0.835 & 0.819 & 0.867\\
+ghanas\_\allowbreak{}indigenous\_\allowbreak{}intel & T & 0.853 & 0.825 & 0.828 & 0.905 & 0.888 & 0.718 & 0.780\\
+\end{longtable}\endgroup

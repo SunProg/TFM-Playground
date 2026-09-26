@@ -1,0 +1,821 @@
+{
+  "complete": true,
+  "missing_cells": [],
+  "matching_checks": {
+    "pair_0_1_source_hash": true,
+    "pair_0_1_initial_backbone_hash": true,
+    "pair_0_1_evaluation_bank_hashes": true,
+    "pair_0_1_training_stream_hash": true,
+    "pair_2_3_source_hash": true,
+    "pair_2_3_initial_backbone_hash": true,
+    "pair_2_3_evaluation_bank_hashes": true,
+    "pair_2_3_training_stream_hash": true,
+    "pair_4_5_source_hash": true,
+    "pair_4_5_initial_backbone_hash": true,
+    "pair_4_5_evaluation_bank_hashes": true,
+    "pair_4_5_training_stream_hash": true,
+    "all_cells_evaluation_bank": true
+  },
+  "comparisons": [
+    {
+      "left": 0,
+      "right": 1,
+      "family": "original",
+      "delta_log_loss": 0.001346769281857026,
+      "paired_episode_ci95": [
+        0.0005146086830791319,
+        0.002301044428410629
+      ]
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "family": "shared_rule",
+      "delta_log_loss": -0.001151277053092296,
+      "paired_episode_ci95": [
+        -0.002142796782572986,
+        -0.00016142756915845326
+      ]
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "family": "soft_gate",
+      "delta_log_loss": -6.723165279254317e-05,
+      "paired_episode_ci95": [
+        -0.0011098782357294114,
+        0.0009985824261093512
+      ]
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "family": "independent",
+      "delta_log_loss": 7.539587871481974e-05,
+      "paired_episode_ci95": [
+        -0.001068574984674342,
+        0.0012886101205367593
+      ]
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "family": "persistent",
+      "delta_log_loss": -0.0010596556239761412,
+      "paired_episode_ci95": [
+        -0.0022737670631613584,
+        -2.8614332647218853e-05
+      ]
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "family": "original",
+      "delta_log_loss": 0.0018773579601353656,
+      "paired_episode_ci95": [
+        0.000864676838197435,
+        0.0030106636348743135
+      ]
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "family": "shared_rule",
+      "delta_log_loss": -0.0007990568798656265,
+      "paired_episode_ci95": [
+        -0.0018590693420264869,
+        0.00011623039705833999
+      ]
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "family": "soft_gate",
+      "delta_log_loss": -0.00010425494595741232,
+      "paired_episode_ci95": [
+        -0.0009149592461956975,
+        0.000754222663817927
+      ]
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "family": "independent",
+      "delta_log_loss": -0.00017443019896745682,
+      "paired_episode_ci95": [
+        -0.0007177149217265348,
+        0.00034818431983391285
+      ]
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "family": "persistent",
+      "delta_log_loss": -0.0005622333458935221,
+      "paired_episode_ci95": [
+        -0.0015665654684805,
+        0.00012809025744597115
+      ]
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "family": "original",
+      "delta_log_loss": 0.0013087201320255797,
+      "paired_episode_ci95": [
+        0.0005929931682961372,
+        0.0021604372435831466
+      ]
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "family": "shared_rule",
+      "delta_log_loss": -0.000509837584104389,
+      "paired_episode_ci95": [
+        -0.0012087500464986079,
+        0.00015726746981575428
+      ]
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "family": "soft_gate",
+      "delta_log_loss": -8.762538588295381e-05,
+      "paired_episode_ci95": [
+        -0.0007709770502212146,
+        0.00048810567047136513
+      ]
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "family": "independent",
+      "delta_log_loss": 0.00011771637946367264,
+      "paired_episode_ci95": [
+        -0.000465632514290822,
+        0.0007806001037048795
+      ]
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "family": "persistent",
+      "delta_log_loss": -0.0006210916326381266,
+      "paired_episode_ci95": [
+        -0.0012954868919526537,
+        -5.0084454899964245e-05
+      ]
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "family": "original",
+      "delta_log_loss": 0.0015989799188294758,
+      "paired_episode_ci95": [
+        -0.0004728423577034846,
+        0.0038052939991757738
+      ]
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "family": "shared_rule",
+      "delta_log_loss": -0.001493016694439575,
+      "paired_episode_ci95": [
+        -0.0035574731482483912,
+        0.00022558467341392887
+      ]
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "family": "soft_gate",
+      "delta_log_loss": -0.0007027624524198472,
+      "paired_episode_ci95": [
+        -0.002670889225555584,
+        0.0010665537774912053
+      ]
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "family": "independent",
+      "delta_log_loss": -0.0012922715201663475,
+      "paired_episode_ci95": [
+        -0.003435831873017984,
+        0.0007892886011783643
+      ]
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "family": "persistent",
+      "delta_log_loss": -0.0012093112842800717,
+      "paired_episode_ci95": [
+        -0.003378110414390297,
+        0.0006750876787312635
+      ]
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "family": "original",
+      "delta_log_loss": 0.0020193751115584746,
+      "paired_episode_ci95": [
+        0.00010564764282510928,
+        0.004179322355776093
+      ]
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "family": "shared_rule",
+      "delta_log_loss": -0.0021132723098465553,
+      "paired_episode_ci95": [
+        -0.004298266130354022,
+        -0.0002788676506800912
+      ]
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "family": "soft_gate",
+      "delta_log_loss": -0.000728591267640392,
+      "paired_episode_ci95": [
+        -0.0026627867584466005,
+        0.0008710766264509098
+      ]
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "family": "independent",
+      "delta_log_loss": -0.0014709985310522218,
+      "paired_episode_ci95": [
+        -0.0036284918989016057,
+        0.00037386717061356717
+      ]
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "family": "persistent",
+      "delta_log_loss": -0.0014161331734309595,
+      "paired_episode_ci95": [
+        -0.0038672088412567973,
+        0.000496440135369387
+      ]
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "family": "original",
+      "delta_log_loss": 0.002129568597107815,
+      "paired_episode_ci95": [
+        0.00020425434328596263,
+        0.004200365964182613
+      ]
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "family": "shared_rule",
+      "delta_log_loss": -0.0011407965212129056,
+      "paired_episode_ci95": [
+        -0.003350648546863037,
+        0.0009655687574801655
+      ]
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "family": "soft_gate",
+      "delta_log_loss": -0.0007397857455847164,
+      "paired_episode_ci95": [
+        -0.0029972621782993277,
+        0.0016413201204462284
+      ]
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "family": "independent",
+      "delta_log_loss": -0.001542097597848624,
+      "paired_episode_ci95": [
+        -0.0039995649606377505,
+        0.0009126406235736722
+      ]
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "family": "persistent",
+      "delta_log_loss": -0.0007118890061974525,
+      "paired_episode_ci95": [
+        -0.002979758666090978,
+        0.001349434196405731
+      ]
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "family": "original",
+      "delta_log_loss": 0.0019813259617270282,
+      "paired_episode_ci95": [
+        0.0001590954706140716,
+        0.0038534183137623255
+      ]
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "family": "shared_rule",
+      "delta_log_loss": -0.0014718328408586483,
+      "paired_episode_ci95": [
+        -0.0035560650707338937,
+        0.00036871386109851205
+      ]
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "family": "soft_gate",
+      "delta_log_loss": -0.0007489850007308027,
+      "paired_episode_ci95": [
+        -0.0029117099087064466,
+        0.00117959742055973
+      ]
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "family": "independent",
+      "delta_log_loss": -0.001428678030303369,
+      "paired_episode_ci95": [
+        -0.0033956317483292272,
+        0.0005741671266150658
+      ]
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "family": "persistent",
+      "delta_log_loss": -0.0009775691820929449,
+      "paired_episode_ci95": [
+        -0.003116771929974978,
+        0.0009128327656071616
+      ]
+    }
+  ],
+  "cells": {
+    "0": {
+      "kind": "plain",
+      "mode": "original",
+      "validation": {
+        "original": {
+          "log_loss": 0.4748031578152829,
+          "brier": 0.15361294013223328,
+          "accuracy": 0.7838541666666666,
+          "ece_10": 0.047727923811180545,
+          "episode_log_loss_se": 0.03724200963170634
+        },
+        "shared_rule": {
+          "log_loss": 0.6666813098418061,
+          "brier": 0.23652519655303816,
+          "accuracy": 0.6119791666666666,
+          "ece_10": 0.0675662870829304,
+          "episode_log_loss_se": 0.015360261075581862,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586
+        },
+        "soft_gate": {
+          "log_loss": 0.6704684655414894,
+          "brier": 0.2385748092941262,
+          "accuracy": 0.5859375,
+          "ece_10": 0.052242949566182986,
+          "episode_log_loss_se": 0.012965485570686415,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214
+        },
+        "independent": {
+          "log_loss": 0.688814629703605,
+          "brier": 0.24734760208187123,
+          "accuracy": 0.5572916666666666,
+          "ece_10": 0.04332903931693485,
+          "episode_log_loss_se": 0.0094313890489104,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286
+        },
+        "persistent": {
+          "log_loss": 0.6747497878386639,
+          "brier": 0.2406148280033259,
+          "accuracy": 0.58984375,
+          "ece_10": 0.0580869883997366,
+          "episode_log_loss_se": 0.014838120272258837,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 0.00048411329044029117
+        }
+      },
+      "composition": {
+        "original": 4000
+      },
+      "elapsed_seconds": 160.1623126838822
+    },
+    "1": {
+      "kind": "slot",
+      "mode": "original",
+      "validation": {
+        "original": {
+          "log_loss": 0.4761499270971399,
+          "brier": 0.1540334894508568,
+          "accuracy": 0.7721354166666666,
+          "ece_10": 0.046115922838604724,
+          "episode_log_loss_se": 0.03712629977033455,
+          "slot_gate_entropy": 0.9991088708241781,
+          "slot_disagreement": 3.370444003773324e-05
+        },
+        "shared_rule": {
+          "log_loss": 0.6655300327887138,
+          "brier": 0.23605730248007498,
+          "accuracy": 0.6158854166666666,
+          "ece_10": 0.06621978241795054,
+          "episode_log_loss_se": 0.015183600724980782,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586,
+          "slot_gate_entropy": 0.9990772952636083,
+          "slot_disagreement": 4.407332960454369e-05
+        },
+        "soft_gate": {
+          "log_loss": 0.6704012338886969,
+          "brier": 0.23850058040227462,
+          "accuracy": 0.5859375,
+          "ece_10": 0.05408557172631846,
+          "episode_log_loss_se": 0.012678852199158526,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214,
+          "slot_gate_entropy": 0.9989963049689928,
+          "slot_disagreement": 3.773119779755992e-05,
+          "support_ari": 0.008772449883444495,
+          "query_ari": -0.0005262775842044135,
+          "oracle_support_ari": 0.2660434574262589,
+          "oracle_query_ari": 0.19839008355331422,
+          "support_ari_permutation_null": 0.00010592225923363099,
+          "query_ari_permutation_null": -0.0005262775842044135
+        },
+        "independent": {
+          "log_loss": 0.6888900255823197,
+          "brier": 0.2473923149278776,
+          "accuracy": 0.55859375,
+          "ece_10": 0.05259089350389936,
+          "episode_log_loss_se": 0.009530144902121916,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286,
+          "slot_gate_entropy": 0.9990226129690806,
+          "slot_disagreement": 3.9761311919998356e-05,
+          "support_ari": 0.027344510612197694,
+          "query_ari": -0.0009736336763976093,
+          "oracle_support_ari": 0.13413600201449755,
+          "oracle_query_ari": 0.0,
+          "support_ari_permutation_null": 0.002516648389777156,
+          "query_ari_permutation_null": 0.00019688437223552762
+        },
+        "persistent": {
+          "log_loss": 0.6736901322146878,
+          "brier": 0.2401887449280747,
+          "accuracy": 0.58984375,
+          "ece_10": 0.05258982708134379,
+          "episode_log_loss_se": 0.014593928676105952,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 0.00047668226761743426,
+          "slot_gate_entropy": 0.999107708533605,
+          "slot_disagreement": 4.60981266314775e-05,
+          "support_ari": 0.025002919798120814,
+          "query_ari": 0.17998848270647605,
+          "oracle_support_ari": 0.740136478109059,
+          "oracle_query_ari": 0.7483976687676925,
+          "support_ari_permutation_null": 0.00023191440855871827,
+          "query_ari_permutation_null": 0.16817812827861886
+        }
+      },
+      "composition": {
+        "original": 4000
+      },
+      "elapsed_seconds": 168.77004540804774
+    },
+    "2": {
+      "kind": "plain",
+      "mode": "fixed",
+      "validation": {
+        "original": {
+          "log_loss": 0.47640213773411233,
+          "brier": 0.1541950264732755,
+          "accuracy": 0.7708333333333334,
+          "ece_10": 0.04535283942823299,
+          "episode_log_loss_se": 0.03696264691940655
+        },
+        "shared_rule": {
+          "log_loss": 0.6651882931473665,
+          "brier": 0.2359483412700445,
+          "accuracy": 0.6067708333333334,
+          "ece_10": 0.052105845961098886,
+          "episode_log_loss_se": 0.014801353748934102,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586
+        },
+        "soft_gate": {
+          "log_loss": 0.6697657030890696,
+          "brier": 0.23830752693801283,
+          "accuracy": 0.5859375,
+          "ece_10": 0.0270861070215081,
+          "episode_log_loss_se": 0.012229606306440184,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214
+        },
+        "independent": {
+          "log_loss": 0.6875223581834385,
+          "brier": 0.24684056989653932,
+          "accuracy": 0.55859375,
+          "ece_10": 0.046916390264717237,
+          "episode_log_loss_se": 0.008564476541420821,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286
+        },
+        "persistent": {
+          "log_loss": 0.6735404765543839,
+          "brier": 0.24015436024399203,
+          "accuracy": 0.58984375,
+          "ece_10": 0.043324997939635075,
+          "episode_log_loss_se": 0.014065426580813913,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 6.315214947486918e-05
+        }
+      },
+      "composition": {
+        "soft_gate": 628,
+        "original": 2005,
+        "persistent": 585,
+        "shared_rule": 384,
+        "independent": 398
+      },
+      "elapsed_seconds": 112.24802804598585
+    },
+    "3": {
+      "kind": "slot",
+      "mode": "fixed",
+      "validation": {
+        "original": {
+          "log_loss": 0.4782794956942477,
+          "brier": 0.15463362347583096,
+          "accuracy": 0.7786458333333334,
+          "ece_10": 0.051509555458324044,
+          "episode_log_loss_se": 0.03653416980571767,
+          "slot_gate_entropy": 0.9990750302871069,
+          "slot_disagreement": 0.00010936551778210439
+        },
+        "shared_rule": {
+          "log_loss": 0.6643892362675009,
+          "brier": 0.2357081090802264,
+          "accuracy": 0.6067708333333334,
+          "ece_10": 0.05190816281052929,
+          "episode_log_loss_se": 0.014763025993222316,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586,
+          "slot_gate_entropy": 0.9991935615738233,
+          "slot_disagreement": 0.00011634082898126508
+        },
+        "soft_gate": {
+          "log_loss": 0.6696614481431121,
+          "brier": 0.2382790256319696,
+          "accuracy": 0.5859375,
+          "ece_10": 0.028204241651110358,
+          "episode_log_loss_se": 0.012091924428763093,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214,
+          "slot_gate_entropy": 0.9992000162601471,
+          "slot_disagreement": 7.734411785046784e-05,
+          "support_ari": 0.013383534881149977,
+          "query_ari": 0.007030190432484482,
+          "oracle_support_ari": 0.2660434574262589,
+          "oracle_query_ari": 0.19839008355331422,
+          "support_ari_permutation_null": -0.0005269657752587366,
+          "query_ari_permutation_null": -0.0033712227815060835
+        },
+        "independent": {
+          "log_loss": 0.6873479279844711,
+          "brier": 0.24677382491994168,
+          "accuracy": 0.5638020833333334,
+          "ece_10": 0.04500726874296865,
+          "episode_log_loss_se": 0.008521361438896003,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286,
+          "slot_gate_entropy": 0.9992361490925153,
+          "slot_disagreement": 7.126522374771109e-05,
+          "support_ari": 0.022206324335547634,
+          "query_ari": 0.005418366442385789,
+          "oracle_support_ari": 0.13413600201449755,
+          "oracle_query_ari": 0.0,
+          "support_ari_permutation_null": 0.0027784136380235892,
+          "query_ari_permutation_null": -0.0005802431967676643
+        },
+        "persistent": {
+          "log_loss": 0.6729782432084903,
+          "brier": 0.23991514174072984,
+          "accuracy": 0.5911458333333334,
+          "ece_10": 0.04083250319429983,
+          "episode_log_loss_se": 0.013749044927447085,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 0.0001346686428102354,
+          "slot_gate_entropy": 0.9992442776759466,
+          "slot_disagreement": 9.559073275037615e-05,
+          "support_ari": 0.024512578663243162,
+          "query_ari": 0.08307781064002671,
+          "oracle_support_ari": 0.740136478109059,
+          "oracle_query_ari": 0.7483976687676925,
+          "support_ari_permutation_null": -0.0011648821013785185,
+          "query_ari_permutation_null": 0.07915535587410437
+        }
+      },
+      "composition": {
+        "soft_gate": 628,
+        "original": 2005,
+        "persistent": 585,
+        "shared_rule": 384,
+        "independent": 398
+      },
+      "elapsed_seconds": 138.5055262770038
+    },
+    "4": {
+      "kind": "plain",
+      "mode": "curriculum",
+      "validation": {
+        "original": {
+          "log_loss": 0.47682253292684135,
+          "brier": 0.15429500206546734,
+          "accuracy": 0.7708333333333334,
+          "ece_10": 0.04576196247944608,
+          "episode_log_loss_se": 0.03685641524373003
+        },
+        "shared_rule": {
+          "log_loss": 0.6645680375319595,
+          "brier": 0.23570264297345853,
+          "accuracy": 0.6067708333333334,
+          "ece_10": 0.05096214512983959,
+          "episode_log_loss_se": 0.014750765323296689,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586
+        },
+        "soft_gate": {
+          "log_loss": 0.6697398742738491,
+          "brier": 0.23829283512649413,
+          "accuracy": 0.5859375,
+          "ece_10": 0.03003118342409531,
+          "episode_log_loss_se": 0.012250947472866943,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214
+        },
+        "independent": {
+          "log_loss": 0.6873436311725527,
+          "brier": 0.24676605672700044,
+          "accuracy": 0.5572916666666666,
+          "ece_10": 0.04922368505503983,
+          "episode_log_loss_se": 0.008608751091723306,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286
+        },
+        "persistent": {
+          "log_loss": 0.673333654665233,
+          "brier": 0.2400680209428939,
+          "accuracy": 0.58984375,
+          "ece_10": 0.04265231555715823,
+          "episode_log_loss_se": 0.013963760984953584,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 0.00017815329677735767
+        }
+      },
+      "composition": {
+        "original": 2483,
+        "persistent": 464,
+        "shared_rule": 284,
+        "soft_gate": 478,
+        "independent": 291
+      },
+      "elapsed_seconds": 120.01327587594278
+    },
+    "5": {
+      "kind": "slot",
+      "mode": "curriculum",
+      "validation": {
+        "original": {
+          "log_loss": 0.4781312530588669,
+          "brier": 0.15464363474534198,
+          "accuracy": 0.7721354166666666,
+          "ece_10": 0.050520486353586115,
+          "episode_log_loss_se": 0.03664725626099214,
+          "slot_gate_entropy": 0.9990302423636118,
+          "slot_disagreement": 6.74052863871566e-05
+        },
+        "shared_rule": {
+          "log_loss": 0.6640581999478551,
+          "brier": 0.23553148772485777,
+          "accuracy": 0.6067708333333334,
+          "ece_10": 0.05365633467833202,
+          "episode_log_loss_se": 0.014706944133047097,
+          "oracle_marginal_log_loss": 0.52523651099586,
+          "oracle_without_group_evidence_log_loss": 0.52523651099586,
+          "oracle_privileged_regime_log_loss": 0.52523651099586,
+          "slot_gate_entropy": 0.9990816116333008,
+          "slot_disagreement": 7.214769444393217e-05
+        },
+        "soft_gate": {
+          "log_loss": 0.669652248887966,
+          "brier": 0.23825023335340967,
+          "accuracy": 0.5859375,
+          "ece_10": 0.027841670749088124,
+          "episode_log_loss_se": 0.012014426435149494,
+          "oracle_marginal_log_loss": 0.5375115320951035,
+          "oracle_without_group_evidence_log_loss": 0.5375115320951035,
+          "oracle_privileged_regime_log_loss": 0.45469676839962214,
+          "slot_gate_entropy": 0.9990706841150919,
+          "slot_disagreement": 5.276746048821224e-05,
+          "support_ari": 0.013414244617712288,
+          "query_ari": 0.018486990542372798,
+          "oracle_support_ari": 0.2660434574262589,
+          "oracle_query_ari": 0.19839008355331422,
+          "support_ari_permutation_null": -0.0005631871234696926,
+          "query_ari_permutation_null": 0.0018812067108624636
+        },
+        "independent": {
+          "log_loss": 0.6874613475520164,
+          "brier": 0.24681344798130334,
+          "accuracy": 0.5598958333333334,
+          "ece_10": 0.04969601628060143,
+          "episode_log_loss_se": 0.008680542489462997,
+          "oracle_marginal_log_loss": 0.5533214258785214,
+          "oracle_without_group_evidence_log_loss": 0.5533214258785214,
+          "oracle_privileged_regime_log_loss": 0.4365228919981286,
+          "slot_gate_entropy": 0.9991121565302213,
+          "slot_disagreement": 4.673143212130526e-05,
+          "support_ari": 0.026135144531875015,
+          "query_ari": -0.005340084812857614,
+          "oracle_support_ari": 0.13413600201449755,
+          "oracle_query_ari": 0.0,
+          "support_ari_permutation_null": 0.0026328028027961027,
+          "query_ari_permutation_null": 0.0032790439262627992
+        },
+        "persistent": {
+          "log_loss": 0.6727125630325949,
+          "brier": 0.23980626549954956,
+          "accuracy": 0.58984375,
+          "ece_10": 0.04224204349641998,
+          "episode_log_loss_se": 0.013767370981488445,
+          "oracle_marginal_log_loss": 0.465212099527154,
+          "oracle_without_group_evidence_log_loss": 0.557492356194979,
+          "oracle_privileged_regime_log_loss": 0.45080882941292905,
+          "group_information_gain": 0.00013659966255848607,
+          "slot_gate_entropy": 0.9991146475076675,
+          "slot_disagreement": 5.746502423183605e-05,
+          "support_ari": 0.02598527755653611,
+          "query_ari": 0.11343987837838448,
+          "oracle_support_ari": 0.740136478109059,
+          "oracle_query_ari": 0.7483976687676925,
+          "support_ari_permutation_null": -0.002109285716083868,
+          "query_ari_permutation_null": 0.12180522773206681
+        }
+      },
+      "composition": {
+        "original": 2483,
+        "persistent": 464,
+        "shared_rule": 284,
+        "soft_gate": 478,
+        "independent": 291
+      },
+      "elapsed_seconds": 129.5997888930142
+    }
+  }
+}

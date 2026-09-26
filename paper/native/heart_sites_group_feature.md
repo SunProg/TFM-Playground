@@ -1,13 +1,20 @@
 # Merged heart-disease sites: does naming the group help? (2026-09-22)
 
+**Historical record.** The IID results below remain usable. The leave-one-site-out
+`site_given` comparison below should not be interpreted as an intervention on
+the held-out query site's identity: that category is absent from support and
+the fold preprocessor maps it to an unknown value before imputation. The
+replacement 20-shot target-site evaluation is documented in
+`heart_sites_adaptation.md`.
+
 BeyondArena contains three sites of the same UCI Heart Disease study with an **identical 13-attribute schema and
 target** — Cleveland (303 rows, 0.46 positive), Hungary (294, 0.36), VA Long Beach (200, 0.75) — verified by
 reading the parquet columns, not by name. Merging them gives one real 797-row dataset with a known latent
 regime (the hospital): the real-data counterpart of the v4 synthetic multiregime setting, and a direct test of
-the z-exposure question.
+whether providing the observed hospital/site label helps.
 
-* `site_hidden` — the 13 attributes only (the model must infer the regime; the z-blind bank analogue)
-* `site_given` — the 13 attributes + a `site` column (the z-exposed twin)
+* `site_hidden` — the 13 attributes only (the model must infer the regime; analogous to a hidden-label condition)
+* `site_given` — the 13 attributes + a `site` column (the true observed site label is provided)
 
 Two fold protocols, identical folds for every model:
 
@@ -17,8 +24,8 @@ Two fold protocols, identical folds for every model:
   value is unseen-with-a-label. A pure distribution-shift test.
 
 Job 37449374 (`scripts/slurm/evaluate_heart_sites_merged.sbatch`,
-`tfmplayground/experiments/evaluate_heart_sites_merged.py`), 19 models scored through the same BeyondArena
-preprocessor, full-fold prediction path and metrics. rg_z-fixed-large was still training and is absent.
+`tfmplayground/experiments/evaluate_heart_sites_merged.py`), 20 models scored through the same BeyondArena
+preprocessor, full-fold prediction path and metrics.
 
 ## 0. Is the site recoverable from the features?
 
@@ -41,6 +48,7 @@ what the IID results below show.
 | logreg | 0.4201 | 0.4191 | -0.2730 | -0.2740 | -0.0010 | +0.3105 | +0.3093 | -0.0012 | 0.8925 | 0.8931 | +0.0006 |
 | nat-rg_z-fixed-medium | 0.4208 | 0.4181 | -0.2722 | -0.2749 | -0.0027 | +0.2967 | +0.2986 | +0.0019 | 0.8917 | 0.8932 | +0.0015 |
 | nat-rg_z-curriculum-medium | 0.4217 | 0.4191 | -0.2714 | -0.2740 | -0.0025 | +0.3011 | +0.2999 | -0.0012 | 0.8908 | 0.8921 | +0.0013 |
+| nat-rg_z-fixed-large | 0.4272 | 0.4268 | -0.2659 | -0.2663 | -0.0004 | +0.3011 | +0.3030 | +0.0019 | 0.8909 | 0.8912 | +0.0003 |
 | nat-original-large | 0.4273 | 0.4266 | -0.2657 | -0.2665 | -0.0008 | +0.3030 | +0.3005 | -0.0025 | 0.8900 | 0.8905 | +0.0005 |
 | nat-rg_z-curriculum-large | 0.4277 | 0.4275 | -0.2654 | -0.2656 | -0.0002 | +0.3061 | +0.3017 | -0.0044 | 0.8924 | 0.8926 | +0.0002 |
 | rf | 0.4294 | 0.4292 | -0.2637 | -0.2639 | -0.0001 | +0.3055 | +0.3024 | -0.0031 | 0.8878 | 0.8878 | -0.0000 |
@@ -62,6 +70,7 @@ what the IID results below show.
 | tabicl-v2 | 0.5065 | 0.4992 | -0.2399 | -0.2472 | -0.0074 | +0.4030 | +0.3970 | -0.0059 | 0.8447 | 0.8450 | +0.0003 |
 | tabicl-v1 | 0.5083 | 0.5087 | -0.2381 | -0.2377 | +0.0004 | +0.3912 | +0.3970 | +0.0058 | 0.8380 | 0.8363 | -0.0017 |
 | nat-original-large | 0.5093 | 0.5025 | -0.2370 | -0.2439 | -0.0068 | +0.3813 | +0.3846 | +0.0034 | 0.8223 | 0.8237 | +0.0014 |
+| nat-rg_z-fixed-large | 0.5194 | 0.5140 | -0.2270 | -0.2324 | -0.0054 | +0.3747 | +0.3715 | -0.0032 | 0.8321 | 0.8291 | -0.0029 |
 | nat-rg_z-fixed-medium | 0.5217 | 0.5301 | -0.2246 | -0.2163 | +0.0084 | +0.3625 | +0.3580 | -0.0045 | 0.8307 | 0.8300 | -0.0007 |
 | nat-rg_z-curriculum-large | 0.5267 | 0.5231 | -0.2197 | -0.2233 | -0.0036 | +0.3806 | +0.3841 | +0.0035 | 0.8271 | 0.8274 | +0.0003 |
 | nat-original-medium | 0.5290 | 0.5241 | -0.2174 | -0.2223 | -0.0049 | +0.3519 | +0.3481 | -0.0038 | 0.8219 | 0.8219 | -0.0000 |
@@ -85,6 +94,7 @@ what the IID results below show.
 |---|---|---|---|
 | nat-original-large | -0.273 / -0.269 | -0.259 / -0.276 | -0.179 / -0.187 |
 | nat-rg_z-curriculum-large | -0.244 / -0.235 | -0.242 / -0.262 | -0.174 / -0.174 |
+| nat-rg_z-fixed-large | -0.265 / -0.266 | -0.210 / -0.218 | -0.206 / -0.214 |
 | nat-original-medium | -0.252 / -0.244 | -0.215 / -0.229 | -0.185 / -0.194 |
 | nat-rg_z-curriculum-medium | -0.234 / -0.234 | -0.205 / -0.226 | -0.193 / -0.194 |
 | nat-rg_z-fixed-medium | -0.220 / -0.180 | -0.277 / -0.293 | -0.177 / -0.176 |
@@ -109,6 +119,7 @@ what the IID results below show.
 |---|---|---|---|
 | nat-original-large | +0.350 / +0.353 | +0.449 / +0.456 | +0.345 / +0.345 |
 | nat-rg_z-curriculum-large | +0.350 / +0.343 | +0.432 / +0.449 | +0.360 / +0.360 |
+| nat-rg_z-fixed-large | +0.370 / +0.347 | +0.395 / +0.398 | +0.360 / +0.370 |
 | nat-original-medium | +0.337 / +0.320 | +0.374 / +0.374 | +0.345 / +0.350 |
 | nat-rg_z-curriculum-medium | +0.366 / +0.343 | +0.395 / +0.395 | +0.425 / +0.430 |
 | nat-rg_z-fixed-medium | +0.310 / +0.304 | +0.442 / +0.435 | +0.335 / +0.335 |
@@ -133,6 +144,7 @@ what the IID results below show.
 |---|---|---|---|
 | nat-original-large | 0.888 / 0.888 | 0.882 / 0.884 | 0.697 / 0.699 |
 | nat-rg_z-curriculum-large | 0.875 / 0.876 | 0.891 / 0.892 | 0.716 / 0.715 |
+| nat-rg_z-fixed-large | 0.888 / 0.888 | 0.883 / 0.882 | 0.726 / 0.717 |
 | nat-original-medium | 0.877 / 0.876 | 0.880 / 0.880 | 0.709 / 0.710 |
 | nat-rg_z-curriculum-medium | 0.883 / 0.882 | 0.880 / 0.880 | 0.704 / 0.700 |
 | nat-rg_z-fixed-medium | 0.884 / 0.884 | 0.893 / 0.894 | 0.714 / 0.713 |
@@ -153,27 +165,28 @@ what the IID results below show.
 
 ## 4. Findings
 
-1. **In-distribution the group label is worthless.** Every one of the 19 models moves by |Δ excess CE| ≤ 0.0045
+1. **In-distribution the group label is worthless.** Every one of the 20 models moves by |Δ excess CE| ≤ 0.0045
    when the site column is added under IID folds, with no consistent sign. This matches the measured 92 %
    recoverability of the site from the features, and reproduces the synthetic `soft_gate` result (z is a
-   function of x, so the z-exposed bank differs by ≤ 0.004 CE).
+   function of x, so the site-label-provided bank differs by ≤ 0.004 CE).
 2. **Under distribution shift it becomes worth something, and in-context models exploit it best.** LOSO Δ:
    tabpfn-v2.6 −0.019, tabpfn-v2.2 −0.014, rf −0.014, lightgbm −0.012, tabicl-v2 −0.007, nat-original-large
-   −0.007, nat-rg_z-curriculum-medium −0.007. The query value is never seen with a label, so the gain is not
-   "which hospital is this" but "these rows are a different group" — the models hedge.
+   −0.007, nat-rg_z-curriculum-medium −0.007, nat-rg_z-fixed-large −0.005. The query value is never seen with a
+   label, so the gain is not "which hospital is this" but "these rows are a different group" — the models hedge.
 3. **A linear model is destroyed by the same information**: logreg +0.074 CE (and +0.199 on the VA Long Beach
    fold alone), because it extrapolates a coefficient for an unseen category. This is the sharpest illustration
    that group exposure is only useful to a model that can condition on it rather than extrapolate from it.
-4. **The effect is calibration, not ranking.** |Δ AUC| ≤ 0.002 for every model except rf (+0.009) and catboost
-   (+0.008) under LOSO, while Δ CE and Δ accuracy gain move an order of magnitude more.
+4. **The effect is calibration, not ranking.** |Δ AUC| ≤ 0.002 for every model except rf (+0.009), catboost
+   (+0.008) and nat-rg_z-fixed-large (−0.003) under LOSO, while Δ CE and Δ accuracy gain move an order of
+   magnitude more.
 5. **Per site**: the gain concentrates on Hungary (positive rate 0.36 vs 0.55 in its support mix) — tabpfn-v2.6
-   −0.038, tabicl-v1 −0.030, our large runs −0.017/−0.020. Cleveland is a wash (±0.02) and VA Long Beach is the
-   hard fold for everyone (best −0.248; every GBM and logreg go positive, our runs hold −0.17…−0.19).
+   −0.038, tabicl-v1 −0.030, nat-original/curriculum-large −0.017/−0.020, nat-rg_z-fixed-large −0.008.
+   Cleveland is a wash (±0.02) and VA Long Beach is the hard fold for everyone (best −0.248; every GBM and
+   logreg go positive, our runs hold −0.17…−0.21).
 6. **Our models**: nat-original-large is the best non-published model under LOSO (−0.237 hidden / −0.244 given),
-   ahead of rf (−0.205/−0.219) and every GBM; under IID our medium runs (−0.274) beat our large (−0.266) and sit
-   level with logreg and tabicl-v1, 0.010 behind TabPFN. Capacity helps under shift and slightly hurts
-   in-distribution on this 797-row task.
+   followed by nat-rg_z-fixed-large (−0.227/−0.232), ahead of rf (−0.205/−0.219) and every GBM; under IID our
+   medium runs (−0.274) beat our large runs (−0.266) and sit level with logreg and tabicl-v1, 0.010 behind
+   TabPFN. Capacity helps under shift and slightly hurts in-distribution on this 797-row task.
 7. **Multiregime pretraining does not change the picture** (|Δ| ≤ 0.008 vs original at the same size, both
    protocols, no consistent sign) — consistent with BeyondArena, where real datasets carry no exploitable
    routing structure.
-

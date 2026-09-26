@@ -1,0 +1,120 @@
+{
+  "config": {
+    "output": "results/_table_slot_head_smoke",
+    "steps": 1,
+    "seeds": [
+      11
+    ],
+    "conditions": {
+      "decoder_baseline": {
+        "query_routing_mode": "decoder",
+        "reconstruction_mixture": "attention"
+      }
+    },
+    "test_episodes": 8,
+    "validation_episodes": 8,
+    "support_reconstruction_weight": 1.0,
+    "slot_mi_weight": 0.05,
+    "prior": {
+      "support_size": 128,
+      "query_size": 256,
+      "task_features": 2,
+      "max_regimes": 2,
+      "cue_separation": 3.0,
+      "regime_probability": 0.5,
+      "num_layers": 2,
+      "hidden_dim": 8,
+      "init_std": 0.5,
+      "label_noise": 0.0,
+      "calibration_size": 512,
+      "min_disagreement": 0.25,
+      "max_disagreement": 0.75,
+      "max_attempts": 64
+    }
+  },
+  "runs": [
+    {
+      "condition": "decoder_baseline",
+      "seed": 11,
+      "selected_step": 1,
+      "history": [
+        {
+          "step": 0,
+          "seconds": 0.11585241695865989,
+          "accuracy": {
+            "mean": 0.478515625,
+            "ci95": [
+              0.44872222834277076,
+              0.5083090216572292
+            ],
+            "n_episodes": 8
+          },
+          "cross_entropy": {
+            "mean": 0.7015778496861458,
+            "ci95": [
+              0.6961685939015738,
+              0.7069871054707177
+            ],
+            "n_episodes": 8
+          }
+        },
+        {
+          "step": 1,
+          "seconds": 0.37834970897529274,
+          "accuracy": {
+            "mean": 0.5263671875,
+            "ci95": [
+              0.49654745219316787,
+              0.5561869228068321
+            ],
+            "n_episodes": 8
+          },
+          "cross_entropy": {
+            "mean": 0.692888580262661,
+            "ci95": [
+              0.6895512356412167,
+              0.6962259248841053
+            ],
+            "n_episodes": 8
+          }
+        }
+      ],
+      "test": {
+        "accuracy": {
+          "mean": 0.48291015625,
+          "ci95": [
+            0.4666728259840653,
+            0.4991474865159347
+          ],
+          "n_episodes": 8
+        },
+        "cross_entropy": {
+          "mean": 0.6960274428129196,
+          "ci95": [
+            0.6933966243049005,
+            0.6986582613209388
+          ],
+          "n_episodes": 8
+        }
+      },
+      "test_shuffled_support_labels": {
+        "accuracy": {
+          "mean": 0.48291015625,
+          "ci95": [
+            0.4666728259840653,
+            0.4991474865159347
+          ],
+          "n_episodes": 8
+        },
+        "cross_entropy": {
+          "mean": 0.6960349082946777,
+          "ci95": [
+            0.6934059654881378,
+            0.6986638511012176
+          ],
+          "n_episodes": 8
+        }
+      }
+    }
+  ]
+}

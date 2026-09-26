@@ -72,6 +72,12 @@ class PlainPretrainingConfig:
     v4_evaluation_batch_size: int = 1
     #: An optional fixed held-out bank, scored exactly once after training.
     v4_test_bank_path: str | None = None
+    #: Lightweight held-out regime-information probe during training. This uses
+    #: one episode from a deterministic subset of factorial cells; the complete
+    #: bank remains reserved for the final evaluation.
+    v4_regime_info_bank_path: str | None = None
+    v4_regime_info_interval: int = 1_000
+    v4_regime_info_cell_subsample_modulus: int = 16
     checkpoint_interval: int = 10_000
     #: Additionally overwrite ``latest_checkpoint.pth`` every this many steps
     #: (0 = off) so an interrupted run can be resumed with little lost work.
@@ -124,6 +130,28 @@ class PlainPretrainingConfig:
     #: ``v4_dump_path``.  This isolates r_z/g_z label selection: the two
     #: files have the same generated base tasks and differ only in Y_0 vs Y_Z.
     v4_shared_dump_path: str | None = None
+    #: Append the realized v4 regime identity as an observed context feature.
+    #: The IDs are independently permuted within every episode before entering
+    #: the model, so the model can use support/query membership correspondence
+    #: but cannot attach a global meaning to an integer label.  This is a
+    #: distinct intervention from ``expose_z``, which exposes a feature-derived
+    #: routing score in the dump itself.
+    v4_expose_regime_id: bool = False
+    #: Per-episode Bernoulli(p) alternative to ``v4_expose_regime_id``: each
+    #: multiregime episode independently gets the ID column with this
+    #: probability instead of every episode in a run getting it uniformly.
+    #: Mutually exclusive with ``v4_expose_regime_id`` and
+    #: ``v4_expose_regime_id_paired``. Unlike ``v4_expose_regime_id_paired``,
+    #: the exposed and hidden copies of a given draw are *different*
+    #: episodes, so any measured exposed-vs-hidden gap is confounded with
+    #: which episodes happened to land in which condition.
+    v4_expose_regime_id_probability: float | None = None
+    #: Train on BOTH hidden and exposed copies of each multiregime episode.
+    #: They are concatenated on the batch axis for one model call; the hidden
+    #: copy gets a -1 sentinel in the appended regime-ID feature.
+    #: Mutually exclusive with ``v4_expose_regime_id`` and
+    #: ``v4_expose_regime_id_probability``.
+    v4_expose_regime_id_paired: bool = False
     #: The ordinary branch may stay dynamic or stream a standard TabICL HDF5
     #: training dump. Validation always uses freshly generated ordinary tasks.
     original_source: Literal["dynamic", "dump"] = "dynamic"
@@ -224,19 +252,25 @@ def multiregime_batch(
     config: PlainPretrainingConfig,
     v4_loader: "MultiregimeV4DumpLoader | RoundRobinV4DumpLoader | None",
     rng: np.random.Generator,
-):
+) -> list:
     """Draw one multiregime episode, from whichever generator config.multiregime_source selects."""
     if config.multiregime_source == "v4":
         if v4_loader is None:
             raise RuntimeError("multiregime_source='v4' requires a constructed MultiregimeV4DumpLoader.")
-        return _v4_dump_batch(v4_loader)
+        return _v4_dump_batch(
+            v4_loader,
+            expose_regime_id=config.v4_expose_regime_id,
+            expose_regime_id_probability=config.v4_expose_regime_id_probability,
+            expose_regime_id_paired=config.v4_expose_regime_id_paired,
+            rng=rng,
+        )
 
     sources: tuple[str | tuple[str, str], ...] = (
         *SCM_FAMILIES,
         ("mlp_scm", "tree_scm"),
     )
     source = sources[int(rng.integers(len(sources)))]
-    return sample_scm_multiregime_episode(
+    return [sample_scm_multiregime_episode(
         rng,
         regime=TRAIN_REGIME,
         family=source,
@@ -248,7 +282,7 @@ def multiregime_batch(
         regime_coherence=config.regime_coherence,
         num_classes=config.max_classes,
         device=config.device,
-    )
+    )]
 
 
 class RoundRobinV4DumpLoader:
@@ -287,17 +321,145 @@ def make_v4_dump_loader(spec: str, *, batch_size: int, device: str, family: str 
     return RoundRobinV4DumpLoader([MultiregimeV4DumpLoader(path, **kwargs) for path in paths])
 
 
-def _v4_dump_batch(loader: MultiregimeV4DumpLoader | RoundRobinV4DumpLoader) -> SimpleNamespace:
-    """Convert a diagnostic-rich V4 dump batch into the model's batch shape."""
-    batch = loader.sample()
-    # Diagnostics such as regime and mechanism_mode are deliberately excluded
-    # from the model input.  They remain in the HDF5 dump for analysis only.
+def _regime_tag_columns(
+    support_x: torch.Tensor,
+    batch: dict,
+    rng: np.random.Generator,
+) -> torch.Tensor:
+    """Per-episode-permuted realized regime IDs, one column per support+query row.
+
+    A fresh per-episode permutation makes the values categorical
+    correspondence markers, rather than globally meaningful ordered feature
+    values.
+    """
+    support_regime, query_regime = batch["support_regime"], batch["query_regime"]
+    num_regimes = batch["num_regimes"]
+    if support_regime.shape[0] != query_regime.shape[0] or support_regime.shape[0] != num_regimes.shape[0]:
+        raise ValueError("V4 regime metadata must have one row per episode.")
+    tags = torch.empty(
+        (support_regime.shape[0], support_regime.shape[1] + query_regime.shape[1]),
+        dtype=support_x.dtype,
+        device=support_x.device,
+    )
+    for episode_index, regime_count in enumerate(num_regimes.detach().cpu().tolist()):
+        regime_count = int(regime_count)
+        if regime_count < 1:
+            raise ValueError("A v4 episode must contain at least one regime.")
+        permutation = torch.as_tensor(
+            rng.permutation(regime_count), dtype=support_regime.dtype, device=support_regime.device
+        )
+        regime = torch.cat((support_regime[episode_index], query_regime[episode_index]))
+        if bool(((regime < 0) | (regime >= regime_count)).any()):
+            raise ValueError("V4 regime IDs must lie in [0, num_regimes).")
+        tags[episode_index] = permutation[regime].to(dtype=support_x.dtype)
+    return tags
+
+
+def _expose_regime_tag(support_x: torch.Tensor, query_x: torch.Tensor, batch: dict, rng: np.random.Generator):
+    """Append the (permuted) realized regime ID as one input column to every episode."""
+    tags = _regime_tag_columns(support_x, batch, rng)
+    support_width = support_x.shape[1]
+    support_x = torch.cat((support_x, tags[:, :support_width, None]), dim=-1)
+    query_x = torch.cat((query_x, tags[:, support_width:, None]), dim=-1)
+    return support_x, query_x
+
+
+def _index_v4_batch(batch: dict, index: np.ndarray) -> dict:
+    """Select a subset of episodes from a raw ``loader.sample()`` batch dict."""
+    return {key: value[index] for key, value in batch.items()}
+
+
+def _batch_namespace(support_x: torch.Tensor, query_x: torch.Tensor, batch: dict) -> SimpleNamespace:
     return SimpleNamespace(
-        support_x=batch["support_x"],
+        support_x=support_x,
         support_y=batch["support_y"],
-        query_x=batch["query_x"],
+        query_x=query_x,
         query_y=batch["query_y"],
     )
+
+
+def _v4_dump_batch(
+    loader: MultiregimeV4DumpLoader | RoundRobinV4DumpLoader,
+    *,
+    expose_regime_id: bool = False,
+    expose_regime_id_probability: float | None = None,
+    expose_regime_id_paired: bool = False,
+    rng: np.random.Generator | None = None,
+) -> list[SimpleNamespace]:
+    """Convert a diagnostic-rich V4 dump batch into one or two model batches.
+
+    Exactly one of three (mutually exclusive) regime-ID interventions may be
+    active:
+
+    * ``expose_regime_id``: every episode in the draw gets the tag column.
+    * ``expose_regime_id_probability``: each episode independently gets the
+      tag column with this probability; exposed and hidden episodes in the
+      same draw are different underlying episodes.
+    * ``expose_regime_id_paired``: every episode in the draw is trained BOTH
+      with and without the tag (two copies of the same episode), returned as
+      one concatenated batch. The hidden copy gets -1 in the appended tag
+      column; valid regime IDs are nonnegative.
+
+    Diagnostics such as mechanism mode remain excluded from model inputs
+    regardless of mode. With none of the three set, every episode is hidden.
+    """
+    modes = [expose_regime_id, expose_regime_id_probability is not None, expose_regime_id_paired]
+    if sum(modes) > 1:
+        raise ValueError(
+            "Choose at most one of expose_regime_id / expose_regime_id_probability / expose_regime_id_paired."
+        )
+    batch = loader.sample()
+    support_x, query_x = batch["support_x"], batch["query_x"]
+
+    if expose_regime_id_paired:
+        if rng is None:
+            raise ValueError("A NumPy generator is required when exposing v4 regime IDs.")
+        exposed_support_x, exposed_query_x = _expose_regime_tag(support_x, query_x, batch, rng)
+        # Pad the hidden copy with an out-of-range missing-ID sentinel. Equal
+        # feature widths let both paired conditions share one model call.
+        hidden_support_x = torch.cat(
+            (support_x, support_x.new_full((*support_x.shape[:-1], 1), -1.0)), dim=-1
+        )
+        hidden_query_x = torch.cat(
+            (query_x, query_x.new_full((*query_x.shape[:-1], 1), -1.0)), dim=-1
+        )
+        combined = SimpleNamespace(
+            support_x=torch.cat((hidden_support_x, exposed_support_x), dim=0),
+            support_y=torch.cat((batch["support_y"], batch["support_y"]), dim=0),
+            query_x=torch.cat((hidden_query_x, exposed_query_x), dim=0),
+            query_y=torch.cat((batch["query_y"], batch["query_y"]), dim=0),
+        )
+        return [combined]
+
+    if expose_regime_id_probability is not None:
+        if rng is None:
+            raise ValueError("A NumPy generator is required when exposing v4 regime IDs.")
+        if not 0.0 <= expose_regime_id_probability <= 1.0:
+            raise ValueError("expose_regime_id_probability must lie in [0, 1].")
+        mask = rng.random(support_x.shape[0]) < expose_regime_id_probability
+        if not mask.any():
+            return [_batch_namespace(support_x, query_x, batch)]
+        if mask.all():
+            exposed_support_x, exposed_query_x = _expose_regime_tag(support_x, query_x, batch, rng)
+            return [_batch_namespace(exposed_support_x, exposed_query_x, batch)]
+        exposed_index = np.flatnonzero(mask)
+        hidden_index = np.flatnonzero(~mask)
+        exposed_batch = _index_v4_batch(batch, exposed_index)
+        exposed_support_x, exposed_query_x = _expose_regime_tag(
+            exposed_batch["support_x"], exposed_batch["query_x"], exposed_batch, rng
+        )
+        hidden_batch = _index_v4_batch(batch, hidden_index)
+        return [
+            _batch_namespace(hidden_batch["support_x"], hidden_batch["query_x"], hidden_batch),
+            _batch_namespace(exposed_support_x, exposed_query_x, exposed_batch),
+        ]
+
+    if expose_regime_id:
+        if rng is None:
+            raise ValueError("A NumPy generator is required when exposing v4 regime IDs.")
+        support_x, query_x = _expose_regime_tag(support_x, query_x, batch, rng)
+
+    return [_batch_namespace(support_x, query_x, batch)]
 
 
 def multiregime_probability(config: PlainPretrainingConfig, step: int) -> float:
@@ -341,15 +503,22 @@ def training_batch(
     v4_shared_loader: "MultiregimeV4DumpLoader | RoundRobinV4DumpLoader | None",
     episode_rng: np.random.Generator,
     step: int,
-):
-    """Draw one training batch under the configured ordinary/multiregime curriculum."""
+) -> list:
+    """Draw one training batch (as a list of one or two model batches — see ``_v4_dump_batch``)
+    under the configured ordinary/multiregime curriculum."""
     probability = multiregime_probability(config, step)
     if probability == 0.0 or episode_rng.random() >= probability:
         if v4_shared_loader is not None:
-            return _v4_dump_batch(v4_shared_loader)
+            return _v4_dump_batch(
+                v4_shared_loader,
+                expose_regime_id=config.v4_expose_regime_id,
+                expose_regime_id_probability=config.v4_expose_regime_id_probability,
+                expose_regime_id_paired=config.v4_expose_regime_id_paired,
+                rng=episode_rng,
+            )
         if prior is None:
             raise RuntimeError("The ordinary TabICL prior is required for this curriculum batch.")
-        return next(iter(prior))
+        return [next(iter(prior))]
     return multiregime_batch(config, v4_loader, episode_rng)
 
 
@@ -603,6 +772,7 @@ def run_pretraining(
     intervals = (
         config.validation_interval,
         config.v4_validation_interval,
+        config.v4_regime_info_interval,
         config.checkpoint_interval,
         config.epoch_steps,
     )
@@ -630,12 +800,30 @@ def run_pretraining(
         raise ValueError("multiregime_ratio must lie in [0, 1].")
     if config.multiregime_source not in {"legacy", "v4"}:
         raise ValueError("multiregime_source must be 'legacy' or 'v4'.")
+    if config.v4_expose_regime_id and config.multiregime_source != "v4":
+        raise ValueError("v4_expose_regime_id requires multiregime_source='v4'.")
+    if config.v4_expose_regime_id_probability is not None and config.multiregime_source != "v4":
+        raise ValueError("v4_expose_regime_id_probability requires multiregime_source='v4'.")
+    if config.v4_expose_regime_id_paired and config.multiregime_source != "v4":
+        raise ValueError("v4_expose_regime_id_paired requires multiregime_source='v4'.")
+    if sum([
+        config.v4_expose_regime_id,
+        config.v4_expose_regime_id_probability is not None,
+        config.v4_expose_regime_id_paired,
+    ]) > 1:
+        raise ValueError(
+            "Choose at most one of v4_expose_regime_id / v4_expose_regime_id_probability / "
+            "v4_expose_regime_id_paired."
+        )
+    if config.v4_expose_regime_id_probability is not None and not 0.0 <= config.v4_expose_regime_id_probability <= 1.0:
+        raise ValueError("v4_expose_regime_id_probability must lie in [0, 1].")
     if config.original_source not in {"dynamic", "dump"}:
         raise ValueError("original_source must be 'dynamic' or 'dump'.")
     for name, bank_path in (
         ("v4_validation_bank_path", config.v4_validation_bank_path),
         ("v4_extra_validation_bank_path", config.v4_extra_validation_bank_path),
         ("v4_test_bank_path", config.v4_test_bank_path),
+        ("v4_regime_info_bank_path", config.v4_regime_info_bank_path),
     ):
         if bank_path is not None and not Path(bank_path).is_file():
             raise FileNotFoundError(f"{name} does not point to a file: {bank_path}.")
@@ -735,17 +923,21 @@ def run_pretraining(
             loss_total = 0.0
             for _ in range(config.accumulate_gradients):
                 for _attempt in range(_MAX_NON_FINITE_BATCH_RETRIES):
-                    batch = training_batch(config, prior, v4_loader, v4_shared_loader, episode_rng, step)
-                    loss = query_loss(model, batch)
-                    if torch.isfinite(loss):
+                    # A probability split can yield separate hidden and exposed
+                    # subsets. Paired mode concatenates its same-episode variants
+                    # along the batch axis, so it uses one model call here.
+                    batches = training_batch(config, prior, v4_loader, v4_shared_loader, episode_rng, step)
+                    losses = [query_loss(model, batch) for batch in batches]
+                    if all(torch.isfinite(loss) for loss in losses):
                         break
                 else:
                     raise RuntimeError(
                         "Could not draw a finite training batch within "
                         f"{_MAX_NON_FINITE_BATCH_RETRIES} attempts at step {step}."
                     )
-                (loss / config.accumulate_gradients).backward()
-                loss_total += float(loss.detach()) / config.accumulate_gradients
+                for loss in losses:
+                    (loss / (config.accumulate_gradients * len(losses))).backward()
+                    loss_total += float(loss.detach()) / (config.accumulate_gradients * len(losses))
             gradient_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip))
             if not math.isfinite(gradient_norm):
                 raise RuntimeError(f"Non-finite gradient norm at step {step}.")
@@ -782,6 +974,34 @@ def run_pretraining(
                     device=config.device,
                     max_episodes_per_forward=config.v4_evaluation_batch_size,
                 )
+            v4_regime_info = None
+            if config.v4_regime_info_bank_path is not None and (
+                step % config.v4_regime_info_interval == 0 or step == config.max_steps
+            ):
+                # Import lazily: ordinary pretraining does not need the diagnostic
+                # script or its additional evaluation dependencies.
+                from scripts.evaluate_v4_regime_information import evaluate as evaluate_regime_information
+
+                v4_regime_info = evaluate_regime_information(
+                    model,
+                    config.v4_regime_info_bank_path,
+                    device=config.device,
+                    information=("hidden", "shuffled", "true"),
+                    multiclass_only=True,
+                    multiregime_only=True,
+                    episode_in_cell=0,
+                    cell_subsample_modulus=config.v4_regime_info_cell_subsample_modulus,
+                    cell_subsample_remainder=0,
+                    max_episodes=None,
+                    seed=config.seed,
+                    max_episodes_per_forward=config.v4_evaluation_batch_size,
+                    with_auc=False,
+                    bootstrap_replicates=200,
+                )
+                v4_regime_info["step"] = step
+                progress_path = output / "regime_information_progress.jsonl"
+                with progress_path.open("a") as progress:
+                    progress.write(json.dumps(v4_regime_info, sort_keys=True) + "\n")
             epoch = step // config.epoch_steps
             tabarena = None
             epoch_seconds = None
@@ -821,11 +1041,26 @@ def run_pretraining(
                 **({f"validation_{key}": value for key, value in validation.items()} if validation else {}),
                 **({f"v4_validation_{key}": value for key, value in v4_validation.items()} if v4_validation else {}),
                 **({f"v4_validation_{config.v4_extra_validation_tag}_{key}": value for key, value in v4_extra.items()} if v4_extra else {}),
+                **({
+                    "regime_info_probe_episodes": v4_regime_info["episodes_per_condition"],
+                    "regime_info_probe_true_minus_hidden_ce": float(np.average(
+                        [item["cross_entropy_difference"] for item in v4_regime_info["paired_differences"]
+                         if item["information"] == "true" and item["reference"] == "hidden"],
+                        weights=[item["episodes"] for item in v4_regime_info["paired_differences"]
+                                 if item["information"] == "true" and item["reference"] == "hidden"],
+                    )),
+                    "regime_info_probe_true_minus_hidden_accuracy": float(np.average(
+                        [item["accuracy_difference"] for item in v4_regime_info["paired_differences"]
+                         if item["information"] == "true" and item["reference"] == "hidden"],
+                        weights=[item["episodes"] for item in v4_regime_info["paired_differences"]
+                                 if item["information"] == "true" and item["reference"] == "hidden"],
+                    )),
+                } if v4_regime_info else {}),
                 **(tabarena or {}),
             }
             history.write(json.dumps(row, sort_keys=True) + "\n")
             history.flush()
-            if validation is not None or v4_validation is not None or v4_extra is not None or epoch_seconds is not None:
+            if validation is not None or v4_validation is not None or v4_extra is not None or v4_regime_info is not None or epoch_seconds is not None:
                 print(json.dumps(row, sort_keys=True), flush=True)
             writer.add_scalar("train/query_cross_entropy", loss_total, step)
             writer.add_scalar("train/gradient_norm", gradient_norm, step)
@@ -967,12 +1202,41 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--v4-dump-min-classes", type=int, default=defaults.v4_dump_min_classes,
                         help="ablation: serve only multiregime episodes with at least this many classes (e.g. 3)")
     parser.add_argument("--v4-shared-dump-path", default=defaults.v4_shared_dump_path)
+    parser.add_argument(
+        "--v4-expose-regime-id",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.v4_expose_regime_id,
+        help="append randomly relabelled realized v4 regime IDs as an observed context feature",
+    )
+    parser.add_argument(
+        "--v4-expose-regime-id-probability",
+        type=float,
+        default=defaults.v4_expose_regime_id_probability,
+        help="per-episode Bernoulli(p) alternative to --v4-expose-regime-id: exposed and hidden "
+             "episodes in the same draw are different episodes (mutually exclusive with "
+             "--v4-expose-regime-id and --v4-expose-regime-id-paired)",
+    )
+    parser.add_argument(
+        "--v4-expose-regime-id-paired",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.v4_expose_regime_id_paired,
+        help="train on both a hidden and an exposed copy of every multiregime episode every step "
+             "(mutually exclusive with --v4-expose-regime-id and --v4-expose-regime-id-probability)",
+    )
     parser.add_argument("--original-source", choices=("dynamic", "dump"), default=defaults.original_source)
     parser.add_argument("--original-dump-path", default=defaults.original_dump_path)
     parser.add_argument("--v4-validation-bank-path", default=defaults.v4_validation_bank_path)
     parser.add_argument("--v4-extra-validation-bank-path", default=defaults.v4_extra_validation_bank_path)
     parser.add_argument("--v4-extra-validation-tag", default=defaults.v4_extra_validation_tag)
     parser.add_argument("--v4-test-bank-path", default=defaults.v4_test_bank_path)
+    parser.add_argument("--v4-regime-info-bank-path", default=defaults.v4_regime_info_bank_path)
+    parser.add_argument("--v4-regime-info-interval", type=int, default=defaults.v4_regime_info_interval)
+    parser.add_argument(
+        "--v4-regime-info-cell-subsample-modulus",
+        type=int,
+        default=defaults.v4_regime_info_cell_subsample_modulus,
+        help="sample one held-out episode from every Nth deterministic multiclass multiregime cell per probe",
+    )
     parser.add_argument(
         "--tabarena-every-epoch",
         action=argparse.BooleanOptionalAction,

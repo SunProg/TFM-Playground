@@ -1,0 +1,250 @@
+{
+  "scope": "exploratory descriptive comparison from archived full-bank reports; no new inference or training",
+  "checkpoint_seed": 2402,
+  "checkpoint_step": 10000,
+  "sizes": [
+    "small",
+    "medium"
+  ],
+  "models": [
+    "original",
+    "rg_z-fixed",
+    "rg_z-curriculum",
+    "observed-ID"
+  ],
+  "information_conditions": [
+    "hidden",
+    "shuffled",
+    "true"
+  ],
+  "primary_condition": "hidden",
+  "episodes_per_condition": 5760,
+  "cells": 720,
+  "episodes_per_cell": 8,
+  "bank_path": "/cephfs/volumes/hpc_data_usr/k23139234/e769188c-13fe-48c6-acb8-28c71b6704fe/tfm_data/multiregime_v4_native/tabicl_mix_scm_evaluation/test.h5",
+  "bank_content_sha256": null,
+  "bank_identity_note": "The saved reports share a bank path, episode IDs, and episode metadata; the bank file content hash is unavailable, so byte-level identity is unverified.",
+  "episode_ids_sha256": "78be1fd2183928bc7e321d22529ad0ca60fd48d2766d3452dd8921959b99a5c6",
+  "episode_ids_shared_across_all_reports": true,
+  "episode_metadata_shared_across_all_reports": true,
+  "model_source_sha256_by_size_and_model": {
+    "small:original": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+    "small:rg_z-fixed": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+    "small:rg_z-curriculum": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+    "small:observed-ID": "872ce8732d0e36a8f45da02f0d4fc560e25065b2250c0e703e689453ec5cdad1",
+    "medium:original": "5ed1a46b2939aa0c8db1e3766a27a9cae9db6e36ac0a8b165471df7bcc14339c",
+    "medium:rg_z-fixed": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+    "medium:rg_z-curriculum": "32662bf83a70f72c09067c8c0e2a861232168f6dcec92e56157cd41ce94c7e34",
+    "medium:observed-ID": "872ce8732d0e36a8f45da02f0d4fc560e25065b2250c0e703e689453ec5cdad1"
+  },
+  "common_model_source_sha256": false,
+  "evaluator_source_sha256_recorded_in_reports": false,
+  "paired_observed_minus_original_hidden": {
+    "small": {
+      "episodes": 5760,
+      "cells": 720,
+      "cross_entropy_difference": 0.004929459475291272,
+      "cross_entropy_difference_95_interval": [
+        0.004170202485078739,
+        0.005679553166717395
+      ],
+      "accuracy_difference_pp": -0.3272840711805555,
+      "accuracy_difference_95_interval_pp": [
+        -0.4216257731119792,
+        -0.23870340983072935
+      ]
+    },
+    "medium": {
+      "episodes": 5760,
+      "cells": 720,
+      "cross_entropy_difference": 0.0024451258962572965,
+      "cross_entropy_difference_95_interval": [
+        0.0008890797009411876,
+        0.003974103776215795
+      ],
+      "accuracy_difference_pp": -0.8672417534722223,
+      "accuracy_difference_95_interval_pp": [
+        -0.9632127549913194,
+        -0.7712758382161459
+      ]
+    }
+  },
+  "bootstrap": {
+    "method": "paired episode differences; resample episodes with replacement within each factorial cell; average cell means equally",
+    "replicates": 5000,
+    "seed": 20260926,
+    "scope": "uncertainty over the fixed archived episode bank only; does not estimate training-seed variation"
+  },
+  "scores": {
+    "small": {
+      "original": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.2207098960824725,
+          "accuracy": 0.4414394802517361
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.2235591470095744,
+          "accuracy": 0.4393032497829861
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.1773425808047049,
+          "accuracy": 0.4760959201388889
+        }
+      },
+      "rg_z-fixed": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.2193531595571483,
+          "accuracy": 0.442236328125
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.2221043102637243,
+          "accuracy": 0.44036797417534723
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.1753766222824602,
+          "accuracy": 0.47689954969618054
+        }
+      },
+      "rg_z-curriculum": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.2197484918688941,
+          "accuracy": 0.44205661349826386
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.2226155585997427,
+          "accuracy": 0.439886474609375
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.176631076373936,
+          "accuracy": 0.4758741590711806
+        }
+      },
+      "observed-ID": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.2256393555577638,
+          "accuracy": 0.43816663953993057
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.2255642205955357,
+          "accuracy": 0.4379848904079861
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.18297665140902,
+          "accuracy": 0.4734917534722222
+        }
+      }
+    },
+    "medium": {
+      "original": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.1920524527996248,
+          "accuracy": 0.4705030653211806
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.1939937401116671,
+          "accuracy": 0.4686028374565972
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.086662897346024,
+          "accuracy": 0.5389133029513888
+        }
+      },
+      "rg_z-fixed": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.1828847054078424,
+          "accuracy": 0.4737155490451389
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.1846451758080447,
+          "accuracy": 0.47215033637152776
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.0763144917013252,
+          "accuracy": 0.5424235026041667
+        }
+      },
+      "rg_z-curriculum": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.1777144869039249,
+          "accuracy": 0.47623969184027776
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.1787863270185577,
+          "accuracy": 0.4750162760416667
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.0687415313053255,
+          "accuracy": 0.5454149034288195
+        }
+      },
+      "observed-ID": {
+        "hidden": {
+          "episodes": 5760,
+          "cross_entropy": 1.194497578695882,
+          "accuracy": 0.4618306477864583
+        },
+        "shuffled": {
+          "episodes": 5760,
+          "cross_entropy": 1.1950600787376364,
+          "accuracy": 0.46149970160590276
+        },
+        "true": {
+          "episodes": 5760,
+          "cross_entropy": 1.0963323810590535,
+          "accuracy": 0.5292243109809027
+        }
+      }
+    }
+  },
+  "report_files": {
+    "small:original": "artifacts/cluster_sync/regime_information_checkpoint_compatible/original-small/seed-2402/test.json",
+    "small:rg_z-fixed": "artifacts/cluster_sync/regime_information_checkpoint_compatible/rg_z-fixed-small/seed-2402/test.json",
+    "small:rg_z-curriculum": "artifacts/cluster_sync/regime_information_checkpoint_compatible/rg_z-curriculum-small/seed-2402/test.json",
+    "small:observed-ID": "artifacts/cluster_sync/observed_id_training/observed-small/seed-2402/test.json",
+    "medium:original": "artifacts/cluster_sync/regime_information_checkpoint_compatible/original-medium/seed-2402/test.json",
+    "medium:rg_z-fixed": "artifacts/cluster_sync/regime_information_checkpoint_compatible/rg_z-fixed-medium/seed-2402/test.json",
+    "medium:rg_z-curriculum": "artifacts/cluster_sync/regime_information_checkpoint_compatible/rg_z-curriculum-medium/seed-2402/test.json",
+    "medium:observed-ID": "artifacts/cluster_sync/observed_id_training/observed-medium/seed-2402/test.json"
+  },
+  "report_file_sha256": {
+    "small:original": "9d5198e4be0f5533fe6990b3e0d425071f2125b8b6240a90490f957ec1a53c6d",
+    "small:rg_z-fixed": "b64b2c6139bc1977580b942bab6e794276e871a685259e3d2e52cc70ad1845e6",
+    "small:rg_z-curriculum": "5f3c1dd0bc111550a6095ecce48e3d733c95a90ce2219a90ca5afe81341ee880",
+    "small:observed-ID": "4cc2c39b3e5e35f0168fc382e86735f92898cbc306e6cfc0a028eb7b74b21415",
+    "medium:original": "7b5bc8bf002be91c4c17996ec4ee706d12755579bab9a246948792fe3af3e1dc",
+    "medium:rg_z-fixed": "7c32d9c9c96a9f62f7e81313301d8068af28d09de227cd5f187ef7190c2fcaef",
+    "medium:rg_z-curriculum": "a636d6c42c507f8365990afff6c50f7e72a369d97ed6d2464b098380dcd870c9",
+    "medium:observed-ID": "50dcbfd22b84536b72afcecbb00e7904ffb4432d3ead0aac311e7da7f9f4aaf3"
+  },
+  "configs": {
+    "small:original": "artifacts/cluster_sync/tfm_runs/native/original-small/seed-2402/config.json",
+    "small:rg_z-fixed": "artifacts/cluster_sync/tfm_runs/native/rg_z-fixed-small/seed-2402/config.json",
+    "small:rg_z-curriculum": "artifacts/cluster_sync/tfm_runs/native/rg_z-curriculum-small/seed-2402/config.json",
+    "small:observed-ID": "artifacts/cluster_sync/observed_id_training/_provenance/observed-small-config.json",
+    "medium:original": "artifacts/cluster_sync/tfm_runs/native/original-medium/seed-2402/config.json",
+    "medium:rg_z-fixed": "artifacts/cluster_sync/tfm_runs/native/rg_z-fixed-medium/seed-2402/config.json",
+    "medium:rg_z-curriculum": "artifacts/cluster_sync/tfm_runs/native/rg_z-curriculum-medium/seed-2402/config.json",
+    "medium:observed-ID": "artifacts/cluster_sync/observed_id_training/_provenance/observed-medium-config.json"
+  }
+}

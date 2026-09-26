@@ -1,0 +1,1119 @@
+{
+  "tasks": [
+    {
+      "task": "bad_customer_detection",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1148,
+      "features": 13,
+      "majority_fraction": 0.89,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.037,
+          "curriculum": -0.036
+        },
+        "accuracy_gain": {
+          "canonical": -0.0,
+          "curriculum": 0.0
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.745,
+          "curriculum": 0.745
+        }
+      }
+    },
+    {
+      "task": "bank_customer_churn",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 6666,
+      "features": 10,
+      "majority_fraction": 0.8,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.152,
+          "curriculum": -0.15
+        },
+        "accuracy_gain": {
+          "canonical": 0.058,
+          "curriculum": 0.058
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.848,
+          "curriculum": 0.847
+        }
+      }
+    },
+    {
+      "task": "blood_transfusion",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 498,
+      "features": 4,
+      "majority_fraction": 0.76,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.067,
+          "curriculum": -0.068
+        },
+        "accuracy_gain": {
+          "canonical": 0.023,
+          "curriculum": 0.033
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.746,
+          "curriculum": 0.739
+        }
+      }
+    },
+    {
+      "task": "churn",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 3333,
+      "features": 19,
+      "majority_fraction": 0.86,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.166,
+          "curriculum": -0.161
+        },
+        "accuracy_gain": {
+          "canonical": 0.048,
+          "curriculum": 0.044
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.894,
+          "curriculum": 0.891
+        }
+      }
+    },
+    {
+      "task": "credit_approval",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 460,
+      "features": 15,
+      "majority_fraction": 0.56,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.357,
+          "curriculum": -0.325
+        },
+        "accuracy_gain": {
+          "canonical": 0.315,
+          "curriculum": 0.286
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.933,
+          "curriculum": 0.931
+        }
+      }
+    },
+    {
+      "task": "credit_g",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 666,
+      "features": 20,
+      "majority_fraction": 0.7,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.103,
+          "curriculum": -0.1
+        },
+        "accuracy_gain": {
+          "canonical": 0.05,
+          "curriculum": 0.051
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.78,
+          "curriculum": 0.778
+        }
+      }
+    },
+    {
+      "task": "early_stage_diabetes_risk_pred",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 167,
+      "features": 16,
+      "majority_fraction": 0.69,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.349,
+          "curriculum": -0.347
+        },
+        "accuracy_gain": {
+          "canonical": 0.198,
+          "curriculum": 0.191
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.956,
+          "curriculum": 0.953
+        }
+      }
+    },
+    {
+      "task": "ecommerce_shipping",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 7332,
+      "features": 10,
+      "majority_fraction": 0.6,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.162,
+          "curriculum": -0.164
+        },
+        "accuracy_gain": {
+          "canonical": 0.076,
+          "curriculum": 0.083
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.743,
+          "curriculum": 0.739
+        }
+      }
+    },
+    {
+      "task": "fitness_club",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1000,
+      "features": 6,
+      "majority_fraction": 0.7,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.14,
+          "curriculum": -0.14
+        },
+        "accuracy_gain": {
+          "canonical": 0.074,
+          "curriculum": 0.078
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.813,
+          "curriculum": 0.815
+        }
+      }
+    },
+    {
+      "task": "hazelnut_spread_contaminant_de",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1600,
+      "features": 30,
+      "majority_fraction": 0.5,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.387,
+          "curriculum": -0.377
+        },
+        "accuracy_gain": {
+          "canonical": 0.369,
+          "curriculum": 0.362
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.943,
+          "curriculum": 0.94
+        }
+      }
+    },
+    {
+      "task": "heart_disease_cleveland",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 202,
+      "features": 13,
+      "majority_fraction": 0.54,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.268,
+          "curriculum": -0.272
+        },
+        "accuracy_gain": {
+          "canonical": 0.273,
+          "curriculum": 0.283
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.894,
+          "curriculum": 0.897
+        }
+      }
+    },
+    {
+      "task": "heart_disease_hungary",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 196,
+      "features": 13,
+      "majority_fraction": 0.64,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.264,
+          "curriculum": -0.274
+        },
+        "accuracy_gain": {
+          "canonical": 0.202,
+          "curriculum": 0.204
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.904,
+          "curriculum": 0.906
+        }
+      }
+    },
+    {
+      "task": "heart_disease_va_long_beach",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 133,
+      "features": 13,
+      "majority_fraction": 0.74,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.011,
+          "curriculum": 0.001
+        },
+        "accuracy_gain": {
+          "canonical": 0.011,
+          "curriculum": 0.006
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.656,
+          "curriculum": 0.65
+        }
+      }
+    },
+    {
+      "task": "heart_failure_followup_surviva",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 199,
+      "features": 12,
+      "majority_fraction": 0.68,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.252,
+          "curriculum": -0.254
+        },
+        "accuracy_gain": {
+          "canonical": 0.147,
+          "curriculum": 0.154
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.905,
+          "curriculum": 0.905
+        }
+      }
+    },
+    {
+      "task": "heloc",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 6972,
+      "features": 23,
+      "majority_fraction": 0.52,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.14,
+          "curriculum": -0.14
+        },
+        "accuracy_gain": {
+          "canonical": 0.198,
+          "curriculum": 0.199
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.792,
+          "curriculum": 0.792
+        }
+      }
+    },
+    {
+      "task": "hepatitis_survival_prediction",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 103,
+      "features": 19,
+      "majority_fraction": 0.79,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.116,
+          "curriculum": -0.119
+        },
+        "accuracy_gain": {
+          "canonical": 0.047,
+          "curriculum": 0.042
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.867,
+          "curriculum": 0.867
+        }
+      }
+    },
+    {
+      "task": "homeq_default_prediction",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 3805,
+      "features": 12,
+      "majority_fraction": 0.8,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.231,
+          "curriculum": -0.224
+        },
+        "accuracy_gain": {
+          "canonical": 0.096,
+          "curriculum": 0.099
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.924,
+          "curriculum": 0.919
+        }
+      }
+    },
+    {
+      "task": "indian_liver_patient_dataset",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 388,
+      "features": 10,
+      "majority_fraction": 0.71,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.079,
+          "curriculum": -0.083
+        },
+        "accuracy_gain": {
+          "canonical": 0.001,
+          "curriculum": -0.006
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.733,
+          "curriculum": 0.737
+        }
+      }
+    },
+    {
+      "task": "iranian_churn",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1900,
+      "features": 13,
+      "majority_fraction": 0.84,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.263,
+          "curriculum": -0.252
+        },
+        "accuracy_gain": {
+          "canonical": 0.082,
+          "curriculum": 0.071
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.972,
+          "curriculum": 0.97
+        }
+      }
+    },
+    {
+      "task": "jm1",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 7256,
+      "features": 21,
+      "majority_fraction": 0.81,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.045,
+          "curriculum": -0.047
+        },
+        "accuracy_gain": {
+          "canonical": 0.004,
+          "curriculum": 0.005
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.716,
+          "curriculum": 0.717
+        }
+      }
+    },
+    {
+      "task": "ljubljana_breast_cancer",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 190,
+      "features": 9,
+      "majority_fraction": 0.7,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.051,
+          "curriculum": -0.055
+        },
+        "accuracy_gain": {
+          "canonical": 0.034,
+          "curriculum": 0.039
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.702,
+          "curriculum": 0.713
+        }
+      }
+    },
+    {
+      "task": "marketing_campaign",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1493,
+      "features": 25,
+      "majority_fraction": 0.85,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.151,
+          "curriculum": -0.143
+        },
+        "accuracy_gain": {
+          "canonical": 0.038,
+          "curriculum": 0.035
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.893,
+          "curriculum": 0.887
+        }
+      }
+    },
+    {
+      "task": "seismic_bumps",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 1722,
+      "features": 15,
+      "majority_fraction": 0.93,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.031,
+          "curriculum": -0.032
+        },
+        "accuracy_gain": {
+          "canonical": 0.0,
+          "curriculum": 0.0
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.772,
+          "curriculum": 0.775
+        }
+      }
+    },
+    {
+      "task": "south_africa_coronary_heart_di",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 308,
+      "features": 9,
+      "majority_fraction": 0.65,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.086,
+          "curriculum": -0.087
+        },
+        "accuracy_gain": {
+          "canonical": 0.053,
+          "curriculum": 0.058
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.75,
+          "curriculum": 0.752
+        }
+      }
+    },
+    {
+      "task": "thyroid_discordant",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 2474,
+      "features": 26,
+      "majority_fraction": 0.98,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.025,
+          "curriculum": -0.023
+        },
+        "accuracy_gain": {
+          "canonical": 0.0,
+          "curriculum": 0.0
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.906,
+          "curriculum": 0.907
+        }
+      }
+    },
+    {
+      "task": "tour_travels_churn",
+      "target": "bin",
+      "regime": "IID",
+      "train_rows": 636,
+      "features": 6,
+      "majority_fraction": 0.77,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.263,
+          "curriculum": -0.252
+        },
+        "accuracy_gain": {
+          "canonical": 0.086,
+          "curriculum": 0.082
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.931,
+          "curriculum": 0.928
+        }
+      }
+    },
+    {
+      "task": "parkinsons_biomedical_voice_me",
+      "target": "bin",
+      "regime": "G",
+      "train_rows": 127,
+      "features": 23,
+      "majority_fraction": 0.76,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": 0.067,
+          "curriculum": 0.127
+        },
+        "accuracy_gain": {
+          "canonical": 0.041,
+          "curriculum": 0.038
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.772,
+          "curriculum": 0.754
+        }
+      }
+    },
+    {
+      "task": "biomechanical_orthopaedic_pred",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 206,
+      "features": 6,
+      "majority_fraction": 0.48,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.669,
+          "curriculum": -0.674
+        },
+        "accuracy_gain": {
+          "canonical": 0.364,
+          "curriculum": 0.367
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.953,
+          "curriculum": 0.954
+        }
+      }
+    },
+    {
+      "task": "ecoli_proteins",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 218,
+      "features": 6,
+      "majority_fraction": 0.44,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.892,
+          "curriculum": -0.898
+        },
+        "accuracy_gain": {
+          "canonical": 0.396,
+          "curriculum": 0.392
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.954,
+          "curriculum": 0.953
+        }
+      }
+    },
+    {
+      "task": "hepatitis_c_prediction",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 405,
+      "features": 12,
+      "majority_fraction": 0.88,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.355,
+          "curriculum": -0.362
+        },
+        "accuracy_gain": {
+          "canonical": 0.065,
+          "curriculum": 0.068
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.977,
+          "curriculum": 0.978
+        }
+      }
+    },
+    {
+      "task": "horse_colic_survival",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 229,
+      "features": 20,
+      "majority_fraction": 0.63,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.191,
+          "curriculum": -0.198
+        },
+        "accuracy_gain": {
+          "canonical": 0.052,
+          "curriculum": 0.065
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.797,
+          "curriculum": 0.807
+        }
+      }
+    },
+    {
+      "task": "maternal_health_risk",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 676,
+      "features": 6,
+      "majority_fraction": 0.4,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.487,
+          "curriculum": -0.48
+        },
+        "accuracy_gain": {
+          "canonical": 0.326,
+          "curriculum": 0.321
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.881,
+          "curriculum": 0.88
+        }
+      }
+    },
+    {
+      "task": "website_phishing",
+      "target": "3cls",
+      "regime": "IID",
+      "train_rows": 902,
+      "features": 9,
+      "majority_fraction": 0.52,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.554,
+          "curriculum": -0.542
+        },
+        "accuracy_gain": {
+          "canonical": 0.344,
+          "curriculum": 0.339
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.951,
+          "curriculum": 0.951
+        }
+      }
+    },
+    {
+      "task": "cardiotocography",
+      "target": "3cls",
+      "regime": "G",
+      "train_rows": 1254,
+      "features": 22,
+      "majority_fraction": 0.78,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.403,
+          "curriculum": -0.399
+        },
+        "accuracy_gain": {
+          "canonical": 0.101,
+          "curriculum": 0.096
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.96,
+          "curriculum": 0.958
+        }
+      }
+    },
+    {
+      "task": "dementia_prediction",
+      "target": "3cls",
+      "regime": "G",
+      "train_rows": 250,
+      "features": 8,
+      "majority_fraction": 0.56,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.289,
+          "curriculum": -0.297
+        },
+        "accuracy_gain": {
+          "canonical": 0.155,
+          "curriculum": 0.155
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.843,
+          "curriculum": 0.845
+        }
+      }
+    },
+    {
+      "task": "ghanas_indigenous_intel",
+      "target": "3cls",
+      "regime": "T",
+      "train_rows": 9933,
+      "features": 10,
+      "majority_fraction": 0.93,
+      "metrics": {
+        "excess_cross_entropy": {
+          "canonical": -0.095,
+          "curriculum": -0.088
+        },
+        "accuracy_gain": {
+          "canonical": -0.008,
+          "curriculum": -0.014
+        },
+        "macro_ovr_auc": {
+          "canonical": 0.853,
+          "curriculum": 0.828
+        }
+      }
+    }
+  ],
+  "tolerance": 0.0005,
+  "summaries": [
+    {
+      "slice": "all",
+      "tasks": 36,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.0035833333333333333,
+          "curriculum_minus_canonical_median": 0.0005000000000000004,
+          "curriculum_favorable_tasks": 16,
+          "ties_at_printed_precision": 2,
+          "canonical_favorable_tasks": 18
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0009722222222222234,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 15,
+          "ties_at_printed_precision": 5,
+          "canonical_favorable_tasks": 16
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.0014166666666666679,
+          "curriculum_minus_canonical_median": -0.0005000000000000004,
+          "curriculum_favorable_tasks": 13,
+          "ties_at_printed_precision": 5,
+          "canonical_favorable_tasks": 18
+        }
+      }
+    },
+    {
+      "slice": "IID",
+      "tasks": 32,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.0020624999999999997,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 15,
+          "ties_at_printed_precision": 2,
+          "canonical_favorable_tasks": 15
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0006562500000000011,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 15,
+          "ties_at_printed_precision": 4,
+          "canonical_favorable_tasks": 13
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.0002500000000000002,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 12,
+          "ties_at_printed_precision": 5,
+          "canonical_favorable_tasks": 15
+        }
+      }
+    },
+    {
+      "slice": "binary",
+      "tasks": 27,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.004888888888888889,
+          "curriculum_minus_canonical_median": 0.0010000000000000009,
+          "curriculum_favorable_tasks": 11,
+          "ties_at_printed_precision": 2,
+          "canonical_favorable_tasks": 14
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0010740740740740775,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 12,
+          "ties_at_printed_precision": 4,
+          "canonical_favorable_tasks": 11
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.0013333333333333346,
+          "curriculum_minus_canonical_median": -0.0010000000000000009,
+          "curriculum_favorable_tasks": 9,
+          "ties_at_printed_precision": 4,
+          "canonical_favorable_tasks": 14
+        }
+      }
+    },
+    {
+      "slice": "binary \u00d7 IID",
+      "tasks": 26,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.002769230769230769,
+          "curriculum_minus_canonical_median": 0.0005000000000000004,
+          "curriculum_favorable_tasks": 11,
+          "ties_at_printed_precision": 2,
+          "canonical_favorable_tasks": 13
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0010000000000000035,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 12,
+          "ties_at_printed_precision": 4,
+          "canonical_favorable_tasks": 10
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.0006923076923076929,
+          "curriculum_minus_canonical_median": -0.0005000000000000004,
+          "curriculum_favorable_tasks": 9,
+          "ties_at_printed_precision": 4,
+          "canonical_favorable_tasks": 13
+        }
+      }
+    },
+    {
+      "slice": "binary \u00d7 grouped",
+      "tasks": 1,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.06,
+          "curriculum_minus_canonical_median": 0.06,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0030000000000000027,
+          "curriculum_minus_canonical_median": -0.0030000000000000027,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.018000000000000016,
+          "curriculum_minus_canonical_median": -0.018000000000000016,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        }
+      }
+    },
+    {
+      "slice": "grouped",
+      "tasks": 3,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.018666666666666665,
+          "curriculum_minus_canonical_median": 0.0040000000000000036,
+          "curriculum_favorable_tasks": 1,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 2
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.002666666666666669,
+          "curriculum_minus_canonical_median": -0.0030000000000000027,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 1,
+          "canonical_favorable_tasks": 2
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.006000000000000005,
+          "curriculum_minus_canonical_median": -0.0020000000000000018,
+          "curriculum_favorable_tasks": 1,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 2
+        }
+      }
+    },
+    {
+      "slice": "multiclass",
+      "tasks": 9,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": -0.00033333333333333365,
+          "curriculum_minus_canonical_median": -0.0050000000000000044,
+          "curriculum_favorable_tasks": 5,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 4
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0006666666666666613,
+          "curriculum_minus_canonical_median": -0.0040000000000000036,
+          "curriculum_favorable_tasks": 3,
+          "ties_at_printed_precision": 1,
+          "canonical_favorable_tasks": 5
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.001666666666666668,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 4,
+          "ties_at_printed_precision": 1,
+          "canonical_favorable_tasks": 4
+        }
+      }
+    },
+    {
+      "slice": "multiclass \u00d7 IID",
+      "tasks": 6,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": -0.0010000000000000009,
+          "curriculum_minus_canonical_median": -0.005500000000000005,
+          "curriculum_favorable_tasks": 4,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 2
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": 0.0008333333333333422,
+          "curriculum_minus_canonical_median": -0.0005000000000000004,
+          "curriculum_favorable_tasks": 3,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 3
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": 0.001666666666666668,
+          "curriculum_minus_canonical_median": 0.0005000000000000004,
+          "curriculum_favorable_tasks": 3,
+          "ties_at_printed_precision": 1,
+          "canonical_favorable_tasks": 2
+        }
+      }
+    },
+    {
+      "slice": "multiclass \u00d7 grouped",
+      "tasks": 2,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": -0.0020000000000000018,
+          "curriculum_minus_canonical_median": -0.0020000000000000018,
+          "curriculum_favorable_tasks": 1,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.0025000000000000022,
+          "curriculum_minus_canonical_median": -0.0025000000000000022,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 1,
+          "canonical_favorable_tasks": 1
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": 0.0,
+          "curriculum_minus_canonical_median": 0.0,
+          "curriculum_favorable_tasks": 1,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        }
+      }
+    },
+    {
+      "slice": "multiclass \u00d7 temporal",
+      "tasks": 1,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.007000000000000006,
+          "curriculum_minus_canonical_median": 0.007000000000000006,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.006,
+          "curriculum_minus_canonical_median": -0.006,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.025000000000000022,
+          "curriculum_minus_canonical_median": -0.025000000000000022,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        }
+      }
+    },
+    {
+      "slice": "temporal",
+      "tasks": 1,
+      "metrics": {
+        "excess_cross_entropy": {
+          "curriculum_minus_canonical_mean": 0.007000000000000006,
+          "curriculum_minus_canonical_median": 0.007000000000000006,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "accuracy_gain": {
+          "curriculum_minus_canonical_mean": -0.006,
+          "curriculum_minus_canonical_median": -0.006,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        },
+        "macro_ovr_auc": {
+          "curriculum_minus_canonical_mean": -0.025000000000000022,
+          "curriculum_minus_canonical_median": -0.025000000000000022,
+          "curriculum_favorable_tasks": 0,
+          "ties_at_printed_precision": 0,
+          "canonical_favorable_tasks": 1
+        }
+      }
+    }
+  ],
+  "spearman_task_level": {
+    "excess_cross_entropy": {
+      "log_train_rows": 0.30224947812678,
+      "features": 0.25247573107007903,
+      "majority_fraction": 0.19351310438943115
+    },
+    "accuracy_gain": {
+      "log_train_rows": -0.07607026317398059,
+      "features": -0.22472546325017553,
+      "majority_fraction": -0.09198226607375654
+    },
+    "macro_ovr_auc": {
+      "log_train_rows": -0.24764345718800962,
+      "features": -0.13340254796561563,
+      "majority_fraction": -0.18655154194121312
+    }
+  },
+  "notes": [
+    "Each task has one task-equal, final-checkpoint score from the printed appendix table.",
+    "Differences are curriculum minus canonical; negative excess CE and positive accuracy/AUC favor curriculum.",
+    "Ties use a 0.0005 tolerance because the source tables are printed to three decimals.",
+    "These comparisons are descriptive: the 36 tasks are heterogeneous and this source has one pretraining seed."
+  ]
+}

@@ -1,0 +1,265 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{jacobs1991experts,jordan1994hierarchical}
+\citation{muller2022pfn,hollmann2023tabpfn}
+\citation{qu2025tabicl}
+\citation{pfefferle2025nanotabpfn}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{purucker2026beyondarena}
+\citation{hollmann2023tabpfn,hollmann2025tabpfn,grinsztajn2026tabpfn3}
+\citation{qu2025tabicl,qu2026tabiclv2}
+\citation{pfefferle2025nanotabpfn}
+\citation{jacobs1991experts,jordan1994hierarchical}
+\citation{jiang1999identifiability}
+\citation{xie2022implicit}
+\citation{pathak2024mixtures,jin2025mixtures}
+\citation{gardner2023tableshift,purucker2026beyondarena}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Works}{2}{section.2}\protected@file@percent }
+\citation{qu2025tabicl}
+\citation{jacobs1991experts,jordan1994hierarchical}
+\citation{bengio2009curriculum}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Multiregime Extensions of the Native TabICL Prior}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{3}{section.4}\protected@file@percent }
+\citation{purucker2026beyondarena}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Native task construction. In $r_z$, regimes use separate SCM scores and independently drawn class cut points; in $g_z$, they share a score and use separate cut points. Soft-gate membership depends on observed $x_1$, while persistent membership is latent. The predictor sees support examples and query features, not regime IDs. The one-regime control, fixed 30\% mixture, and 0--50\% curriculum share the NanoTabPFN architecture.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:prior}{{1}{4}{Native task construction. In $r_z$, regimes use separate SCM scores and independently drawn class cut points; in $g_z$, they share a score and use separate cut points. Soft-gate membership depends on observed $x_1$, while persistent membership is latent. The predictor sees support examples and query features, not regime IDs. The one-regime control, fixed 30\% mixture, and 0--50\% curriculum share the NanoTabPFN architecture}{figure.1}{}}
+\citation{gneiting2007scoring}
+\citation{breiman2001forests,pedregosa2011sklearn,chen2016xgboost,ke2017lightgbm,prokhorenkova2018catboost}
+\citation{priorlabs2026tabpfn26}
+\citation{janosi1989heart}
+\citation{grinsztajn2026tabpfn3}
+\@writefile{toc}{\contentsline {paragraph}{Additional analyses.}{5}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{5}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Synthetic: matched headline comparison.}{5}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Feature-dependent multiclass routing.}{5}{section*.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Matched standard-input synthetic multiregime multiclass comparison: 5,760 episodes, 720 cells, 3--5 classes. Direct query means; lower CE and higher accuracy are better. The three NanoTabPFN rows are six-layer final checkpoints.}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:headline}{{1}{6}{Matched standard-input synthetic multiregime multiclass comparison: 5,760 episodes, 720 cells, 3--5 classes. Direct query means; lower CE and higher accuracy are better. The three NanoTabPFN rows are six-layer final checkpoints}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Candidate-minus-same-size-native-control effects on the standard-input test bank, restricted to $K=2$--4. Each routing-by-class panel includes 2,880 episodes in 360 factorial cells per size. Points equally average cell means; whiskers are 95\% percentile intervals from 5,000 within-cell episode-bootstrap replicates. Negative CE and positive accuracy difference favor multiregime pretraining. Intervals omit pretraining-seed variation; model configurations vary in depth, width, and heads.}}{6}{figure.2}\protected@file@percent }
+\newlabel{fig:effects}{{2}{6}{Candidate-minus-same-size-native-control effects on the standard-input test bank, restricted to $K=2$--4. Each routing-by-class panel includes 2,880 episodes in 360 factorial cells per size. Points equally average cell means; whiskers are 95\% percentile intervals from 5,000 within-cell episode-bootstrap replicates. Negative CE and positive accuracy difference favor multiregime pretraining. Intervals omit pretraining-seed variation; model configurations vary in depth, width, and heads}{figure.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Rule mechanisms.}{6}{section*.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Matched six-layer candidate-minus-native effects by routing and rule mechanism on multiregime multiclass episodes. Each row has 1,440 episodes in 180 cells. Negative CE and positive accuracy differences (pp) favor the candidate.}}{7}{table.2}\protected@file@percent }
+\newlabel{tab:mechanism}{{2}{7}{Matched six-layer candidate-minus-native effects by routing and rule mechanism on multiregime multiclass episodes. Each row has 1,440 episodes in 180 cells. Negative CE and positive accuracy differences (pp) favor the candidate}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Evaluation-balance sensitivity on the existing standard-input bank. Six-layer candidate minus native-control paired effects; lower CE and higher accuracy differences (pp) favor the candidate. Bins are defined by support majority fraction within each class count, without using outcomes; pooled rows give class counts equal weight. Descriptive fixed-checkpoint contrasts, not a control for training-label balance.}}{7}{table.3}\protected@file@percent }
+\newlabel{tab:balance}{{3}{7}{Evaluation-balance sensitivity on the existing standard-input bank. Six-layer candidate minus native-control paired effects; lower CE and higher accuracy differences (pp) favor the candidate. Bins are defined by support majority fraction within each class count, without using outcomes; pooled rows give class counts equal weight. Descriptive fixed-checkpoint contrasts, not a control for training-label balance}{table.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Limits of the effect.}{7}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Evaluation-balance sensitivity.}{7}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Training-label balance.}{7}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Supplied regime-tag diagnostic.}{8}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Real data: BeyondArena transfer.}{8}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Merged heart-site case study.}{8}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion and Limitations}{8}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{9}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{9}{section.7}\protected@file@percent }
+\bibstyle{iclr2027_conference}
+\bibdata{references}
+\bibcite{bengio2009curriculum}{{1}{2009}{{Bengio et~al.}}{{Bengio, Louradour, Collobert, and Weston}}}
+\bibcite{breiman2001forests}{{2}{2001}{{Breiman}}{{}}}
+\bibcite{chen2016xgboost}{{3}{2016}{{Chen \& Guestrin}}{{Chen and Guestrin}}}
+\bibcite{demsar2006comparisons}{{4}{2006}{{Dem{\v {s}}ar}}{{}}}
+\bibcite{gardner2023tableshift}{{5}{2023}{{Gardner et~al.}}{{Gardner, Popovic, and Schmidt}}}
+\bibcite{gneiting2007scoring}{{6}{2007}{{Gneiting \& Raftery}}{{Gneiting and Raftery}}}
+\bibcite{grinsztajn2026tabpfn3}{{7}{2026}{{Grinsztajn et~al.}}{{Grinsztajn, Fl{\"o}ge, Key, Birkel, Jund, Roof, Manium, Hoo, B{\"u}hler, Garg, Safaric, Robertson, J{\"a}ger, Alessi, Hayler, Moroshan, Purucker, Singer, Arazi, Siems, Metzen, Grab, Erickson, Guo, Kalfon, Bing, Salinas, Cornu, Wehrhahn, Kriuchkova, Kaya, Sidhoum, Salmon, Chen, Hulsebos, LeCun, M{\"u}ller, Sch{\"o}lkopf, Gambhir, Hollmann, and Hutter}}}
+\bibcite{hollmann2023tabpfn}{{8}{2023}{{Hollmann et~al.}}{{Hollmann, M{\"u}ller, Eggensperger, and Hutter}}}
+\bibcite{hollmann2025tabpfn}{{9}{2025}{{Hollmann et~al.}}{{Hollmann, M{\"u}ller, Purucker, Krishnakumar, K{\"o}rfer, Hoo, Schirrmeister, and Hutter}}}
+\bibcite{jacobs1991experts}{{10}{1991}{{Jacobs et~al.}}{{Jacobs, Jordan, Nowlan, and Hinton}}}
+\bibcite{janosi1989heart}{{11}{1989}{{Janosi et~al.}}{{Janosi, Steinbrunn, Pfisterer, and Detrano}}}
+\bibcite{jiang1999identifiability}{{12}{1999}{{Jiang \& Tanner}}{{Jiang and Tanner}}}
+\bibcite{jin2025mixtures}{{13}{2025}{{Jin et~al.}}{{Jin, Balasubramanian, and Lai}}}
+\bibcite{jordan1994hierarchical}{{14}{1994}{{Jordan \& Jacobs}}{{Jordan and Jacobs}}}
+\bibcite{ke2017lightgbm}{{15}{2017}{{Ke et~al.}}{{Ke, Meng, Finley, Wang, Chen, Ma, Ye, and Liu}}}
+\bibcite{muller2022pfn}{{16}{2022}{{M{\"u}ller et~al.}}{{M{\"u}ller, Hollmann, Pineda~Arango, Grabocka, and Hutter}}}
+\bibcite{pathak2024mixtures}{{17}{2024}{{Pathak et~al.}}{{Pathak, Sen, Kong, and Das}}}
+\bibcite{pedregosa2011sklearn}{{18}{2011}{{Pedregosa et~al.}}{{Pedregosa, Varoquaux, Gramfort, Michel, Thirion, Grisel, Blondel, Prettenhofer, Weiss, Dubourg, Vanderplas, Passos, Cournapeau, Brucher, Perrot, and Duchesnay}}}
+\bibcite{pfefferle2025nanotabpfn}{{19}{2025}{{Pfefferle et~al.}}{{Pfefferle, Hog, Purucker, and Hutter}}}
+\bibcite{priorlabs2026tabpfn26}{{20}{2026}{{Prior Labs}}{{}}}
+\bibcite{prokhorenkova2018catboost}{{21}{2018}{{Prokhorenkova et~al.}}{{Prokhorenkova, Gusev, Vorobev, Dorogush, and Gulin}}}
+\bibcite{purucker2026beyondarena}{{22}{2026}{{Purucker et~al.}}{{Purucker, Tschalzev, Erickson, Blayer, Holzm{\"u}ller, Arazi, Pfefferle, Tajjar, Varoquaux, and Hutter}}}
+\bibcite{qu2025tabicl}{{23}{2025}{{Qu et~al.}}{{Qu, Holzm{\"u}ller, Varoquaux, and Le~Morvan}}}
+\bibcite{qu2026tabiclv2}{{24}{2026}{{Qu et~al.}}{{Qu, Holzm{\"u}ller, Varoquaux, and Le~Morvan}}}
+\bibcite{xie2022implicit}{{25}{2022}{{Xie et~al.}}{{Xie, Raghunathan, Liang, and Ma}}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Native Prior and Implementation Validation}{13}{appendix.A}\protected@file@percent }
+\newlabel{app:prior}{{A}{13}{Native Prior and Implementation Validation}{appendix.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Architectures and Training Reproducibility}{13}{appendix.B}\protected@file@percent }
+\newlabel{app:training}{{B}{13}{Architectures and Training Reproducibility}{appendix.B}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Recorded NanoTabPFN configurations. These are size configurations, not a depth-only ablation.}}{13}{table.4}\protected@file@percent }
+\newlabel{tab:arch}{{4}{13}{Recorded NanoTabPFN configurations. These are size configurations, not a depth-only ablation}{table.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Additional Synthetic Results}{14}{appendix.C}\protected@file@percent }
+\newlabel{app:synthetic}{{C}{14}{Additional Synthetic Results}{appendix.C}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Final standard-input test-bank scores pooled across task conditions. Accuracy is a fraction. This full-bank comparison has a different composition from Table\nobreakspace  {}\ref  {tab:headline}.}}{14}{table.5}\protected@file@percent }
+\newlabel{tab:fullbank}{{5}{14}{Final standard-input test-bank scores pooled across task conditions. Accuracy is a fraction. This full-bank comparison has a different composition from Table~\ref {tab:headline}}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Detailed soft gate evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count.}}{15}{table.6}\protected@file@percent }
+\newlabel{tab:balance-soft_gate}{{6}{15}{Detailed soft gate evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Detailed persistent evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count.}}{15}{table.7}\protected@file@percent }
+\newlabel{tab:balance-persistent}{{7}{15}{Detailed persistent evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count}{table.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Six-layer native-prior test excess CE by task condition and checkpoint. Solid curves use standard input; dashed curves use duplicate-X1 input (a legacy diagnostic feature, not a true regime ID). Final-checkpoint diamonds are descriptive; matched final comparisons support the headline result.}}{15}{figure.3}\protected@file@percent }
+\newlabel{fig:cells}{{3}{15}{Six-layer native-prior test excess CE by task condition and checkpoint. Solid curves use standard input; dashed curves use duplicate-X1 input (a legacy diagnostic feature, not a true regime ID). Final-checkpoint diamonds are descriptive; matched final comparisons support the headline result}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Validation and training trajectories for the three size configurations. Rows show native-bank validation CE, the fixed validation stream, training query CE, and multiregime training-batch share. These diagnostics are distinct from held-out final test comparisons.}}{16}{figure.4}\protected@file@percent }
+\newlabel{fig:history}{{4}{16}{Validation and training trajectories for the three size configurations. Rows show native-bank validation CE, the fixed validation stream, training query CE, and multiregime training-batch share. These diagnostics are distinct from held-out final test comparisons}{figure.4}{}}
+\gdef \LT@i {\LT@entry 
+    {1}{45.99345pt}\LT@entry 
+    {4}{42.49638pt}\LT@entry 
+    {1}{47.99536pt}\LT@entry 
+    {1}{133.19194pt}\LT@entry 
+    {1}{65.96803pt}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Supplied Regime-Tag Diagnostic}{17}{appendix.D}\protected@file@percent }
+\newlabel{app:diagnostic}{{D}{17}{Supplied Regime-Tag Diagnostic}{appendix.D}{}}
+\@writefile{toc}{\contentsline {paragraph}{Aligned membership as privileged input.}{17}{section*.16}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{Within-checkpoint cross-entropy contrasts (nats) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size.}}{17}{table.8}\protected@file@percent }
+\newlabel{tab:tagcontrasts}{{8}{17}{Within-checkpoint cross-entropy contrasts (nats) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size}{table.8}{}}
+\gdef \LT@ii {\LT@entry 
+    {1}{45.99345pt}\LT@entry 
+    {4}{42.49638pt}\LT@entry 
+    {1}{47.99536pt}\LT@entry 
+    {1}{133.19194pt}\LT@entry 
+    {1}{65.96803pt}}
+\citation{jiang1999identifiability}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{Within-checkpoint accuracy contrasts (percentage points) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size.}}{18}{table.9}\protected@file@percent }
+\newlabel{tab:tagaccuracy}{{9}{18}{Within-checkpoint accuracy contrasts (percentage points) on multiregime multiclass episodes. True minus shuffled isolates aligned membership at matched input width; shuffled minus hidden captures an appended corrupted tag. Brackets are 95\% within-cell episode-bootstrap intervals (5,000 replicates), not training-seed intervals. Each mechanism-by-routing stratum has 1,440 episodes in 180 cells. O/F/C denote original/fixed/curriculum and S/M/L denote size}{table.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the reports cannot show.}{18}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Checkpoint provenance and interpretation.}{18}{section*.18}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Frozen native-model differences from the original control for $r_z$ episodes under hidden, shuffled, and true membership inputs. Rows separate routing families and metrics; columns separate model sizes. Whiskers show paired within-cell episode-bootstrap intervals. The reports do not identify separately trained true-tag checkpoints.}}{19}{figure.5}\protected@file@percent }
+\newlabel{fig:rz}{{5}{19}{Frozen native-model differences from the original control for $r_z$ episodes under hidden, shuffled, and true membership inputs. Rows separate routing families and metrics; columns separate model sizes. Whiskers show paired within-cell episode-bootstrap intervals. The reports do not identify separately trained true-tag checkpoints}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces As in Figure\nobreakspace  {}\ref  {fig:rz}, for $g_z$ episodes. The within-model true-minus-shuffled contrast is the relevant supplied-information comparison.}}{20}{figure.6}\protected@file@percent }
+\newlabel{fig:gz}{{6}{20}{As in Figure~\ref {fig:rz}, for $g_z$ episodes. The within-model true-minus-shuffled contrast is the relevant supplied-information comparison}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Paired input-condition contrasts pooled across the $r_z$ and $g_z$ mechanisms. Columns show model size; rows show cross-entropy and accuracy changes for shuffled versus hidden and true versus shuffled inputs under persistent and soft-gate routing. Each routing family includes 2,880 matched episodes. Dots are paired mean differences; bars are 95\% cell-stratified episode-bootstrap intervals over this fixed bank, not training-seed uncertainty. Negative cross-entropy and positive accuracy changes favor the first-named condition.}}{21}{figure.7}\protected@file@percent }
+\newlabel{fig:tag-input-pooled}{{7}{21}{Paired input-condition contrasts pooled across the $r_z$ and $g_z$ mechanisms. Columns show model size; rows show cross-entropy and accuracy changes for shuffled versus hidden and true versus shuffled inputs under persistent and soft-gate routing. Each routing family includes 2,880 matched episodes. Dots are paired mean differences; bars are 95\% cell-stratified episode-bootstrap intervals over this fixed bank, not training-seed uncertainty. Negative cross-entropy and positive accuracy changes favor the first-named condition}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Within-model paired input-condition contrasts for $r_z$ episodes. Panels show cross-entropy and accuracy changes for shuffled versus hidden and true versus shuffled inputs across sizes and routing families. Each routing family includes 1,440 matched episodes. Dots are paired means and bars are 95\% cell-stratified episode-bootstrap intervals over this fixed bank, not training-seed uncertainty. Negative cross-entropy and positive accuracy changes favor the first-named condition.}}{22}{figure.8}\protected@file@percent }
+\newlabel{fig:tag-input-rz}{{8}{22}{Within-model paired input-condition contrasts for $r_z$ episodes. Panels show cross-entropy and accuracy changes for shuffled versus hidden and true versus shuffled inputs across sizes and routing families. Each routing family includes 1,440 matched episodes. Dots are paired means and bars are 95\% cell-stratified episode-bootstrap intervals over this fixed bank, not training-seed uncertainty. Negative cross-entropy and positive accuracy changes favor the first-named condition}{figure.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces As in Figure\nobreakspace  {}\ref  {fig:tag-input-rz}, for $g_z$ episodes. Each routing family has 1,440 matched episodes; intervals are cell-stratified episode-bootstrap intervals over the fixed bank, not training-seed uncertainty.}}{23}{figure.9}\protected@file@percent }
+\newlabel{fig:tag-input-gz}{{9}{23}{As in Figure~\ref {fig:tag-input-rz}, for $g_z$ episodes. Each routing family has 1,440 matched episodes; intervals are cell-stratified episode-bootstrap intervals over the fixed bank, not training-seed uncertainty}{figure.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Training-Time Exposure to Regime IDs}{24}{appendix.E}\protected@file@percent }
+\newlabel{app:observed-id}{{E}{24}{Training-Time Exposure to Regime IDs}{appendix.E}{}}
+\citation{purucker2026beyondarena}
+\citation{demsar2006comparisons}
+\gdef \LT@iii {\LT@entry 
+    {1}{81.23912pt}\LT@entry 
+    {1}{85.08731pt}\LT@entry 
+    {1}{54.20065pt}\LT@entry 
+    {1}{61.20512pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Exploratory observed-ID training comparison on 5,760 multiclass multiregime episodes. H = hidden, S = shuffled-tag, and T = true-tag evaluation inputs; the hidden condition is the primary task setting. Cross-model observed-minus-original differences are paired by episode under hidden inputs. Brackets give 95\% within-cell episode-bootstrap intervals (5,000 replicates); they quantify this fixed episode bank and not pretraining-seed variation. The saved model-source hashes differ across model families, so the cross-model comparison is descriptive.}}{25}{table.10}\protected@file@percent }
+\newlabel{tab:observed-id-training}{{10}{25}{Exploratory observed-ID training comparison on 5,760 multiclass multiregime episodes. H = hidden, S = shuffled-tag, and T = true-tag evaluation inputs; the hidden condition is the primary task setting. Cross-model observed-minus-original differences are paired by episode under hidden inputs. Brackets give 95\% within-cell episode-bootstrap intervals (5,000 replicates); they quantify this fixed episode bank and not pretraining-seed variation. The saved model-source hashes differ across model families, so the cross-model comparison is descriptive}{table.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {F}BeyondArena Task Inventory and Results}{25}{appendix.F}\protected@file@percent }
+\newlabel{app:beyond}{{F}{25}{BeyondArena Task Inventory and Results}{appendix.F}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{BeyondArena equal-task summaries from the original evaluation aggregates. Overall excess CE covers 36 tasks, binary accuracy gain 27 tasks, and multiclass accuracy gain nine tasks. Values are rounded; accuracy gains are percentage points.}}{25}{table.11}\protected@file@percent }
+\newlabel{tab:baoverall}{{11}{25}{BeyondArena equal-task summaries from the original evaluation aggregates. Overall excess CE covers 36 tasks, binary accuracy gain 27 tasks, and multiclass accuracy gain nine tasks. Values are rounded; accuracy gains are percentage points}{table.11}{}}
+\gdef \LT@iv {\LT@entry 
+    {1}{78.23912pt}\LT@entry 
+    {1}{53.78065pt}\LT@entry 
+    {1}{57.78572pt}\LT@entry 
+    {1}{53.49246pt}\LT@entry 
+    {1}{61.99753pt}\LT@entry 
+    {1}{54.00223pt}}
+\gdef \LT@v {\LT@entry 
+    {1}{78.23912pt}\LT@entry 
+    {1}{53.78065pt}\LT@entry 
+    {1}{57.78572pt}\LT@entry 
+    {1}{53.49246pt}\LT@entry 
+    {1}{61.99753pt}\LT@entry 
+    {1}{54.00223pt}}
+\gdef \LT@vi {\LT@entry 
+    {1}{185.25244pt}\LT@entry 
+    {1}{29.00967pt}\LT@entry 
+    {1}{39.00865pt}\LT@entry 
+    {4}{21.00002pt}\LT@entry 
+    {1}{37.49954pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{BeyondArena split summaries, Excess CE (nats; lower is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each.}}{26}{table.12}\protected@file@percent }
+\newlabel{tab:splitce}{{12}{26}{BeyondArena split summaries, Excess CE (nats; lower is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each}{table.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{BeyondArena split summaries, Accuracy gain (percentage points; higher is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each.}}{26}{table.13}\protected@file@percent }
+\newlabel{tab:splitacc}{{13}{26}{BeyondArena split summaries, Accuracy gain (percentage points; higher is better). Equal-task means are calculated from task-level results rounded to three decimals and are descriptive. Grouped and temporal slices contain only one or two tasks each}{table.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{Selected BeyondArena task inventory. Training rows and features describe the task-level evaluation manifest; G = grouped and T = temporal. Task names follow the source results and are truncated there where necessary.}}{26}{table.14}\protected@file@percent }
+\newlabel{tab:inventory}{{14}{26}{Selected BeyondArena task inventory. Training rows and features describe the task-level evaluation manifest; G = grouped and T = temporal. Task names follow the source results and are truncated there where necessary}{table.14}{}}
+\gdef \LT@vii {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{29.24698pt}\LT@entry 
+    {4}{28.32591pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{Per-task BeyondArena Excess cross-entropy (nats; lower is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{27}{table.15}\protected@file@percent }
+\newlabel{tab:cesm}{{15}{27}{Per-task BeyondArena Excess cross-entropy (nats; lower is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.15}{}}
+\gdef \LT@viii {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{28.32591pt}}
+\gdef \LT@ix {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{28.32591pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{Per-task BeyondArena Excess cross-entropy (nats; lower is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{28}{table.16}\protected@file@percent }
+\newlabel{tab:celarge}{{16}{28}{Per-task BeyondArena Excess cross-entropy (nats; lower is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.16}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {17}{Per-task BeyondArena Accuracy gain (fraction; higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{28}{table.17}\protected@file@percent }
+\newlabel{tab:accsm}{{17}{28}{Per-task BeyondArena Accuracy gain (fraction; higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.17}{}}
+\gdef \LT@x {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{31.32591pt}\LT@entry 
+    {4}{28.32591pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{Per-task BeyondArena Accuracy gain (fraction; higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{29}{table.18}\protected@file@percent }
+\newlabel{tab:acclarge}{{18}{29}{Per-task BeyondArena Accuracy gain (fraction; higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.18}{}}
+\gdef \LT@xi {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{23.25002pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {19}{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{30}{table.19}\protected@file@percent }
+\newlabel{tab:aucsm}{{19}{30}{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): small/medium native models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.19}{}}
+\gdef \LT@xii {\LT@entry 
+    {1}{115.38829pt}\LT@entry 
+    {1}{23.00967pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {1}{27.00586pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{26.25002pt}\LT@entry 
+    {4}{23.25002pt}}
+\@writefile{lot}{\contentsline {table}{\numberline {20}{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates.}}{31}{table.20}\protected@file@percent }
+\newlabel{tab:auclarge}{{20}{31}{Per-task BeyondArena Macro one-versus-rest AUC (higher is better): large native and reference models. O/F/C are native single-regime/fixed/curriculum; S/M/L indicate size. Results are rounded task aggregates}{table.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Mean task ranks among nine native-prior NanoTabPFN runs only. The overall rank uses 35 tasks and excludes the temporal task; published and conventional models are not in this ranking. Score tables in this appendix use all 36 tasks.}}{32}{figure.10}\protected@file@percent }
+\newlabel{fig:rank}{{10}{32}{Mean task ranks among nine native-prior NanoTabPFN runs only. The overall rank uses 35 tasks and excludes the temporal task; published and conventional models are not in this ranking. Score tables in this appendix use all 36 tasks}{figure.10}{}}
+\citation{janosi1989heart}
+\@writefile{toc}{\contentsline {section}{\numberline {G}Merged Heart-Site Case Study}{33}{appendix.G}\protected@file@percent }
+\newlabel{app:heart}{{G}{33}{Merged Heart-Site Case Study}{appendix.G}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Merged heart-site excess CE under repeated stratified IID folds (five folds, two repeats). All sites occur in support. Hidden uses 13 clinical attributes; given adds the observed site. Lower values are better. TabICL v1.1 was not evaluated in this case study.}}{33}{table.21}\protected@file@percent }
+\newlabel{tab:heart_iid}{{21}{33}{Merged heart-site excess CE under repeated stratified IID folds (five folds, two repeats). All sites occur in support. Hidden uses 13 clinical attributes; given adds the observed site. Lower values are better. TabICL v1.1 was not evaluated in this case study}{table.21}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {22}{\ignorespaces Target-site adaptation excess CE over 15 matched folds: five stratified 20-shot draws for each of three target sites. Support also contains all rows from the other two sites; queries are the remaining target-site rows. Shuffled permutes support-site tags while keeping tag counts and query tags fixed. True and shuffled have equal input width. Lower CE is better; negative true-minus-shuffled values favor aligned site tags.}}{34}{table.22}\protected@file@percent }
+\newlabel{tab:heart_adapt}{{22}{34}{Target-site adaptation excess CE over 15 matched folds: five stratified 20-shot draws for each of three target sites. Support also contains all rows from the other two sites; queries are the remaining target-site rows. Shuffled permutes support-site tags while keeping tag counts and query tags fixed. True and shuffled have equal input width. Lower CE is better; negative true-minus-shuffled values favor aligned site tags}{table.22}{}}
+\gdef \@abspage@last{34}

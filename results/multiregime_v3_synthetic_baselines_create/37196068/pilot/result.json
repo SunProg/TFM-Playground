@@ -1,0 +1,303 @@
+{
+  "config": {
+    "seed": 2402,
+    "steps": 10000,
+    "micro_batch_size": 8,
+    "accumulate_gradients": 4,
+    "support_size": 128,
+    "query_size": 32,
+    "max_features": 12,
+    "num_groups": 5,
+    "width": 192,
+    "hidden": 768,
+    "layers": 6,
+    "heads": 6,
+    "num_slots": 4,
+    "learning_rate": 0.0001,
+    "min_learning_rate": 1e-06,
+    "warmup_steps": 2000,
+    "validation_interval": 5000,
+    "validation_episodes": 8,
+    "device": "cuda"
+  },
+  "index": 0,
+  "kind": "plain",
+  "mode": "original",
+  "source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "initial_backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+  "parameters": 3711362,
+  "torch_version": "2.9.0+cu128",
+  "python_version": "3.12.7",
+  "gate": {
+    "passed": true,
+    "checks": {
+      "shared_rule_reproducible": true,
+      "shared_rule_query_count_independent": true,
+      "shared_rule_oracle_no_query_labels_or_z": true,
+      "shared_rule_finite": true,
+      "soft_gate_reproducible": true,
+      "soft_gate_query_count_independent": true,
+      "soft_gate_oracle_no_query_labels_or_z": true,
+      "soft_gate_finite": true,
+      "independent_reproducible": true,
+      "independent_query_count_independent": true,
+      "independent_oracle_no_query_labels_or_z": true,
+      "independent_finite": true,
+      "persistent_reproducible": true,
+      "persistent_query_count_independent": true,
+      "persistent_oracle_no_query_labels_or_z": true,
+      "persistent_finite": true,
+      "persistent_assignments": true,
+      "opposite_logits_cancel": true,
+      "group_evidence_accumulates": true,
+      "original_reproducible": true,
+      "plain_finite_forward_backward": true,
+      "table_slot_head_decoder_baseline_finite_forward_backward": true,
+      "table_slot_head_decoder_alpha_finite_forward_backward": true,
+      "table_slot_head_blind_decoder_finite_forward_backward": true,
+      "table_slot_head_blind_similarity_finite_forward_backward": true,
+      "table_slot_backbone_finite_forward_backward": true,
+      "table_slot_mufasa_finite_forward_backward": true,
+      "matched_initial_backbone": true
+    },
+    "source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+    "architecture": {
+      "embedding_size": 192,
+      "num_attention_heads": 6,
+      "mlp_hidden_size": 768,
+      "num_layers": 6,
+      "num_outputs": 2
+    },
+    "generator": {
+      "support_size": 128,
+      "query_size": 32,
+      "min_features": 2,
+      "max_features": 12,
+      "num_groups": 5,
+      "calibration_size": 256,
+      "num_regimes": 2,
+      "separation": 1.0,
+      "gate_strength": 1.0,
+      "imbalance_ratio": 0.5
+    },
+    "num_slots": 4,
+    "device": "cuda",
+    "numerical": {
+      "plain": {
+        "loss": 0.6618643999099731,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 3711362
+      },
+      "table_slot_head_decoder_baseline": {
+        "loss": 0.6642948389053345,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_decoder_alpha": {
+        "loss": 0.6596460342407227,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_blind_decoder": {
+        "loss": 0.6758115291595459,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_blind_similarity": {
+        "loss": 0.6671054363250732,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_backbone": {
+        "loss": 0.6853018999099731,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 8608139
+      },
+      "table_slot_mufasa": {
+        "loss": 0.7040591239929199,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 8830094
+      }
+    },
+    "oracle_headroom": {
+      "shared_rule": {
+        "marginal": 0.4892403263770143,
+        "without_group_evidence": 0.4892403263770143,
+        "privileged_regime": 0.4892403263770143
+      },
+      "soft_gate": {
+        "marginal": 0.5416089326767928,
+        "without_group_evidence": 0.5416089326767928,
+        "privileged_regime": 0.4974623808975842
+      },
+      "independent": {
+        "marginal": 0.49022527705380253,
+        "without_group_evidence": 0.49022527705380253,
+        "privileged_regime": 0.4069561906733502
+      },
+      "persistent": {
+        "marginal": 0.4696790153513558,
+        "without_group_evidence": 0.5552145534801443,
+        "privileged_regime": 0.46617031305569323
+      }
+    }
+  },
+  "status": "complete",
+  "evaluation_bank_hashes": {
+    "original": [
+      "a1421e603c72a61772ade9c9bbeabefa67732d0d0e2c1c40d37cb27164035c80",
+      "072732752bd4dd9e36c5cedc037d3caa9a2e6ffc44c278261017a1f12ce881f5",
+      "135aff988dd083d158988272eef9e026b80404565a147a5e67731ab63bf54853",
+      "ec65788fc3ff81f0e140367e24d89aa12065f811e91f992d4715acae75cb4f1b",
+      "32a096f364b0cf97fda0af056dc6f7a10fb640a84c08594e22f75968c4848b5a",
+      "1e62eacfc49c788559f4cd06b54459398a825c7aba031fc77b85d86cf456af16",
+      "f780510b38d961970d9adfc8e3312c93e95c2d72cc6060a330ee9bc8e38bb86f",
+      "eb7e61aff14513bdd83ff77c059d7c88da669e0c44628e12e9235b6ebb4ad9e8"
+    ],
+    "shared_rule": [
+      "1d3e1d3140d6b2b03f99813ba6464bb57acd6d13cbadd98b099ec119ebcad0a6",
+      "82627d41c4fc363b990e66bfb828ac174b9331ecf80f357ff90d3f30e3498a9a",
+      "4e6ea05bc6f212770d818f5df395f31b59d3a735a82520488103c2b9ed2c6474",
+      "9738cacc6c7c413c322cafbb17df989048cc6bd9e89873e6511749bdde2f477d",
+      "fd74f384e66947d38af12165ca552e09083e0c8d999a19b200679da34118d5ff",
+      "eaf7d7adafd62624ea3fe9b13020dde6d130e877b33d33d89a67cfacd4cff73b",
+      "3f715eed84fbaa862adc126f8e77f68f785cd6741b08f65422c877a72414e968",
+      "a2b970f7b5da49f46d82f489ac4b08cb6c2f3836cab25f8ca4c628b2d4a4e7a8"
+    ],
+    "soft_gate": [
+      "791eb8b29b86cc56f11f0134f634b5bfadb702d1240a036087967b9f2dc0dd01",
+      "9c0b999598113a298f88652eab273c58e531a21a0059d555c33f46a50ef9d214",
+      "2be0cf81db08d760d500c29cde5e1b849d227bd59e861f642bee62343773fa9d",
+      "6fe1b143ca5facb586c023d1364d4375037f4b3dc92a259bf6eb6d609f5a124f",
+      "f271740a997556798708d2f8664085f4c2371b751da896e9878ee34674e9f4e8",
+      "1590746e2218cfc67cafe72509a35379c941e33e51f1e56d334798529e09a8f4",
+      "a663582859def1c0fa8e604747f78dbecbe6f58a552f7f87b6b2c8577e26ed8b",
+      "c1c0d76a9226064802ec8a7d27251ef60516d838768296cc39e4f8b06ab53b53"
+    ],
+    "independent": [
+      "1d177706a4fa713519776177a9aec90b26c7af78b89d5634bb5790f90de0a232",
+      "0c26b4c2412580b692a69369d5810ae4f2d8a2529f534c425e16da20cb1d02ae",
+      "e881eb6e0c7a4c9fafae0f177841cb93f428b0379063ebb78980204e80f86017",
+      "6a0b2443aa56a45bfb9dd004a63604b57527b410792fa47ccef1508280855d68",
+      "4b9d4a2b8a7990e5b973a9c18677cb4dd624b94be0671a163d13f4091f5a3514",
+      "07dec7b45c4c92c7607b2a0b4d63d66e338ff1c230fe5275dcf5d33a0ab8cfea",
+      "6003f8f849f76b1391c3b28e4953bbfb0486c95e53ed68300da278e0ceeb7773",
+      "e322271f6ea82bb7faffc0df816da8b065af203ae0131d10f9b543a9e2f64b33"
+    ],
+    "persistent": [
+      "7ae66101fe141be6f19ee6fb20bf49ee190e03432bda4fa6d814ddd042b94e0a",
+      "d9294f10374d567ade002429a729e8a2c1d70bd9f12deacffedfbc03e9c7d8b4",
+      "46c31ae80dde367950f2721019d20a1dd147afeb8b084525e4362502874adb88",
+      "c9ec95c61c6e03573d41555ecda3934e4ee52a40d5473ab6fd7f507cc67fc412",
+      "baa5eb3132f648954faf1dc535c5dfd1dd6d0535be365f4ad3345d7b11183ad5",
+      "dad018b6daca906d016d487dc75cd7b1f8a85e8e2b493d971dac962423fe0629",
+      "30c2c2ade3f96b81d23f34cc30d949fa4762079b4b60d0ca1098cf110956f5f6",
+      "c20541b73aa1bb84be47ad192c4019a6446422b9ef8d4534d8f812d647d765dd"
+    ]
+  },
+  "initial_validation": {
+    "original": {
+      "log_loss": 0.7031730306334794,
+      "brier": 0.2547909291517031,
+      "accuracy": 0.59375,
+      "ece_10": 0.12752165133133533,
+      "episode_log_loss_se": 0.028696586321658567
+    },
+    "shared_rule": {
+      "log_loss": 0.7149494809564203,
+      "brier": 0.26070138764522266,
+      "accuracy": 0.5,
+      "ece_10": 0.07049442501738665,
+      "episode_log_loss_se": 0.019380398616994504,
+      "oracle_marginal_log_loss": 0.4892403263770143,
+      "oracle_without_group_evidence_log_loss": 0.4892403263770143,
+      "oracle_privileged_regime_log_loss": 0.4892403263770143
+    },
+    "soft_gate": {
+      "log_loss": 0.7145086796954274,
+      "brier": 0.26052184898013003,
+      "accuracy": 0.48046875,
+      "ece_10": 0.08193123666569595,
+      "episode_log_loss_se": 0.017571061670679393,
+      "oracle_marginal_log_loss": 0.5416089326767928,
+      "oracle_without_group_evidence_log_loss": 0.5416089326767928,
+      "oracle_privileged_regime_log_loss": 0.4974623808975842
+    },
+    "independent": {
+      "log_loss": 0.7127905155066401,
+      "brier": 0.25968017697215817,
+      "accuracy": 0.48828125,
+      "ece_10": 0.07976107799913734,
+      "episode_log_loss_se": 0.015910528979824163,
+      "oracle_marginal_log_loss": 0.49022527705380253,
+      "oracle_without_group_evidence_log_loss": 0.49022527705380253,
+      "oracle_privileged_regime_log_loss": 0.4069561906733502
+    },
+    "persistent": {
+      "log_loss": 0.7015023224521428,
+      "brier": 0.2540994727081308,
+      "accuracy": 0.51953125,
+      "ece_10": 0.048873740946874,
+      "episode_log_loss_se": 0.014156528569277299,
+      "oracle_marginal_log_loss": 0.4696790153513558,
+      "oracle_without_group_evidence_log_loss": 0.5552145534801443,
+      "oracle_privileged_regime_log_loss": 0.46617031305569323,
+      "group_information_gain": 0.007660210132598877
+    }
+  },
+  "validation": {
+    "original": {
+      "log_loss": 0.5149281363119371,
+      "brier": 0.1679659724585646,
+      "accuracy": 0.76953125,
+      "ece_10": 0.05433509615249933,
+      "episode_log_loss_se": 0.05887832129017836
+    },
+    "shared_rule": {
+      "log_loss": 0.6458231065771542,
+      "brier": 0.22764991746746133,
+      "accuracy": 0.6171875,
+      "ece_10": 0.05812259658705443,
+      "episode_log_loss_se": 0.023808757365543807,
+      "oracle_marginal_log_loss": 0.4892403263770143,
+      "oracle_without_group_evidence_log_loss": 0.4892403263770143,
+      "oracle_privileged_regime_log_loss": 0.4892403263770143
+    },
+    "soft_gate": {
+      "log_loss": 0.6455674603930674,
+      "brier": 0.22753519674481326,
+      "accuracy": 0.58984375,
+      "ece_10": 0.10247855220222846,
+      "episode_log_loss_se": 0.02710569547518819,
+      "oracle_marginal_log_loss": 0.5416089326767928,
+      "oracle_without_group_evidence_log_loss": 0.5416089326767928,
+      "oracle_privileged_regime_log_loss": 0.4974623808975842
+    },
+    "independent": {
+      "log_loss": 0.6379074237775058,
+      "brier": 0.2231932948292935,
+      "accuracy": 0.64453125,
+      "ece_10": 0.05091061117127539,
+      "episode_log_loss_se": 0.020116278417732017,
+      "oracle_marginal_log_loss": 0.49022527705380253,
+      "oracle_without_group_evidence_log_loss": 0.49022527705380253,
+      "oracle_privileged_regime_log_loss": 0.4069561906733502
+    },
+    "persistent": {
+      "log_loss": 0.6689925451064482,
+      "brier": 0.2379386063593263,
+      "accuracy": 0.61328125,
+      "ece_10": 0.05521565314847977,
+      "episode_log_loss_se": 0.008630730494733084,
+      "oracle_marginal_log_loss": 0.4696790153513558,
+      "oracle_without_group_evidence_log_loss": 0.5552145534801443,
+      "oracle_privileged_regime_log_loss": 0.46617031305569323,
+      "group_information_gain": 0.0036936079850420356
+    }
+  },
+  "composition": {
+    "original": 320000
+  },
+  "training_stream_hash": "ef5123cea9cea9e069c229c458d28b0ccc6bf6f64ddbad7ed43d37c4f6889e82",
+  "elapsed_seconds": 14568.822634603828
+}

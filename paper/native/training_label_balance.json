@@ -1,0 +1,69 @@
+{
+  "metric": "mean within-episode support majority-class fraction",
+  "grouping": "requested class count",
+  "weighting": "equal episode weight within each requested class count and dump",
+  "dumps": [
+    {
+      "dump": "original",
+      "episodes": 100000,
+      "by_requested_classes": {
+        "3": {
+          "n": 12461,
+          "mean_support_majority": 0.6376606381878172
+        },
+        "4": {
+          "n": 12444,
+          "mean_support_majority": 0.5511427558323845
+        },
+        "5": {
+          "n": 12481,
+          "mean_support_majority": 0.4913381199446517
+        }
+      }
+    },
+    {
+      "dump": "r_z-multiregime",
+      "episodes": 100000,
+      "by_requested_classes": {
+        "3": {
+          "n": 12461,
+          "mean_support_majority": 0.5170068989759974
+        },
+        "4": {
+          "n": 12444,
+          "mean_support_majority": 0.43224312552782346
+        },
+        "5": {
+          "n": 12481,
+          "mean_support_majority": 0.3761762108592751
+        }
+      }
+    },
+    {
+      "dump": "g_z-multiregime",
+      "episodes": 100000,
+      "by_requested_classes": {
+        "3": {
+          "n": 12461,
+          "mean_support_majority": 0.5150275295664909
+        },
+        "4": {
+          "n": 12444,
+          "mean_support_majority": 0.4309380027464461
+        },
+        "5": {
+          "n": 12481,
+          "mean_support_majority": 0.3744855303389591
+        }
+      }
+    }
+  ],
+  "source_root": "artifacts/local_mps/data/tabicl_mix_scm_paired_zmix5",
+  "input_datasets": [
+    "y",
+    "train_test_split_index",
+    "num_datapoints",
+    "num_classes"
+  ],
+  "note": "All episodes in each local source dump were checked; class-count groups use requested num_classes. Results do not weight episodes by realized fixed or curriculum training exposure."
+}

@@ -1,0 +1,50 @@
+\begin{table}[htbp]\centering\small
+\caption{Merged heart-site excess CE under repeated stratified IID folds (five folds, two repeats). All sites occur in support. Hidden uses 13 clinical attributes; given adds the observed site. Lower values are better. TabICL v1.1 was not evaluated in this case study.}\label{tab:heart_iid}
+\begin{tabular}{@{}lrr@{}}\toprule
+Model & Site hidden & Site given\\\midrule
+Native single-regime, 2 layers & -0.2308 & -0.2298\\
+Native fixed, 2 layers & -0.2251 & -0.2229\\
+Native curriculum, 2 layers & -0.2286 & -0.2281\\
+Native single-regime, 4 layers & -0.2737 & -0.2753\\
+Native fixed, 4 layers & -0.2722 & -0.2749\\
+Native curriculum, 4 layers & -0.2714 & -0.2740\\
+Native single-regime, 6 layers & -0.2657 & -0.2665\\
+Native fixed, 6 layers & -0.2659 & -0.2663\\
+Native curriculum, 6 layers & -0.2654 & -0.2656\\
+Random forest & -0.2637 & -0.2639\\
+Logistic regression & -0.2730 & -0.2740\\
+Histogram gradient boosting & -0.1480 & -0.1436\\
+CatBoost & -0.1731 & -0.1689\\
+XGBoost & -0.0609 & -0.0589\\
+LightGBM & +0.2753 & +0.2795\\
+TabICL v1 & -0.2741 & -0.2733\\
+TabICL v2 & -0.2836 & -0.2833\\
+TabPFN v2.2 & -0.2820 & -0.2822\\
+TabPFN v2.6 & -0.2839 & -0.2845\\
+TabPFN v3 & -0.2841 & -0.2825\\
+\bottomrule\end{tabular}\end{table}
+\begin{table}[htbp]\centering\small
+\caption{Target-site adaptation excess CE over 15 matched folds: five stratified 20-shot draws for each of three target sites. Support also contains all rows from the other two sites; queries are the remaining target-site rows. Shuffled permutes support-site tags while keeping tag counts and query tags fixed. True and shuffled have equal input width. Lower CE is better; negative true-minus-shuffled values favor aligned site tags.}\label{tab:heart_adapt}
+\begin{tabular}{@{}lrrrr@{}}\toprule
+Model & Hidden & Shuffled & True & True$-$shuffled\\\midrule
+Native single-regime, 2 layers & -0.1664 & -0.1692 & -0.1651 & +0.0041\\
+Native fixed, 2 layers & -0.1746 & -0.1794 & -0.1769 & +0.0025\\
+Native curriculum, 2 layers & -0.1606 & -0.1651 & -0.1610 & +0.0042\\
+Native single-regime, 4 layers & -0.2519 & -0.2503 & -0.2608 & -0.0105\\
+Native fixed, 4 layers & -0.2520 & -0.2567 & -0.2683 & -0.0117\\
+Native curriculum, 4 layers & -0.2426 & -0.2457 & -0.2564 & -0.0107\\
+Native single-regime, 6 layers & -0.2661 & -0.2670 & -0.2714 & -0.0044\\
+Native fixed, 6 layers & -0.2622 & -0.2640 & -0.2667 & -0.0027\\
+Native curriculum, 6 layers & -0.2502 & -0.2515 & -0.2513 & +0.0002\\
+Random forest & -0.2472 & -0.2439 & -0.2556 & -0.0117\\
+Logistic regression & -0.2332 & -0.2306 & -0.2371 & -0.0064\\
+Histogram gradient boosting & -0.1731 & -0.1704 & -0.1775 & -0.0071\\
+CatBoost & -0.1540 & -0.1645 & -0.1668 & -0.0023\\
+XGBoost & -0.0817 & -0.0809 & -0.0892 & -0.0083\\
+LightGBM & +0.1996 & +0.1874 & +0.1808 & -0.0066\\
+TabICL v1 & -0.2799 & -0.2696 & -0.2823 & -0.0127\\
+TabICL v2 & -0.2857 & -0.2843 & -0.2949 & -0.0106\\
+TabPFN v2.2 & -0.2891 & -0.2905 & -0.2931 & -0.0026\\
+TabPFN v2.6 & -0.2940 & -0.2954 & -0.3038 & -0.0084\\
+TabPFN v3 & -0.2879 & -0.2865 & -0.2935 & -0.0070\\
+\bottomrule\end{tabular}\end{table}

@@ -70,8 +70,31 @@ SLICE_PREDICATES: dict[str, Callable[[dict[str, Any]], bool]] = {
         _is_multiregime(row) and _is_multiclass(row) and row["task_family"] == "persistent"
     ),
     "multiregime_binary": lambda row: _is_multiregime(row) and int(row["num_classes"]) == 2,
+    "soft_gate_multiregime_class3": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "soft_gate" and int(row["num_classes"]) == 3
+    ),
+    "soft_gate_multiregime_class4": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "soft_gate" and int(row["num_classes"]) == 4
+    ),
+    "soft_gate_multiregime_class5": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "soft_gate" and int(row["num_classes"]) == 5
+    ),
+    "persistent_multiregime_class3": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "persistent" and int(row["num_classes"]) == 3
+    ),
+    "persistent_multiregime_class4": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "persistent" and int(row["num_classes"]) == 4
+    ),
+    "persistent_multiregime_class5": lambda row: (
+        _is_multiregime(row) and row["task_family"] == "persistent" and int(row["num_classes"]) == 5
+    ),
 }
-DEFAULT_SLICES = tuple(SLICE_PREDICATES)
+DEFAULT_SLICES = (
+    "multiregime_multiclass",
+    "soft_gate_multiregime_multiclass",
+    "persistent_multiregime_multiclass",
+    "multiregime_binary",
+)
 
 
 def _episode_key(row: dict[str, Any]) -> tuple[int, int, int]:
@@ -251,6 +274,12 @@ def _markdown(report: dict[str, Any]) -> str:
         "soft_gate_multiregime_multiclass": "Soft-gate multiregime multiclass",
         "persistent_multiregime_multiclass": "Persistent multiregime multiclass",
         "multiregime_binary": "Multiregime binary",
+        "soft_gate_multiregime_class3": "Soft-gate multiregime, 3 classes",
+        "soft_gate_multiregime_class4": "Soft-gate multiregime, 4 classes",
+        "soft_gate_multiregime_class5": "Soft-gate multiregime, 5 classes",
+        "persistent_multiregime_class3": "Persistent multiregime, 3 classes",
+        "persistent_multiregime_class4": "Persistent multiregime, 4 classes",
+        "persistent_multiregime_class5": "Persistent multiregime, 5 classes",
     }
     metric_names = {
         "query_cross_entropy": "Cross-entropy (nats)",

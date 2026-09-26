@@ -1,0 +1,114 @@
+{
+  "config": {
+    "seed": 2402,
+    "steps": 1000,
+    "batch_size": 4,
+    "support_size": 128,
+    "query_size": 32,
+    "max_features": 12,
+    "num_groups": 8,
+    "width": 96,
+    "hidden": 384,
+    "layers": 3,
+    "heads": 4,
+    "num_slots": 4,
+    "learning_rate": 0.0001,
+    "warmup_steps": 100,
+    "validation_interval": 250,
+    "validation_episodes": 24,
+    "device": "cuda"
+  },
+  "index": 0,
+  "kind": "plain",
+  "mode": "original",
+  "source_hash": "6ea606e85f635dfb635ac4d3d166c83df6fa4e4ae1ae8f15f6c2b9eedbdb3ff9",
+  "initial_backbone_hash": "59188f8ce7c58707d1d3b808eca65650e8f9ec7afe252c1a28ba6545511b88fb",
+  "parameters": 486242,
+  "torch_version": "2.9.0+cu128",
+  "python_version": "3.12.7",
+  "gate": {
+    "passed": true,
+    "checks": {
+      "shared_rule_reproducible": true,
+      "shared_rule_query_count_independent": true,
+      "shared_rule_oracle_no_query_labels_or_z": true,
+      "shared_rule_finite": true,
+      "soft_gate_reproducible": true,
+      "soft_gate_query_count_independent": true,
+      "soft_gate_oracle_no_query_labels_or_z": true,
+      "soft_gate_finite": true,
+      "independent_reproducible": true,
+      "independent_query_count_independent": true,
+      "independent_oracle_no_query_labels_or_z": true,
+      "independent_finite": true,
+      "persistent_reproducible": true,
+      "persistent_query_count_independent": true,
+      "persistent_oracle_no_query_labels_or_z": true,
+      "persistent_finite": true,
+      "persistent_assignments": true,
+      "opposite_logits_cancel": true,
+      "group_evidence_accumulates": true,
+      "original_reproducible": true,
+      "plain_finite_forward_backward": true,
+      "slot_finite_forward_backward": true,
+      "matched_initial_backbone": true
+    },
+    "source_hash": "6ea606e85f635dfb635ac4d3d166c83df6fa4e4ae1ae8f15f6c2b9eedbdb3ff9",
+    "architecture": {
+      "embedding_size": 96,
+      "num_attention_heads": 4,
+      "mlp_hidden_size": 384,
+      "num_layers": 3,
+      "num_outputs": 2
+    },
+    "generator": {
+      "support_size": 128,
+      "query_size": 32,
+      "min_features": 2,
+      "max_features": 12,
+      "num_groups": 8,
+      "calibration_size": 256,
+      "num_regimes": 2,
+      "separation": 1.0,
+      "gate_strength": 1.0,
+      "imbalance_ratio": 0.5
+    },
+    "num_slots": 4,
+    "device": "cuda",
+    "numerical": {
+      "plain": {
+        "loss": 0.7006584405899048,
+        "backbone_hash": "59188f8ce7c58707d1d3b808eca65650e8f9ec7afe252c1a28ba6545511b88fb",
+        "parameters": 486242
+      },
+      "slot": {
+        "loss": 0.6667255163192749,
+        "backbone_hash": "59188f8ce7c58707d1d3b808eca65650e8f9ec7afe252c1a28ba6545511b88fb",
+        "parameters": 756869
+      }
+    },
+    "oracle_headroom": {
+      "shared_rule": {
+        "marginal": 0.52523651099586,
+        "without_group_evidence": 0.52523651099586,
+        "privileged_regime": 0.52523651099586
+      },
+      "soft_gate": {
+        "marginal": 0.5375115320951035,
+        "without_group_evidence": 0.5375115320951035,
+        "privileged_regime": 0.45469676839962214
+      },
+      "independent": {
+        "marginal": 0.5533214258785214,
+        "without_group_evidence": 0.5533214258785214,
+        "privileged_regime": 0.4365228919981286
+      },
+      "persistent": {
+        "marginal": 0.465212099527154,
+        "without_group_evidence": 0.557492356194979,
+        "privileged_regime": 0.45080882941292905
+      }
+    }
+  },
+  "status": "running"
+}

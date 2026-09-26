@@ -1,0 +1,137 @@
+[
+  {
+    "fold": "adapt-cleveland-0",
+    "target_site": "cleveland",
+    "repeat": 0,
+    "support_rows": 514,
+    "query_rows": 283,
+    "support_index_sha256": "3a494d3ce55c4e359672c8f2a8db4126e5b9e5e0ce7c7cfbe71ba950aa707c93",
+    "query_index_sha256": "436d0c88dc8b45562491c78bf1ea386e497e7aec05efbd99c1b6502c9adac985"
+  },
+  {
+    "fold": "adapt-cleveland-1",
+    "target_site": "cleveland",
+    "repeat": 1,
+    "support_rows": 514,
+    "query_rows": 283,
+    "support_index_sha256": "3dd248f6b634dda1b235a765b87fef4fb6f71e7cc6fb4728f513ef8baba4882a",
+    "query_index_sha256": "191a4385287afe4fe0b3961522c5c86bb5247495224008c7ffac2d3463b53726"
+  },
+  {
+    "fold": "adapt-cleveland-2",
+    "target_site": "cleveland",
+    "repeat": 2,
+    "support_rows": 514,
+    "query_rows": 283,
+    "support_index_sha256": "fd05af8dadef9645d52d87b5baf8538b58cc816b18ff0f653f0305b44ba2bdf4",
+    "query_index_sha256": "d76f207a2f079b38a11bd85b0b13bbe886e313e960e45200f1efe81e1dec73d1"
+  },
+  {
+    "fold": "adapt-cleveland-3",
+    "target_site": "cleveland",
+    "repeat": 3,
+    "support_rows": 514,
+    "query_rows": 283,
+    "support_index_sha256": "20ffa824c0cd38968e26cd48f59e798dd8333999589ab428ff669627d49e10b6",
+    "query_index_sha256": "49dd6b13dbce8535412a67938f821275210443f6dbee7b4d8cd833127535c7d3"
+  },
+  {
+    "fold": "adapt-cleveland-4",
+    "target_site": "cleveland",
+    "repeat": 4,
+    "support_rows": 514,
+    "query_rows": 283,
+    "support_index_sha256": "b7d0ed88923ae3dbf45d2f01263f496ffdecf418bd36b6d5ddb2b3a56ac97321",
+    "query_index_sha256": "f3aa23406e21bddeacea3afd0f39fddbe678f9a7dd5587186b1cd0f1555e470c"
+  },
+  {
+    "fold": "adapt-hungary-0",
+    "target_site": "hungary",
+    "repeat": 0,
+    "support_rows": 523,
+    "query_rows": 274,
+    "support_index_sha256": "03ec6be0fd362968ad902aa9ef6ef9eabc371ba4282d378b595f0815f54f5d2a",
+    "query_index_sha256": "54f3488dab82433c1985a491cd80b99bb9774cf81343ad7befb31bb67c252fdc"
+  },
+  {
+    "fold": "adapt-hungary-1",
+    "target_site": "hungary",
+    "repeat": 1,
+    "support_rows": 523,
+    "query_rows": 274,
+    "support_index_sha256": "938a94de3745d2e2f054df6a1c7088647e1e0baf7369a5963d371b67b3168f7b",
+    "query_index_sha256": "a3a63a1a01d50dfdb84a72568353d6ca8f2f4c75890475f620b77772078bbe8f"
+  },
+  {
+    "fold": "adapt-hungary-2",
+    "target_site": "hungary",
+    "repeat": 2,
+    "support_rows": 523,
+    "query_rows": 274,
+    "support_index_sha256": "a73cb3d427ecf1005759ee41ef1f1e6b821d53c196003de7b1ada3f0e1ad7768",
+    "query_index_sha256": "dd99b1dadbc903ec3667bcb984d09d7e36c7580ad7e748ea5e1783e6fabf5727"
+  },
+  {
+    "fold": "adapt-hungary-3",
+    "target_site": "hungary",
+    "repeat": 3,
+    "support_rows": 523,
+    "query_rows": 274,
+    "support_index_sha256": "ebfadf2d03bba139823413cc496d8c871a309a198c034b1122fcadbb457ce027",
+    "query_index_sha256": "2fa8ff37d0cc228118be90ef2cbcd71213a6c3d05377b21446c299de7dd3ca33"
+  },
+  {
+    "fold": "adapt-hungary-4",
+    "target_site": "hungary",
+    "repeat": 4,
+    "support_rows": 523,
+    "query_rows": 274,
+    "support_index_sha256": "9978abb7a7fed3c98bb2c625d9664d347ded03e1b072a4995ea203d379cb2e1f",
+    "query_index_sha256": "1dc1271da9344e816d3ce0e9685fd90f70e38c3fdf5387e323207d604b3e4f31"
+  },
+  {
+    "fold": "adapt-va_long_beach-0",
+    "target_site": "va_long_beach",
+    "repeat": 0,
+    "support_rows": 617,
+    "query_rows": 180,
+    "support_index_sha256": "919f21781a98daff27f66cd39fe05e19ea70aae6f4653100989e57cd32129b15",
+    "query_index_sha256": "36270f5759cdf1a23d7392224e0f63c43872b575a491e45d0581d27623d80ee5"
+  },
+  {
+    "fold": "adapt-va_long_beach-1",
+    "target_site": "va_long_beach",
+    "repeat": 1,
+    "support_rows": 617,
+    "query_rows": 180,
+    "support_index_sha256": "957f67078cb3bcbd1d9fb422f4986767e7bb1f14efb79db787f7c0a20ae53f53",
+    "query_index_sha256": "b138e1fac1c0aaef9b1e174ad372242e34b3ba9356783119fc902a5f60c2dbc7"
+  },
+  {
+    "fold": "adapt-va_long_beach-2",
+    "target_site": "va_long_beach",
+    "repeat": 2,
+    "support_rows": 617,
+    "query_rows": 180,
+    "support_index_sha256": "ad08a915266bfb4679abe0bcb5c2299411caa34ac760229365da5832c914b36d",
+    "query_index_sha256": "b8405c1bdcf289be9577de8d67e220580ea79a2eb2b6ef097dfc580c0425235a"
+  },
+  {
+    "fold": "adapt-va_long_beach-3",
+    "target_site": "va_long_beach",
+    "repeat": 3,
+    "support_rows": 617,
+    "query_rows": 180,
+    "support_index_sha256": "cea3572fc576890e4f989012e03060364ef049781031b9625e13d643de928edf",
+    "query_index_sha256": "674e1d6521552c73720965aa73f29f3fb071f37ec94d0ac9640e9d5fd9db0c34"
+  },
+  {
+    "fold": "adapt-va_long_beach-4",
+    "target_site": "va_long_beach",
+    "repeat": 4,
+    "support_rows": 617,
+    "query_rows": 180,
+    "support_index_sha256": "6dc78af88324c19359907550b2a34badc9279740136dd5229872c62b2476770c",
+    "query_index_sha256": "bfc6a2cd0b50c2b6d7f3e2b439f7fccf299d2fb2e877865279479f165df96f03"
+  }
+]

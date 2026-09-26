@@ -1,0 +1,33 @@
+\begin{table}[ht]
+\centering\footnotesize
+\caption{Detailed soft gate evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count.}\label{tab:balance-soft_gate}
+\begin{tabular}{@{}lllrrrrrr@{}}\toprule
+Classes & Routing & Maj. bin & $n$ & Cells & Fixed $\Delta$CE & Fixed $\Delta$Acc & Curr. $\Delta$CE & Curr. $\Delta$Acc\\\midrule
+3 & soft gate & low & 324 & 113 & -0.0112 & +0.90 & -0.0152 & +1.08\\
+4 & soft gate & low & 348 & 115 & -0.0176 & +0.70 & -0.0197 & +1.08\\
+5 & soft gate & low & 317 & 112 & -0.0174 & +0.56 & -0.0221 & +1.10\\
+3 & soft gate & middle & 337 & 117 & -0.0105 & +0.39 & -0.0139 & +0.69\\
+4 & soft gate & middle & 302 & 115 & -0.0134 & +0.64 & -0.0154 & +0.62\\
+5 & soft gate & middle & 331 & 116 & -0.0192 & +0.93 & -0.0233 & +1.12\\
+3 & soft gate & high & 299 & 109 & -0.0051 & +0.38 & -0.0094 & +0.51\\
+4 & soft gate & high & 310 & 110 & -0.0127 & +0.48 & -0.0117 & +0.44\\
+5 & soft gate & high & 312 & 113 & -0.0129 & +0.39 & -0.0186 & +0.59\\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering\footnotesize
+\caption{Detailed persistent evaluation-balance slices. Candidate minus same-size native control; accuracy differences are percentage points. Cell means are weighted equally within each class-count slice. Support-majority cutoffs are shared across routing families within class count.}\label{tab:balance-persistent}
+\begin{tabular}{@{}lllrrrrrr@{}}\toprule
+Classes & Routing & Maj. bin & $n$ & Cells & Fixed $\Delta$CE & Fixed $\Delta$Acc & Curr. $\Delta$CE & Curr. $\Delta$Acc\\\midrule
+3 & persistent & low & 318 & 113 & -0.0006 & +0.09 & -0.0021 & +0.08\\
+4 & persistent & low & 331 & 110 & -0.0036 & +0.50 & -0.0022 & +0.21\\
+5 & persistent & low & 332 & 112 & -0.0046 & -0.01 & -0.0023 & -0.18\\
+3 & persistent & middle & 335 & 115 & -0.0013 & +0.11 & -0.0013 & -0.12\\
+4 & persistent & middle & 335 & 115 & -0.0035 & +0.20 & -0.0026 & +0.01\\
+5 & persistent & middle & 315 & 118 & -0.0012 & +0.10 & -0.0007 & -0.22\\
+3 & persistent & high & 307 & 110 & +0.0001 & -0.05 & +0.0007 & -0.06\\
+4 & persistent & high & 294 & 112 & +0.0018 & -0.17 & +0.0032 & -0.12\\
+5 & persistent & high & 313 & 112 & -0.0018 & -0.01 & -0.0005 & -0.18\\
+\bottomrule\end{tabular}
+\end{table}

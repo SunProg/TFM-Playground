@@ -1,0 +1,41 @@
+[
+  {
+    "model": "tabpfn-v2.2-finetuned",
+    "family": "original",
+    "episode": 4,
+    "episode_hash": "ed9de4c4755ada1e62b8b6991a17055a1afa2df493a21ba8525d5b16669f73c1",
+    "query_rows": 32,
+    "log_loss": 0.24061384123706375,
+    "brier": 0.05765550093361482,
+    "accuracy": 0.9375,
+    "ece_10": 0.05826956033706665,
+    "auc": 0.9666666666666667,
+    "validation_split_ratio_override": 0.0
+  },
+  {
+    "model": "tabpfn-v2.6-finetuned",
+    "family": "original",
+    "episode": 4,
+    "episode_hash": "ed9de4c4755ada1e62b8b6991a17055a1afa2df493a21ba8525d5b16669f73c1",
+    "query_rows": 32,
+    "log_loss": 0.24787031709274743,
+    "brier": 0.05971406568849813,
+    "accuracy": 0.9375,
+    "ece_10": 0.0572657585144043,
+    "auc": 0.95,
+    "validation_split_ratio_override": 0.0
+  },
+  {
+    "model": "tabpfn-v3-finetuned",
+    "family": "original",
+    "episode": 4,
+    "episode_hash": "ed9de4c4755ada1e62b8b6991a17055a1afa2df493a21ba8525d5b16669f73c1",
+    "query_rows": 32,
+    "log_loss": 0.4649707728207204,
+    "brier": 0.06238553888930487,
+    "accuracy": 0.9375,
+    "ece_10": 0.06163036823272705,
+    "auc": 0.8500000000000001,
+    "validation_split_ratio_override": 0.0
+  }
+]

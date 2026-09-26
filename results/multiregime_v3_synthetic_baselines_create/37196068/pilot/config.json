@@ -1,0 +1,146 @@
+{
+  "config": {
+    "seed": 2402,
+    "steps": 10000,
+    "micro_batch_size": 8,
+    "accumulate_gradients": 4,
+    "support_size": 128,
+    "query_size": 32,
+    "max_features": 12,
+    "num_groups": 5,
+    "width": 192,
+    "hidden": 768,
+    "layers": 6,
+    "heads": 6,
+    "num_slots": 4,
+    "learning_rate": 0.0001,
+    "min_learning_rate": 1e-06,
+    "warmup_steps": 2000,
+    "validation_interval": 5000,
+    "validation_episodes": 8,
+    "device": "cuda"
+  },
+  "index": 0,
+  "kind": "plain",
+  "mode": "original",
+  "source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+  "initial_backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+  "parameters": 3711362,
+  "torch_version": "2.9.0+cu128",
+  "python_version": "3.12.7",
+  "gate": {
+    "passed": true,
+    "checks": {
+      "shared_rule_reproducible": true,
+      "shared_rule_query_count_independent": true,
+      "shared_rule_oracle_no_query_labels_or_z": true,
+      "shared_rule_finite": true,
+      "soft_gate_reproducible": true,
+      "soft_gate_query_count_independent": true,
+      "soft_gate_oracle_no_query_labels_or_z": true,
+      "soft_gate_finite": true,
+      "independent_reproducible": true,
+      "independent_query_count_independent": true,
+      "independent_oracle_no_query_labels_or_z": true,
+      "independent_finite": true,
+      "persistent_reproducible": true,
+      "persistent_query_count_independent": true,
+      "persistent_oracle_no_query_labels_or_z": true,
+      "persistent_finite": true,
+      "persistent_assignments": true,
+      "opposite_logits_cancel": true,
+      "group_evidence_accumulates": true,
+      "original_reproducible": true,
+      "plain_finite_forward_backward": true,
+      "table_slot_head_decoder_baseline_finite_forward_backward": true,
+      "table_slot_head_decoder_alpha_finite_forward_backward": true,
+      "table_slot_head_blind_decoder_finite_forward_backward": true,
+      "table_slot_head_blind_similarity_finite_forward_backward": true,
+      "table_slot_backbone_finite_forward_backward": true,
+      "table_slot_mufasa_finite_forward_backward": true,
+      "matched_initial_backbone": true
+    },
+    "source_hash": "f4728023cf65b96191802254f6b865b271c0d3ba68def866c9e2e807614ed4a2",
+    "architecture": {
+      "embedding_size": 192,
+      "num_attention_heads": 6,
+      "mlp_hidden_size": 768,
+      "num_layers": 6,
+      "num_outputs": 2
+    },
+    "generator": {
+      "support_size": 128,
+      "query_size": 32,
+      "min_features": 2,
+      "max_features": 12,
+      "num_groups": 5,
+      "calibration_size": 256,
+      "num_regimes": 2,
+      "separation": 1.0,
+      "gate_strength": 1.0,
+      "imbalance_ratio": 0.5
+    },
+    "num_slots": 4,
+    "device": "cuda",
+    "numerical": {
+      "plain": {
+        "loss": 0.6618643999099731,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 3711362
+      },
+      "table_slot_head_decoder_baseline": {
+        "loss": 0.6642948389053345,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_decoder_alpha": {
+        "loss": 0.6596460342407227,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_blind_decoder": {
+        "loss": 0.6758115291595459,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_head_blind_similarity": {
+        "loss": 0.6671054363250732,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 5640583
+      },
+      "table_slot_backbone": {
+        "loss": 0.6853018999099731,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 8608139
+      },
+      "table_slot_mufasa": {
+        "loss": 0.7040591239929199,
+        "backbone_hash": "6eb2f0e6aec3a47fa25f779c271702e910187178f12962ff2e570804f3e2100b",
+        "parameters": 8830094
+      }
+    },
+    "oracle_headroom": {
+      "shared_rule": {
+        "marginal": 0.4892403263770143,
+        "without_group_evidence": 0.4892403263770143,
+        "privileged_regime": 0.4892403263770143
+      },
+      "soft_gate": {
+        "marginal": 0.5416089326767928,
+        "without_group_evidence": 0.5416089326767928,
+        "privileged_regime": 0.4974623808975842
+      },
+      "independent": {
+        "marginal": 0.49022527705380253,
+        "without_group_evidence": 0.49022527705380253,
+        "privileged_regime": 0.4069561906733502
+      },
+      "persistent": {
+        "marginal": 0.4696790153513558,
+        "without_group_evidence": 0.5552145534801443,
+        "privileged_regime": 0.46617031305569323
+      }
+    }
+  },
+  "status": "running"
+}

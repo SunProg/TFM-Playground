@@ -1,0 +1,121 @@
+{
+  "prior": {
+    "support_size": 128,
+    "query_size": 256,
+    "task_features": 4,
+    "max_regimes": 2,
+    "cue_separation": 1.5,
+    "regime_probability": 0.65,
+    "num_layers": 2,
+    "hidden_dim": 12,
+    "init_std": 0.5,
+    "label_noise": 0.05,
+    "calibration_size": 1024,
+    "min_disagreement": 0.2,
+    "max_disagreement": 0.8,
+    "max_attempts": 128
+  },
+  "episodes": 128,
+  "architecture": {
+    "embedding_size": 32,
+    "num_attention_heads": 4,
+    "mlp_hidden_size": 64,
+    "num_layers": 2
+  },
+  "runs": [
+    {
+      "model": "nanotabpfn_large",
+      "seed": 11,
+      "selected_step": 4400,
+      "architecture": {
+        "embedding_size": 32,
+        "num_attention_heads": 4,
+        "mlp_hidden_size": 64,
+        "num_layers": 2
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.573822021484375,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6676691537722945,
+            "n_episodes": 128
+          },
+          "auc": 0.6129555501598927
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.6006502306554466,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6528799044899642,
+            "n_episodes": 128
+          },
+          "auc": 0.6491207905345544
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.523210285929963,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6952385981567204,
+            "n_episodes": 128
+          },
+          "auc": 0.5437984971459151
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    },
+    {
+      "model": "nanotabpfn_large",
+      "seed": 12,
+      "selected_step": 4800,
+      "architecture": {
+        "embedding_size": 32,
+        "num_attention_heads": 4,
+        "mlp_hidden_size": 64,
+        "num_layers": 2
+      },
+      "metrics": {
+        "overall": {
+          "accuracy": {
+            "mean": 0.564453125,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6757445428520441,
+            "n_episodes": 128
+          },
+          "auc": 0.5980858266882277
+        },
+        "majority_z1": {
+          "accuracy": {
+            "mean": 0.5968430505599827,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.6611552168615162,
+            "n_episodes": 128
+          },
+          "auc": 0.641217934772561
+        },
+        "minority_z0": {
+          "accuracy": {
+            "mean": 0.5044367520604283,
+            "n_episodes": 128
+          },
+          "cross_entropy": {
+            "mean": 0.702744023874402,
+            "n_episodes": 128
+          },
+          "auc": 0.5115209677379395
+        },
+        "mean_query_fraction_z1": 0.65313720703125
+      }
+    }
+  ]
+}

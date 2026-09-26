@@ -2,7 +2,7 @@
 
 Every multiregime episode routes its rows to K regimes, each with its own label rule. The evaluation bank
 stores the regime id of every row, so per-episode metrics can be split by regime — this file reports that
-split for the final checkpoints of the large runs on the **z-blind TEST bank** (11 443 episodes with more
+split for the final checkpoints of the large runs on the **standard-input TEST bank** (11 443 episodes with more
 than one regime among the query rows).
 
 ## Method
@@ -30,7 +30,7 @@ not affected.
 
 ## Dispersion across regimes within an episode
 
-Range (max-min) grows with K by construction; the SD does not. Mean over episodes, z-blind TEST:
+Range (max-min) grows with K by construction; the SD does not. Mean over episodes, standard-input TEST:
 
 | classes | K | episodes | SD orig | SD rg_z | var orig | var rg_z | range orig | range rg_z |
 |---|---|---|---|---|---|---|---|---|
@@ -54,7 +54,7 @@ SD falls slightly with K and is ~4x larger for multiclass than binary; the two p
 
 ## Metrics per regime rank
 
-### regimes ranked by original-large (test split, z-blind); 11443 episodes with >1 query regime; runs: ['original-large', 'rg_z-curriculum-large']
+### regimes ranked by original-large (test split, standard-input); 11443 episodes with >1 query regime; runs: ['original-large', 'rg_z-curriculum-large']
 
 
 ## all families (11443 episodes)
@@ -178,7 +178,7 @@ kind, columns = K, x = regime rank, one line per run.
 The per-regime evaluation was run for every native run (jobs 37451487/89/90/515). The tables below use the same
 ranking construction, with `original-<size>` as the reference in each size.
 
-### Paired change in cross entropy vs original, by regime rank (K=4, TEST, z-blind)
+### Paired change in cross entropy vs original, by regime rank (K=4, TEST, standard-input)
 
 Negative = the multiregime-pretrained run is better. Rank 1 = the regime original fits best.
 
@@ -217,7 +217,7 @@ Negative = the multiregime-pretrained run is better. Rank 1 = the regime origina
 2. **At medium the gain is uniform across ranks** (-0.0256 / -0.0239 / -0.0251 / -0.0275 for rg_z-curriculum),
    i.e. a level shift; at large it tilts toward the hardest regime (-0.0223 -> -0.0276), and at small the little
    there is sits almost entirely on rank 4.
-3. **Exposure share matters at medium, not at large.** rg_z-curriculum (0->50 %) roughly doubles rg_z-fixed's
+3. **Multiregime-mixture share matters at medium, not at large.** rg_z-curriculum (0->50 %) roughly doubles rg_z-fixed's
    (30 %) gain at medium (-0.026 vs -0.013 at rank 1) but the two converge at large (-0.022 vs -0.016), where
    rg_z-fixed's pooled test CE is in fact marginally the better of the two (0.7802 vs 0.7803).
 4. **Persistent shows the redistribution pattern at every size**: rank 1 unchanged or slightly worse, rank 4

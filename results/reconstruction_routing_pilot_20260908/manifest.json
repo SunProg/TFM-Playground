@@ -1,0 +1,35 @@
+{
+  "prior": {
+    "support_size": 24,
+    "query_size": 32,
+    "task_features": 2,
+    "max_regimes": 2,
+    "cue_separation": 1.5,
+    "regime_probability": 0.65,
+    "num_layers": 2,
+    "hidden_dim": 8,
+    "init_std": 0.5,
+    "label_noise": 0.05,
+    "calibration_size": 128,
+    "min_disagreement": 0.25,
+    "max_disagreement": 0.75,
+    "max_attempts": 64
+  },
+  "steps": 300,
+  "seeds": [
+    11,
+    12
+  ],
+  "batch_size": 2,
+  "learning_rate": 0.001,
+  "embedding_weight": 1.0,
+  "width": 24,
+  "layers": 2,
+  "num_slots": 4,
+  "beta": 0.5,
+  "eta": 0.25,
+  "cell_alignment": "Hungarian to support row zero",
+  "cell_values_arm": "joint support-value retrieval and query-conditioned cell weighting",
+  "device": "cpu",
+  "note": "Synthetic learning pilot, not a four-prior sweep."
+}
